@@ -3,6 +3,8 @@ package com.example.pepper_person_id_poc.infrastructure.repository
 import android.content.Context
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
 import com.example.pepper_person_id_poc.domain.config.PocSettings
+import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 
 class SharedPreferencesSettingsRepository(
     context: Context,
@@ -13,6 +15,12 @@ class SharedPreferencesSettingsRepository(
     )
 
     override fun load(): PocSettings = PocSettings(
+        faceModel = preferences.getString(KEY_FACE_MODEL, null)
+            ?.let { saved -> FaceModelOption.entries.firstOrNull { it.name == saved } }
+            ?: FaceModelOption.SFACE_2021DEC,
+        speakerModel = preferences.getString(KEY_SPEAKER_MODEL, null)
+            ?.let { saved -> SpeakerModelOption.entries.firstOrNull { it.name == saved } }
+            ?: SpeakerModelOption.CAM_PLUS_PLUS,
         faceThreshold = preferences.getFloat(KEY_FACE_THRESHOLD, PocSettings.DEFAULT_FACE_THRESHOLD),
         speakerThreshold = preferences.getFloat(KEY_SPEAKER_THRESHOLD, PocSettings.DEFAULT_SPEAKER_THRESHOLD),
         combinedThreshold = preferences.getFloat(KEY_COMBINED_THRESHOLD, PocSettings.DEFAULT_COMBINED_THRESHOLD),
@@ -26,6 +34,8 @@ class SharedPreferencesSettingsRepository(
     override fun save(settings: PocSettings) {
         require(settings.isValid()) { "Invalid PoC settings" }
         preferences.edit()
+            .putString(KEY_FACE_MODEL, settings.faceModel.name)
+            .putString(KEY_SPEAKER_MODEL, settings.speakerModel.name)
             .putFloat(KEY_FACE_THRESHOLD, settings.faceThreshold)
             .putFloat(KEY_SPEAKER_THRESHOLD, settings.speakerThreshold)
             .putFloat(KEY_COMBINED_THRESHOLD, settings.combinedThreshold)
@@ -36,6 +46,8 @@ class SharedPreferencesSettingsRepository(
 
     private companion object {
         const val PREFERENCES_NAME = "poc_settings"
+        const val KEY_FACE_MODEL = "face_model"
+        const val KEY_SPEAKER_MODEL = "speaker_model"
         const val KEY_FACE_THRESHOLD = "face_threshold"
         const val KEY_SPEAKER_THRESHOLD = "speaker_threshold"
         const val KEY_COMBINED_THRESHOLD = "combined_threshold"

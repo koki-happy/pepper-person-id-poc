@@ -7,6 +7,8 @@ import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
 import com.example.pepper_person_id_poc.domain.config.PocSettings
+import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.state.MainUiState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +41,14 @@ class MainViewModel(
 
     fun updateFaceThreshold(value: Float) = updateSettings {
         copy(faceThreshold = value.coerceIn(PocSettings.SCORE_RANGE))
+    }
+
+    fun updateFaceModel(value: FaceModelOption) = updateSettings {
+        copy(faceModel = value)
+    }
+
+    fun updateSpeakerModel(value: SpeakerModelOption) = updateSettings {
+        copy(speakerModel = value)
     }
 
     fun updateSpeakerThreshold(value: Float) = updateSettings {

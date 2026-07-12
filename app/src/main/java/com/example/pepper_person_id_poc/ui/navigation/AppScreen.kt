@@ -12,6 +12,10 @@ enum class AppScreen(
         title = "端末診断",
         description = "Pepperのカメラ、マイク、メモリ、ネットワークを確認します",
     ),
+    ModelSelection(
+        title = "モデル選択",
+        description = "顔識別モデルと話者識別モデルを切り替えます",
+    ),
     PersonRegistration(
         title = "人物登録",
         description = "人物ごとの顔特徴量と声特徴量を登録します（人数上限なし）",

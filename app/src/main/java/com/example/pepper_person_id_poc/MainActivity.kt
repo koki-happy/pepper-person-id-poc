@@ -20,6 +20,7 @@ import com.example.pepper_person_id_poc.ui.screen.AudioRecordingScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
 import com.example.pepper_person_id_poc.ui.screen.FaceCameraMode
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
+import com.example.pepper_person_id_poc.ui.screen.ModelSelectionScreen
 import com.example.pepper_person_id_poc.ui.theme.PepperpersonidpocTheme
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModelFactory
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
                         onCombinedThresholdChanged = viewModel::updateCombinedThreshold,
                         onObservationWindowChanged = viewModel::updateObservationWindowMillis,
                         onDebugModeChanged = viewModel::updateDebugMode,
+                        onOpenModelSelection = { viewModel.showScreen(AppScreen.ModelSelection) },
                         onSave = viewModel::saveSettings,
                         onOpenScreen = viewModel::showScreen,
                     )
@@ -84,6 +86,15 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         onRefresh = viewModel::refreshDiagnostics,
+                    )
+                } else if (uiState.activeScreen == AppScreen.ModelSelection) {
+                    ModelSelectionScreen(
+                        settings = uiState.settings,
+                        settingsSaved = uiState.settingsSaved,
+                        onFaceModelChanged = viewModel::updateFaceModel,
+                        onSpeakerModelChanged = viewModel::updateSpeakerModel,
+                        onSave = viewModel::saveSettings,
+                        onBackToSettings = viewModel::returnToSettings,
                     )
                 } else if (uiState.activeScreen == AppScreen.BenchmarkResults) {
                     BenchmarkResultsScreen(

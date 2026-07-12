@@ -35,6 +35,7 @@ fun SettingsScreen(
     onCombinedThresholdChanged: (Float) -> Unit,
     onObservationWindowChanged: (Long) -> Unit,
     onDebugModeChanged: (Boolean) -> Unit,
+    onOpenModelSelection: () -> Unit,
     onSave: () -> Unit,
     onOpenScreen: (AppScreen) -> Unit,
 ) {
@@ -51,6 +52,14 @@ fun SettingsScreen(
         ) {
             Text("設定", style = MaterialTheme.typography.headlineMedium)
             Text("起動時はこの画面を表示します。各機能画面の戻る操作でもここへ戻ります。")
+
+            SettingsCard(title = "使用モデル") {
+                Text("顔: ${settings.faceModel.displayName}")
+                Text("話者: ${settings.speakerModel.displayName}")
+                Button(onClick = onOpenModelSelection, modifier = Modifier.fillMaxWidth()) {
+                    Text("顔・話者モデルを選択")
+                }
+            }
 
             SettingsCard(title = "識別閾値") {
                 ThresholdSlider("Face Identification", settings.faceThreshold, onFaceThresholdChanged)
@@ -87,7 +96,7 @@ fun SettingsScreen(
 
             Text("PoC機能", style = MaterialTheme.typography.titleLarge)
             AppScreen.entries
-                .filterNot { it == AppScreen.Settings }
+                .filterNot { it == AppScreen.Settings || it == AppScreen.ModelSelection }
                 .forEach { screen ->
                     Card(onClick = { onOpenScreen(screen) }, modifier = Modifier.fillMaxWidth()) {
                         Column(

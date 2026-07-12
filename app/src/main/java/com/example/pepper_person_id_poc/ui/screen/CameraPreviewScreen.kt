@@ -55,6 +55,7 @@ import com.example.pepper_person_id_poc.application.face.AnonymousFaceUiState
 import com.example.pepper_person_id_poc.application.face.FaceIdentityCoordinator
 import com.example.pepper_person_id_poc.application.face.FaceIdentityUiState
 import com.example.pepper_person_id_poc.domain.config.PocSettings
+import com.example.pepper_person_id_poc.domain.config.FaceModelOption
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
 import com.example.pepper_person_id_poc.domain.face.AnonymousFaceClusterer
 import com.example.pepper_person_id_poc.domain.face.FaceIdentifier
@@ -62,6 +63,8 @@ import com.example.pepper_person_id_poc.domain.face.FaceIdentityStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
 import com.example.pepper_person_id_poc.infrastructure.face.SFaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.UnavailableFaceEmbeddingEngine
 import com.example.pepper_person_id_poc.infrastructure.face.YuNetFaceDetector
 import java.util.Locale
 
@@ -82,8 +85,16 @@ fun CameraPreviewScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val embeddingEngine = remember { SFaceEmbeddingEngine(context) }
-    val coordinator = remember(personRepository, settings.faceThreshold) {
+    val embeddingEngine: FaceEmbeddingEngine = remember(settings.faceModel) {
+        when (settings.faceModel) {
+            FaceModelOption.SFACE_2021DEC -> SFaceEmbeddingEngine(context)
+            FaceModelOption.FACE_REIDENTIFICATION_RETAIL_0095 -> UnavailableFaceEmbeddingEngine(
+                modelName = settings.faceModel.displayName,
+                reason = "${settings.faceModel.displayName} の推論実装は準備中です。モデル選択でSFaceを選択してください。",
+            )
+        }
+    }
+    val coordinator = remember(personRepository, settings.faceThreshold, embeddingEngine.modelName) {
         FaceIdentityCoordinator(
             personRepository = personRepository,
             faceIdentifier = FaceIdentifier(),
@@ -92,14 +103,14 @@ fun CameraPreviewScreen(
             onBenchmarkEvent = benchmarkLogger::append,
         )
     }
-    val anonymousCoordinator = remember(settings.faceThreshold) {
+    val anonymousCoordinator = remember(settings.faceThreshold, embeddingEngine.modelName) {
         AnonymousFaceCoordinator(
             clusterer = AnonymousFaceClusterer(settings.faceThreshold),
             modelName = embeddingEngine.modelName,
             onBenchmarkEvent = benchmarkLogger::append,
         )
     }
-    val faceDetector = remember(mode) {
+    val faceDetector = remember(mode, embeddingEngine.modelName) {
         YuNetFaceDetector(
             context = context,
             embeddingEngine = embeddingEngine,
