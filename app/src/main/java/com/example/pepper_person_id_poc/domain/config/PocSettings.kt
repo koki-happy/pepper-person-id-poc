@@ -38,8 +38,8 @@ enum class FaceModelOption(
     ),
     FACE_REIDENTIFICATION_RETAIL_0095(
         displayName = "face-reidentification-retail-0095",
-        modelFileName = "face-reidentification-retail-0095.onnx",
-        implementationStatus = ModelImplementationStatus.PENDING,
+        modelFileName = "face-reidentification-retail-0095.xml",
+        implementationStatus = ModelImplementationStatus.UNAVAILABLE,
     ),
 }
 
@@ -60,4 +60,5 @@ enum class SpeakerModelOption(
 enum class ModelImplementationStatus {
     AVAILABLE,
     PENDING,
+    UNAVAILABLE,
 }

@@ -64,6 +64,8 @@ fun ModelSelectionScreen(
                             append(option.modelFileName)
                             if (option.implementationStatus == ModelImplementationStatus.PENDING) {
                                 append("\n実装準備中: 選択時は推論を開始しません")
+                            } else if (option.implementationStatus == ModelImplementationStatus.UNAVAILABLE) {
+                                append("\nPepper実機非対応: OpenVINO IRプラグインを利用できません")
                             }
                         },
                         selected = settings.faceModel == option,

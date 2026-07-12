@@ -55,6 +55,20 @@ Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface
 
 登録時に保存するのはSFace特徴量、モデル名、personId、表示名、登録日時、サンプル数だけとし、生の顔画像や切り出し画像は保存しない。
 
+## face-reidentification-retail-0095
+
+- Official specification: https://github.com/openvinotoolkit/open_model_zoo/blob/master/models/intel/face-reidentification-retail-0095/README.md
+- Official distribution metadata: https://github.com/openvinotoolkit/open_model_zoo/blob/master/models/intel/face-reidentification-retail-0095/model.yml
+- License: Apache License 2.0
+- Architecture: MobileNet V2 based embedding network
+- Input: OpenVINO IR FP32, BGR `1x3x128x128`; raw `0..255` pixels because preprocessing is embedded in the IR
+- Output: 256 dimensions
+- XML: 237,585 bytes, SHA-256 `6CF60C341452155E35C467510C6C50A96ADE5B2BD8F88C5A90902E905D8A80C3`
+- BIN: 4,427,256 bytes, SHA-256 `21319B95E54181857F99E22DC32EC89770ECA2969A1432CFA1594BFFC94EDD62`
+- Intended runtime: OpenCV DNN/OpenVINO backend
+
+公式配布はONNXではなくOpenVINO IRのXMLとBINである。2026-07-12にPepper ARMv7上でOpenCV 5.0.0とフォールバック候補4.13.0の両方を試したが、どちらの公式Android AARにもOpenVINO DNN pluginが含まれず、`Backend (plugin) is not available: 'openvino'`でロードに失敗した。モデルは設定画面へ比較候補として表示するが実機非対応と明示し、APKとセットアップ対象には含めない。利用にはARMv7向けOpenCV/OpenVINOの独自ビルド、公式IRからの再現可能な変換検証、またはリモート推論が必要である。
+
 ## sherpa-onnx Android runtime
 
 - Version: 1.13.4

@@ -58,8 +58,8 @@ class FaceModelBenchmarkTest {
             0.30f,
             5_000,
         )
-        val engine = SFaceEmbeddingEngine(targetContext)
         try {
+            val engine = SFaceEmbeddingEngine(targetContext)
             val initMillis = timed { engine.prepare() }.millis
             val results = images.mapValues { (_, image) -> detectAndExtract(detector, engine, image) }
             val enrollment = requireNotNull(results["enrollment"])
