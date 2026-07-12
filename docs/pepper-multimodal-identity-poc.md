@@ -116,7 +116,7 @@ MainActivity
 
 ## 旧Pepper実機で確認が必要な項目
 
-- 16kHz mono PCM 16-bitの`AudioRecord`初期化・連続読み取り
+- ~~16kHz mono PCM 16-bitの`AudioRecord`初期化・連続読み取り~~（2026-07-12確認済み）
 - 16kHzが利用できない場合の44.1kHz mono初期化
 - 入力音量、ノイズフロア、VAD閾値
 - カメラと`AudioRecord`の同時利用
@@ -357,10 +357,14 @@ app/src/main/java/com/example/pepper_person_id_poc/
 | YuNet顔なし推論 | 約490～631ms |
 | SFace | `face_recognition_sface_2021dec.onnx`、初期化成功 |
 | SFace初回初期化 | 2,844ms |
+| AudioRecord | 16,000Hz、mono、PCM 16-bitで初期化・連続読取成功 |
+| AudioRecord最小バッファ | 2,048 bytes |
+| 発話区間抽出 | 暫定エネルギーVADで生成成功、短音声を`INSUFFICIENT_AUDIO`判定 |
 | アプリTOTAL PSS | 約140,460kB |
 | Native Heap PSS | 約83,590kB |
 | TOTAL SWAP PSS | 約16,392kB |
 | 画面離脱後のカメラ | `Active Camera Clients: []` |
+| 画面離脱後のマイク | AudioFlingerのactive track 0件 |
 | クラッシュ・OOM | 発生なし |
 
 YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがある。CPU占有を抑えるため、解析開始間隔は1,000msとする。実人物の顔検出、SFace特徴量生成、登録、1対N識別は人物がカメラ範囲にいる条件で追加確認する。

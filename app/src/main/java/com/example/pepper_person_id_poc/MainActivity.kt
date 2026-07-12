@@ -16,6 +16,7 @@ import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
 import com.example.pepper_person_id_poc.ui.screen.BenchmarkResultsScreen
+import com.example.pepper_person_id_poc.ui.screen.AudioRecordingScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
 import com.example.pepper_person_id_poc.ui.screen.FaceCameraMode
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
@@ -105,6 +106,11 @@ class MainActivity : ComponentActivity() {
                         mode = FaceCameraMode.Registration,
                         settings = uiState.settings,
                         personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
+                } else if (uiState.activeScreen == AppScreen.SpeakerIdentification) {
+                    AudioRecordingScreen(
                         benchmarkLogger = appContainer.benchmarkLogger,
                         onBackToSettings = viewModel::returnToSettings,
                     )
