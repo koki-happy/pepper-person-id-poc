@@ -16,6 +16,7 @@
 .cxx
 local.properties
 /screenshots/
+/datasets/
 *.hprof
 
 # Model binaries are obtained separately after license and device validation.
