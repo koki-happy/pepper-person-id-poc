@@ -183,6 +183,7 @@ class YuNetFaceDetector(
     override fun close() {
         closed = true
         detector = null
+        embeddingEngine?.close()
     }
 
     private fun getOrCreateDetector(width: Int, height: Int): FaceDetectorYN? {

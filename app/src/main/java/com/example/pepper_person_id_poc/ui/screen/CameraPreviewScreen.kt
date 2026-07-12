@@ -64,7 +64,7 @@ import com.example.pepper_person_id_poc.infrastructure.camera.CameraStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
 import com.example.pepper_person_id_poc.infrastructure.face.SFaceEmbeddingEngine
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngine
-import com.example.pepper_person_id_poc.infrastructure.face.UnavailableFaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.FaceReidentificationRetail0095EmbeddingEngine
 import com.example.pepper_person_id_poc.infrastructure.face.YuNetFaceDetector
 import java.util.Locale
 
@@ -88,10 +88,8 @@ fun CameraPreviewScreen(
     val embeddingEngine: FaceEmbeddingEngine = remember(settings.faceModel) {
         when (settings.faceModel) {
             FaceModelOption.SFACE_2021DEC -> SFaceEmbeddingEngine(context)
-            FaceModelOption.FACE_REIDENTIFICATION_RETAIL_0095 -> UnavailableFaceEmbeddingEngine(
-                modelName = settings.faceModel.displayName,
-                reason = "OpenCV 5.0.0/4.13.0 Android ARMv7版にOpenVINO IRプラグインがなく、Pepperでは利用できません",
-            )
+            FaceModelOption.FACE_REIDENTIFICATION_RETAIL_0095 ->
+                FaceReidentificationRetail0095EmbeddingEngine(context)
         }
     }
     val coordinator = remember(personRepository, settings.faceThreshold, embeddingEngine.modelName) {
@@ -227,14 +225,22 @@ fun CameraPreviewScreen(
                         .padding(14.dp),
                 ) {
                     CameraAndModelStatus(cameraState, faceSnapshot)
+                    val embeddingReady = if (mode == FaceCameraMode.AnonymousIdentification) {
+                        anonymousState.embeddingModelReady
+                    } else {
+                        identityState.embeddingModelReady
+                    }
+                    val embeddingError = if (mode == FaceCameraMode.AnonymousIdentification) {
+                        anonymousState.error
+                    } else {
+                        identityState.error
+                    }
                     Text(
                         "顔特徴量: ${if (
-                            if (mode == FaceCameraMode.AnonymousIdentification) {
-                                anonymousState.embeddingModelReady
-                            } else {
-                                identityState.embeddingModelReady
-                            }
-                        ) "${embeddingEngine.modelName} 準備完了" else "${embeddingEngine.modelName} 初期化中"}",
+                            embeddingReady
+                        ) "${embeddingEngine.modelName} 準備完了" else if (embeddingError != null) {
+                            "${embeddingEngine.modelName} 初期化失敗"
+                        } else "${embeddingEngine.modelName} 初期化中"}",
                     )
                     if (!permissionGranted) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {

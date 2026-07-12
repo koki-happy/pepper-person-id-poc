@@ -41,7 +41,7 @@ class AnonymousFaceCoordinator(
         mutableState.value = mutableState.value.copy(
             results = results,
             clusterCount = clusterer.clusterCount,
-            error = null,
+            error = if (observations.isNotEmpty()) null else mutableState.value.error,
         )
     }
 

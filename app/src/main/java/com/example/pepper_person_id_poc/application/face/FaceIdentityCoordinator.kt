@@ -104,7 +104,7 @@ class FaceIdentityCoordinator(
                 observations.size > 1 -> "複数の顔があります。登録する1人だけを映してください"
                 else -> mutableState.value.registrationMessage
             },
-            error = null,
+            error = if (observations.isNotEmpty()) null else mutableState.value.error,
         )
     }
 

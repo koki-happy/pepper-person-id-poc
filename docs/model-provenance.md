@@ -65,9 +65,14 @@ Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface
 - Output: 256 dimensions
 - XML: 237,585 bytes, SHA-256 `6CF60C341452155E35C467510C6C50A96ADE5B2BD8F88C5A90902E905D8A80C3`
 - BIN: 4,427,256 bytes, SHA-256 `21319B95E54181857F99E22DC32EC89770ECA2969A1432CFA1594BFFC94EDD62`
-- Intended runtime: OpenCV DNN/OpenVINO backend
+- Converted ONNX: opset 13, 4,485,877 bytes, SHA-256 `861D2EDC47214F19FE973F97A05B2BD8BA61E103279FE232F0365534903DD589`
+- Android runtime: OpenCV 5.0.0 DNN CPU backend
 
-公式配布はONNXではなくOpenVINO IRのXMLとBINである。2026-07-12にPepper ARMv7上でOpenCV 5.0.0とフォールバック候補4.13.0の両方を試したが、どちらの公式Android AARにもOpenVINO DNN pluginが含まれず、`Backend (plugin) is not available: 'openvino'`でロードに失敗した。モデルは設定画面へ比較候補として表示するが実機非対応と明示し、APKとセットアップ対象には含めない。利用にはARMv7向けOpenCV/OpenVINOの独自ビルド、公式IRからの再現可能な変換検証、またはリモート推論が必要である。
+公式配布はONNXではなくOpenVINO IRのXMLとBINである。公式Android AARにはOpenVINO DNN pluginがなくIRを直接ロードできないため、第三者製`openvino2onnx` 1.1.0でopset 13 ONNXへ変換する。OpenVINOはIRからONNXへの逆変換を公式サポートしていないため、変換処理は実験的な派生物として扱う。
+
+`convert-0095-to-onnx.ps1`はPython仮想環境と変換ツールを固定し、元IRと変換ONNXをゼロ・255・乱数入力およびLombard GRID実顔3枚で比較する。OpenVINO Runtime対ONNX Runtime/OpenCV 5.0.0の最大絶対誤差は`5.2e-6`以下、embedding cosineは`0.99999999998`以上だった。実顔スコアは元IRが同一`0.9548381`・別人物`0.2921425`、OpenCV ONNXが同一`0.9548381`・別人物`0.2921425`である。受入条件は最大絶対誤差`1e-4`以下、embedding cosine `0.9999`以上、実顔スコア差`1e-4`以下、閾値0.60の判定一致で、変換物のSHA-256も検証する。変換前処理にはBGR/RGBチャンネル反転と`/255`が埋め込まれているため、Android側では128x128 BGRを追加正規化せず入力する。
+
+初回変換にはPython 3.11以上が必要である。既定の`python`が古い場合は、`setup-local-inference-assets.ps1 -Python C:\path\to\python.exe`のように指定する。
 
 ## sherpa-onnx Android runtime
 

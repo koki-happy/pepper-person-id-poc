@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.FaceReidentificationRetail0095EmbeddingEngine
 import com.example.pepper_person_id_poc.infrastructure.face.SFaceEmbeddingEngine
 import java.io.File
 import kotlin.math.sqrt
@@ -25,9 +26,27 @@ import org.opencv.objdetect.FaceDetectorYN
 class FaceModelBenchmarkTest {
     @Test
     fun sface_benchmarkLombardGridFrames() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        benchmarkLombardGridFrames(SFaceEmbeddingEngine(context), expectedDimension = 128, threshold = 0.60f)
+    }
+
+    @Test
+    fun retail0095_benchmarkLombardGridFrames() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        benchmarkLombardGridFrames(
+            FaceReidentificationRetail0095EmbeddingEngine(context),
+            expectedDimension = 256,
+            threshold = 0.60f,
+        )
+    }
+
+    private fun benchmarkLombardGridFrames(
+        engine: FaceEmbeddingEngine,
+        expectedDimension: Int,
+        threshold: Float?,
+    ) {
         assertTrue("OpenCV native runtime unavailable", OpenCVLoader.initLocal())
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val targetContext = instrumentation.targetContext
         val testAssets = instrumentation.context.assets
         val images = listOf(
             "enrollment" to "lombard-s22-plain.png",
@@ -59,7 +78,6 @@ class FaceModelBenchmarkTest {
             5_000,
         )
         try {
-            val engine = SFaceEmbeddingEngine(targetContext)
             val initMillis = timed { engine.prepare() }.millis
             val results = images.mapValues { (_, image) -> detectAndExtract(detector, engine, image) }
             val enrollment = requireNotNull(results["enrollment"])
@@ -75,16 +93,18 @@ class FaceModelBenchmarkTest {
                     "sameScore=$sameScore differentScore=$differentScore " +
                     "nativeHeapBytes=${Debug.getNativeHeapAllocatedSize()}",
             )
-            assertEquals(128, enrollment.embedding.size)
+            assertEquals(expectedDimension, enrollment.embedding.size)
             assertTrue(enrollment.embedding.all(Float::isFinite))
             assertTrue(sameScore.isFinite())
             assertTrue(differentScore.isFinite())
-            assertTrue("same person must be accepted at threshold $FACE_THRESHOLD: $sameScore", sameScore >= FACE_THRESHOLD)
-            assertTrue(
-                "different person must be rejected at threshold $FACE_THRESHOLD: $differentScore",
-                differentScore < FACE_THRESHOLD,
-            )
             assertTrue("same-person score must exceed different-person score", sameScore > differentScore)
+            if (threshold != null) {
+                assertTrue("same person must be accepted at threshold $threshold: $sameScore", sameScore >= threshold)
+                assertTrue(
+                    "different person must be rejected at threshold $threshold: $differentScore",
+                    differentScore < threshold,
+                )
+            }
         } finally {
             images.values.forEach(Mat::release)
         }
@@ -146,6 +166,5 @@ class FaceModelBenchmarkTest {
 
     private companion object {
         const val TAG = "FaceBenchmark"
-        const val FACE_THRESHOLD = 0.60f
     }
 }

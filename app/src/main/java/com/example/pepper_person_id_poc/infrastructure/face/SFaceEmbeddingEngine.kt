@@ -35,6 +35,10 @@ class SFaceEmbeddingEngine(
         }
     }
 
+    override fun close() {
+        recognizer = null
+    }
+
     private fun getOrCreateRecognizer(): FaceRecognizerSF {
         recognizer?.let { return it }
         initializationFailure?.let { throw IllegalStateException("SFace initialization failed", it) }

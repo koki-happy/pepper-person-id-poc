@@ -1,5 +1,6 @@
 param(
-    [switch]$Force
+    [switch]$Force,
+    [string]$Python = "python"
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +16,16 @@ $artifacts = @(
         RelativePath = "app/src/main/assets/models/face_recognition_sface_2021dec.onnx"
         Url = "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
         Sha256 = "0BA9FBFA01B5270C96627C4EF784DA859931E02F04419C829E83484087C34E79"
+    },
+    @{
+        RelativePath = "app/src/main/assets/models/face-reidentification-retail-0095.xml"
+        Url = "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-reidentification-retail-0095/FP32/face-reidentification-retail-0095.xml"
+        Sha256 = "6CF60C341452155E35C467510C6C50A96ADE5B2BD8F88C5A90902E905D8A80C3"
+    },
+    @{
+        RelativePath = "app/src/main/assets/models/face-reidentification-retail-0095.bin"
+        Url = "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-reidentification-retail-0095/FP32/face-reidentification-retail-0095.bin"
+        Sha256 = "21319B95E54181857F99E22DC32EC89770ECA2969A1432CFA1594BFFC94EDD62"
     },
     @{
         RelativePath = "app/libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"
@@ -126,6 +137,11 @@ foreach ($frame in $faceFrames) {
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $image)) {
         throw "Failed to extract $($frame.Image)"
     }
+}
+
+& (Join-Path $PSScriptRoot "convert-0095-to-onnx.ps1") -Python $Python -Force:$Force
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to prepare the converted 0095 ONNX model"
 }
 
 Write-Host "Local inference assets are ready. Binary files remain ignored by Git."
