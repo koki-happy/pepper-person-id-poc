@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.compose.CameraXViewfinder
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,23 +33,37 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
+import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
+import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
+import com.example.pepper_person_id_poc.infrastructure.face.YuNetFaceDetector
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraPreviewScreen(
+    benchmarkLogger: BenchmarkLogger,
     onBackToSettings: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val controller = remember { CameraXPreviewController(context) }
+    val faceDetector = remember {
+        YuNetFaceDetector(context, onBenchmarkEvent = benchmarkLogger::append)
+    }
+    val controller = remember { CameraXPreviewController(context, frameProcessor = faceDetector) }
     val state by controller.state.collectAsState()
     val surfaceRequest by controller.surfaceRequest.collectAsState()
+    val faceSnapshot by faceDetector.snapshot.collectAsState()
     var permissionGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
@@ -62,7 +77,10 @@ fun CameraPreviewScreen(
         if (permissionGranted) controller.bind(lifecycleOwner) else controller.unbind()
     }
     DisposableEffect(controller) {
-        onDispose { controller.close() }
+        onDispose {
+            controller.close()
+            faceDetector.close()
+        }
     }
 
     Scaffold(
@@ -78,6 +96,7 @@ fun CameraPreviewScreen(
         },
     ) { innerPadding ->
         Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxSize()
@@ -87,18 +106,18 @@ fun CameraPreviewScreen(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .weight(1f)
+                    .aspectRatio(4f / 3f)
                     .background(Color.Black),
             ) {
                 val request = surfaceRequest
                 if (request != null) {
                     CameraXViewfinder(
                         surfaceRequest = request,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .aspectRatio(4f / 3f),
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
                     )
+                    FaceDetectionOverlay(faceSnapshot)
                 } else {
                     Text(
                         if (permissionGranted) "カメラを開始しています" else "カメラ権限が必要です",
@@ -118,6 +137,15 @@ fun CameraPreviewScreen(
                         Text("解像度: ${state.resolution ?: "取得中"}")
                     }
                     state.error?.let { Text("カメラエラー: $it", color = MaterialTheme.colorScheme.error) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text("顔状態: ${faceSnapshot.status}")
+                        Text("顔数: ${faceSnapshot.faces.size}")
+                        Text("検出: ${faceSnapshot.processingTimeMillis ?: "-"} ms")
+                        Text("モデル: ${faceSnapshot.modelName}")
+                    }
+                    faceSnapshot.error?.let {
+                        Text("顔検出エラー: $it", color = MaterialTheme.colorScheme.error)
+                    }
                     if (!permissionGranted) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
                             Text("カメラ権限を許可")
@@ -125,12 +153,37 @@ fun CameraPreviewScreen(
                     } else if (state.status == CameraStatus.Stopped || state.status == CameraStatus.Error) {
                         Button(onClick = { controller.bind(lifecycleOwner) }) { Text("カメラを再開") }
                     }
-                    Text(
-                        "顔検出は次の機能単位で追加します。現在は前面カメラのプレビューとフレーム取得を確認します。",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun FaceDetectionOverlay(snapshot: FaceDetectionSnapshot) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        snapshot.faces.forEach { face ->
+            val mirroredLeft = 1f - face.boundingBox.right
+            val left = mirroredLeft * size.width
+            val top = face.boundingBox.top * size.height
+            val width = face.boundingBox.width * size.width
+            val height = face.boundingBox.height * size.height
+            drawRect(
+                color = Color.Yellow,
+                topLeft = Offset(left, top),
+                size = Size(width, height),
+                style = Stroke(width = 4.dp.toPx()),
+            )
+            drawContext.canvas.nativeCanvas.drawText(
+                "${face.trackId}  Face ${String.format(Locale.US, "%.2f", face.detectionScore)}",
+                left,
+                (top - 8.dp.toPx()).coerceAtLeast(24.dp.toPx()),
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.YELLOW
+                    textSize = 18.dp.toPx()
+                    isAntiAlias = true
+                },
+            )
         }
     }
 }

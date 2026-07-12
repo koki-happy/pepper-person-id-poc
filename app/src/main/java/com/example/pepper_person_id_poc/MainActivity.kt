@@ -25,11 +25,12 @@ import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModelFactory
 
 class MainActivity : ComponentActivity() {
+    private val benchmarkLogger by lazy { JsonLinesBenchmarkLogger(applicationContext) }
     private val viewModel: MainViewModel by viewModels {
         MainViewModelFactory(
             settingsRepository = SharedPreferencesSettingsRepository(applicationContext),
             diagnosticsProvider = AndroidDeviceDiagnosticsProvider(applicationContext),
-            benchmarkLogger = JsonLinesBenchmarkLogger(applicationContext),
+            benchmarkLogger = benchmarkLogger,
         )
     }
 
@@ -93,7 +94,10 @@ class MainActivity : ComponentActivity() {
                         onRefresh = viewModel::refreshBenchmarkEvents,
                     )
                 } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
-                    CameraPreviewScreen(onBackToSettings = viewModel::returnToSettings)
+                    CameraPreviewScreen(
+                        benchmarkLogger = benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
                 } else {
                     FeaturePlaceholderScreen(
                         screen = uiState.activeScreen,

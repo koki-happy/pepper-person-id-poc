@@ -18,6 +18,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        ndk {
+            // Keep one APK usable by the API 23 x86 emulator and the ARMv7 Pepper.
+            abiFilters += setOf("x86", "armeabi-v7a")
+        }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -54,7 +59,9 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
+    implementation(libs.opencv)
     testImplementation(libs.junit)
+    testImplementation(libs.truth)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

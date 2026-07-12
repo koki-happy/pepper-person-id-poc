@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class CameraXPreviewController(
     context: Context,
+    private val frameProcessor: CameraFrameProcessor = CameraFrameProcessor.NoOp,
 ) : Closeable {
     private val appContext = context.applicationContext
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
@@ -60,10 +61,12 @@ class CameraXPreviewController(
                     val analysis = ImageAnalysis.Builder()
                         .setResolutionSelector(resolutionSelector)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .build()
                         .apply {
                             setAnalyzer(cameraExecutor) { image ->
                                 try {
+                                    frameProcessor.process(image)
                                     analyzedFrameCount += 1
                                     if (analyzedFrameCount == 1L ||
                                         analyzedFrameCount % STATE_UPDATE_FRAME_INTERVAL == 0L
