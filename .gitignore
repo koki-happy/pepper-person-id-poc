@@ -21,3 +21,5 @@ local.properties
 
 # Model binaries are obtained separately after license and device validation.
 /app/src/main/assets/models/
+/app/libs/sherpa-onnx-*.aar
+/app/src/androidTest/assets/speaker-test/

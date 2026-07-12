@@ -54,3 +54,56 @@ Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface
 ```
 
 登録時に保存するのはSFace特徴量、モデル名、personId、表示名、登録日時、サンプル数だけとし、生の顔画像や切り出し画像は保存しない。
+
+## sherpa-onnx Android runtime
+
+- Version: 1.13.4
+- Artifact: `sherpa-onnx-static-link-onnxruntime-1.13.4.aar`
+- Official source: https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.13.4
+- License: Apache License 2.0
+- Size: 37,631,864 bytes
+- SHA-256: `DC5AC19A28DEE3BFFC5E5A5D50CB6AFA977703FC4A7EE535A308506990FDD295`
+- AAR minSdk metadata: 21
+- Verified ABI: `armeabi-v7a`
+- ARMv7 native library: single static `libsherpa-onnx-jni.so`
+
+ARMv7 ELFはARMv7-A、Thumb-2、VFPv3、NEONを使用し、Pepper `LPT_200AR`の命令セットと一致する。Pepper API 23ではJNIロード、CAM++、ERes2Net、Silero VAD初期化に成功した。
+
+x86用AARには別の`libonnxruntime.so`が含まれ、API 23に存在しない`__write_chk`を参照する。このためAPI 23 x86エミュレータでは話者モデルをロードできない。これはARMv7 Pepperには発生しないが、エミュレータ上のネイティブ話者推論は未対応とする。
+
+## Silero VAD
+
+- Model: `silero_vad.onnx`
+- Official distribution: https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
+- Upstream: https://github.com/snakers4/silero-vad
+- License: MIT
+- Size: 643,854 bytes
+- SHA-256: `9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6`
+
+## 3D-Speaker CAM++
+
+- Model: `3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx`
+- Official distribution: https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models
+- Upstream: https://github.com/modelscope/3D-Speaker
+- License: Apache License 2.0
+- Size: 29,596,978 bytes
+- SHA-256: `357A834F702B80161E5B981182C038E18553C1F2CA752ED6CEC2052365D4129B`
+- Input: 16 kHz mono normalized PCM
+- Output: 512 dimensions
+
+## 3D-Speaker ERes2Net
+
+- Model: `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx`
+- Official distribution: https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models
+- Upstream: https://github.com/modelscope/3D-Speaker
+- License: Apache License 2.0
+- Size: 26,485,263 bytes
+- SHA-256: `C59158379255AD66E161679CCA6AF8D52D51E389E3224AB7D7A7BAAE295C2DB5`
+- Input: 16 kHz mono normalized PCM
+- Output: 192 dimensions
+
+バイナリはGitへコミットしない。初回セットアップは次を実行し、全ファイルのSHA-256を検証する。
+
+```powershell
+.\scripts\setup-local-inference-assets.ps1
+```

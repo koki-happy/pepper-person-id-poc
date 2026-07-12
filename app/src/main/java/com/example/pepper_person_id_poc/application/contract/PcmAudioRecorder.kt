@@ -14,6 +14,7 @@ data class AudioRecordingState(
     val status: AudioRecordingStatus = AudioRecordingStatus.IDLE,
     val sampleRate: Int? = null,
     val minBufferSizeBytes: Int? = null,
+    val vadModelName: String? = null,
     val levelDbFs: Float = -90f,
     val speechActive: Boolean = false,
     val lastUtterance: PcmUtteranceMetadata? = null,

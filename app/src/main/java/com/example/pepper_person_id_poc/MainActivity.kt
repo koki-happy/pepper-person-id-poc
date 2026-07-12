@@ -130,6 +130,25 @@ class MainActivity : ComponentActivity() {
                     )
                 } else if (uiState.activeScreen == AppScreen.SpeakerIdentification) {
                     AudioRecordingScreen(
+                        mode = com.example.pepper_person_id_poc.application.speaker.SpeakerScreenMode.IDENTIFICATION,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
+                } else if (uiState.activeScreen == AppScreen.SpeakerRegistration) {
+                    AudioRecordingScreen(
+                        mode = com.example.pepper_person_id_poc.application.speaker.SpeakerScreenMode.REGISTRATION,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
+                } else if (uiState.activeScreen == AppScreen.AnonymousSpeakerIdentification) {
+                    AudioRecordingScreen(
+                        mode = com.example.pepper_person_id_poc.application.speaker.SpeakerScreenMode.ANONYMOUS_IDENTIFICATION,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
                         benchmarkLogger = appContainer.benchmarkLogger,
                         onBackToSettings = viewModel::returnToSettings,
                     )

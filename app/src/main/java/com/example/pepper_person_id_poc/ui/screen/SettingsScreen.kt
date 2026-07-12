@@ -40,7 +40,7 @@ fun SettingsScreen(
     onOpenScreen: (AppScreen) -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Pepper Multimodal Identity PoC") }) },
+        topBar = { TopAppBar(title = { Text("pepper-person-id-poc") }) },
     ) { innerPadding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),

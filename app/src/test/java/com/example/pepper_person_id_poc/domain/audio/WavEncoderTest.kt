@@ -23,4 +23,14 @@ class WavEncoderTest {
         assertThat(buffer.getShort(44).toInt()).isEqualTo(0x1234)
         assertThat(buffer.getShort(46).toInt()).isEqualTo(-2)
     }
+
+    @Test
+    fun encoderOutput_decodesWithoutChangingSamples() {
+        val original = shortArrayOf(Short.MIN_VALUE, -2, 0, 2, Short.MAX_VALUE)
+
+        val decoded = WavPcm16Decoder.decode(WavEncoder.encodeMonoPcm16(original, 16_000))
+
+        assertThat(decoded.sampleRate).isEqualTo(16_000)
+        assertThat(decoded.samples.toList()).containsExactlyElementsIn(original.toList()).inOrder()
+    }
 }

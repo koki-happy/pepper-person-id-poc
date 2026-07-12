@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.content.Context
 import com.example.pepper_person_id_poc.application.contract.AudioRecordingState
 import com.example.pepper_person_id_poc.application.contract.AudioRecordingStatus
 import com.example.pepper_person_id_poc.application.contract.PcmAudioRecorder
 import com.example.pepper_person_id_poc.application.contract.PcmUtteranceMetadata
 import com.example.pepper_person_id_poc.domain.audio.AudioLevel
 import com.example.pepper_person_id_poc.domain.audio.EnergyVoiceActivityDetector
+import com.example.pepper_person_id_poc.application.contract.VoiceActivityDetector
 import com.example.pepper_person_id_poc.domain.audio.PcmUtterance
 import com.example.pepper_person_id_poc.domain.audio.PcmUtteranceSegmenter
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
@@ -25,13 +27,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class AndroidPcmAudioRecorder(
+    context: Context,
     private val onUtterance: (PcmUtterance) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
 ) : PcmAudioRecorder {
+    private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val running = AtomicBoolean(false)
     private val mutableState = MutableStateFlow(AudioRecordingState())
-    private val voiceActivityDetector = EnergyVoiceActivityDetector()
     private var recordingJob: Job? = null
 
     @Volatile
@@ -64,11 +67,17 @@ class AndroidPcmAudioRecorder(
     private fun recordLoop() {
         var recorder: AudioRecord? = null
         var segmenter: PcmUtteranceSegmenter? = null
+        var voiceActivityDetector: VoiceActivityDetector? = null
         try {
             val initialized = createInitializedAudioRecord()
             recorder = initialized.audioRecord
             audioRecord = recorder
             segmenter = PcmUtteranceSegmenter(initialized.sampleRate)
+            voiceActivityDetector = if (initialized.sampleRate == 16_000) {
+                SherpaSileroVoiceActivityDetector(appContext)
+            } else {
+                EnergyVoiceActivityDetector()
+            }
             val buffer = ShortArray(initialized.readBufferSamples)
             recorder.startRecording()
             check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -78,6 +87,7 @@ class AndroidPcmAudioRecorder(
                 status = AudioRecordingStatus.RECORDING,
                 sampleRate = initialized.sampleRate,
                 minBufferSizeBytes = initialized.minBufferSizeBytes,
+                vadModelName = voiceActivityDetector.modelName,
             )
             onBenchmarkEvent(
                 BenchmarkEvent(
@@ -89,6 +99,7 @@ class AndroidPcmAudioRecorder(
                         "channels" to "1",
                         "encoding" to "PCM_16BIT",
                         "minBufferSizeBytes" to initialized.minBufferSizeBytes.toString(),
+                        "vadModel" to voiceActivityDetector.modelName,
                     ),
                 ),
             )
@@ -133,6 +144,7 @@ class AndroidPcmAudioRecorder(
                 recorder?.takeIf { it.recordingState == AudioRecord.RECORDSTATE_RECORDING }?.stop()
             }
             recorder?.release()
+            voiceActivityDetector?.close()
             audioRecord = null
             if (mutableState.value.status != AudioRecordingStatus.ERROR) {
                 mutableState.value = mutableState.value.copy(

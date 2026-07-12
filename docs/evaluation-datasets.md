@@ -88,3 +88,13 @@ The exact sample list and random seed must be written to a manifest before measu
 - Do not package Lombard GRID media into the APK.
 - Keep only attribution, split manifests, aggregate metrics, and non-biometric benchmark metadata in version control.
 - Mark every resampling, frame extraction, crop, normalization, or other transformation as a modification in reports derived from the corpus.
+
+### Pepper smoke benchmark samples
+
+2026-07-12のモデル配線・速度確認では、公式ページ掲載の次のサンプルだけを使用した。
+
+- `s22_p_sgbe5s.wav`: talker s22, plain
+- `s22_l_sgbe5s.wav`: talker s22, Lombard
+- `s16_p_bgah2n.wav`: talker s16, plain
+
+配布WAVは16 kHz mono float32である。AndroidテストAPK内でのみPCM16へ変換してモデルへ入力したため、この変換を改変として扱う。サンプルWAVはAndroidテストAPKへ一時的に含めるが、本番APKとGitには含めない。この3ファイルだけの結果はモデル精度全体を示すものではなく、同一話者のplain/Lombard変化と別話者の最低限のスモーク試験である。
