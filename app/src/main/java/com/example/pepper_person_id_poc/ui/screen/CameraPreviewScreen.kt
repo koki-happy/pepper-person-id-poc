@@ -90,7 +90,7 @@ fun CameraPreviewScreen(
             FaceModelOption.SFACE_2021DEC -> SFaceEmbeddingEngine(context)
             FaceModelOption.FACE_REIDENTIFICATION_RETAIL_0095 -> UnavailableFaceEmbeddingEngine(
                 modelName = settings.faceModel.displayName,
-                reason = "${settings.faceModel.displayName} の推論実装は準備中です。モデル選択でSFaceを選択してください。",
+                reason = "OpenCV 5.0.0/4.13.0 Android ARMv7版にOpenVINO IRプラグインがなく、Pepperでは利用できません",
             )
         }
     }
@@ -234,7 +234,7 @@ fun CameraPreviewScreen(
                             } else {
                                 identityState.embeddingModelReady
                             }
-                        ) "SFace準備完了" else "SFace初期化中"}",
+                        ) "${embeddingEngine.modelName} 準備完了" else "${embeddingEngine.modelName} 初期化中"}",
                     )
                     if (!permissionGranted) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -429,22 +429,44 @@ private fun FaceDetectionOverlay(
                 "Unknown"
             }
             val debugLabel = if (debugMode && !identified && identity?.bestCandidatePersonId != null) {
-                " best=${identity.bestCandidatePersonId.value}"
+                " / best=${identity.bestCandidatePersonId.value}"
             } else {
                 ""
             }
-            drawContext.canvas.nativeCanvas.drawText(
-                "$identityLabel  ${face.trackId}  Face ${
-                    if (anonymousMode) anonymous?.score.asScore() else identity?.score.asScore()
-                }$debugLabel",
-                left,
-                (top - 8.dp.toPx()).coerceAtLeast(24.dp.toPx()),
-                android.graphics.Paint().apply {
-                    this.color = if (identified) android.graphics.Color.GREEN else android.graphics.Color.YELLOW
-                    textSize = 18.dp.toPx()
-                    isAntiAlias = true
-                },
-            )
+            val score = if (anonymousMode) anonymous?.score else identity?.score
+            val threshold = if (anonymousMode) anonymous?.threshold else identity?.threshold
+            val lines = if (anonymousMode) {
+                listOf(
+                    identityLabel,
+                    face.trackId,
+                    "Detection ${face.detectionScore.asScore()}",
+                    "Similarity ${score.asScore()} / threshold ${threshold.asScore()}",
+                )
+            } else {
+                listOf(
+                    identityLabel,
+                    face.trackId,
+                    "Detection ${face.detectionScore.asScore()}",
+                    "Identity similarity ${score.asScore()} / threshold ${threshold.asScore()}$debugLabel",
+                )
+            }
+            val paint = android.graphics.Paint().apply {
+                this.color = if (identified) android.graphics.Color.GREEN else android.graphics.Color.YELLOW
+                textSize = 16.dp.toPx()
+                isAntiAlias = true
+                setShadowLayer(3.dp.toPx(), 1.dp.toPx(), 1.dp.toPx(), android.graphics.Color.BLACK)
+            }
+            val lineHeight = 18.dp.toPx()
+            val firstBaseline = (top - (lines.size - 1) * lineHeight - 8.dp.toPx())
+                .coerceAtLeast(lineHeight)
+            lines.forEachIndexed { index, line ->
+                drawContext.canvas.nativeCanvas.drawText(
+                    line,
+                    left,
+                    firstBaseline + index * lineHeight,
+                    paint,
+                )
+            }
         }
     }
 }
