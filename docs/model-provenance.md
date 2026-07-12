@@ -116,7 +116,7 @@ x86用AARには別の`libonnxruntime.so`が含まれ、API 23に存在しない`
 - Input: 16 kHz mono normalized PCM
 - Output: 192 dimensions
 
-バイナリはGitへコミットしない。初回セットアップは次を実行し、全ファイルのSHA-256を検証する。
+バイナリはGitへコミットしない。初回セットアップは次を実行し、スクリプトで取得する公式配布物のSHA-256を検証する。動画から生成する顔ベンチPNGは、ハッシュ検証済み動画の1.0秒位置から再生成する。
 
 ```powershell
 .\scripts\setup-local-inference-assets.ps1

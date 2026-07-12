@@ -77,6 +77,17 @@ class SpeakerModelBenchmarkTest {
                 assertTrue(enrollmentResult.value.all(Float::isFinite))
                 assertTrue(sameScore.isFinite())
                 assertTrue(differentScore.isFinite())
+                if (model == SpeakerModelOption.ERES2NET) {
+                    assertTrue(
+                        "ERes2Net same speaker must be accepted at threshold $SPEAKER_THRESHOLD: $sameScore",
+                        sameScore >= SPEAKER_THRESHOLD,
+                    )
+                    assertTrue(
+                        "ERes2Net different speaker must be rejected at threshold $SPEAKER_THRESHOLD: $differentScore",
+                        differentScore < SPEAKER_THRESHOLD,
+                    )
+                    assertTrue("ERes2Net same-speaker score must exceed different-speaker score", sameScore > differentScore)
+                }
             } finally {
                 engine.close()
             }
@@ -137,5 +148,6 @@ class SpeakerModelBenchmarkTest {
 
     private companion object {
         const val TAG = "SpeakerBenchmark"
+        const val SPEAKER_THRESHOLD = 0.60f
     }
 }

@@ -85,7 +85,7 @@ The exact sample list and random seed must be written to a manifest before measu
 
 - Keep downloaded archives and extracted content under ignored `datasets/lombard-grid/`.
 - Do not put face images, video, WAV, PCM, or generated embeddings in application logs.
-- Do not package Lombard GRID media into the APK.
+- Do not package Lombard GRID media into the production APK. Ignored benchmark media may be packaged only into the local androidTest APK.
 - Keep only attribution, split manifests, aggregate metrics, and non-biometric benchmark metadata in version control.
 - Mark every resampling, frame extraction, crop, normalization, or other transformation as a modification in reports derived from the corpus.
 
@@ -99,3 +99,7 @@ The exact sample list and random seed must be written to a manifest before measu
 - 同名のfront-view `.mov` 3本: 顔識別用
 
 配布WAVは16 kHz mono float32である。AndroidテストAPK内でのみPCM16へ変換してモデルへ入力したため、この変換を改変として扱う。動画は`ffmpeg -ss 1.0`で正面フレームを1枚抽出する。サンプルWAV、動画、抽出PNGはAndroidテストAPKへ一時的に含めるが、本番APKとGitには含めない。この3組だけの結果はモデル精度全体を示すものではなく、同一人物のplain/Lombard変化と別人物の最低限のスモーク試験である。
+
+話者モデルの言語差確認には、sherpa-onnx公式配布の`fangjun-sr-1.wav`、`fangjun-test-sr-1.wav`、`leijun-test-sr-1.wav`も使用する。前2本を同一話者、最後を別話者とし、配布WAVは無改変でandroidTest APKだけに含める。取得URLとSHA-256は`model-provenance.md`および`setup-local-inference-assets.ps1`を正本とする。
+
+上記は3サンプルずつのスモーク試験である。前節の複数人物・複数セッション評価セット、manifest作成、FAR/FRR測定は未実施であり、本番精度や閾値確定の根拠にはしない。

@@ -10,7 +10,7 @@ class PocSettingsTest {
     fun defaults_areValid() {
         assertTrue(PocSettings().isValid())
         assertEquals(FaceModelOption.SFACE_2021DEC, PocSettings().faceModel)
-        assertEquals(SpeakerModelOption.CAM_PLUS_PLUS, PocSettings().speakerModel)
+        assertEquals(SpeakerModelOption.ERES2NET, PocSettings().speakerModel)
     }
 
     @Test

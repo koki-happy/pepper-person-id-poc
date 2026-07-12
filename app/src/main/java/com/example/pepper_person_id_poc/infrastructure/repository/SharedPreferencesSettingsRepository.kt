@@ -20,7 +20,7 @@ class SharedPreferencesSettingsRepository(
             ?: FaceModelOption.SFACE_2021DEC,
         speakerModel = preferences.getString(KEY_SPEAKER_MODEL, null)
             ?.let { saved -> SpeakerModelOption.entries.firstOrNull { it.name == saved } }
-            ?: SpeakerModelOption.CAM_PLUS_PLUS,
+            ?: PocSettings().speakerModel,
         faceThreshold = preferences.getFloat(KEY_FACE_THRESHOLD, PocSettings.DEFAULT_FACE_THRESHOLD),
         speakerThreshold = preferences.getFloat(KEY_SPEAKER_THRESHOLD, PocSettings.DEFAULT_SPEAKER_THRESHOLD),
         combinedThreshold = preferences.getFloat(KEY_COMBINED_THRESHOLD, PocSettings.DEFAULT_COMBINED_THRESHOLD),

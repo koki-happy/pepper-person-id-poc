@@ -2,7 +2,7 @@ package com.example.pepper_person_id_poc.domain.config
 
 data class PocSettings(
     val faceModel: FaceModelOption = FaceModelOption.SFACE_2021DEC,
-    val speakerModel: SpeakerModelOption = SpeakerModelOption.CAM_PLUS_PLUS,
+    val speakerModel: SpeakerModelOption = SpeakerModelOption.ERES2NET,
     val faceThreshold: Float = DEFAULT_FACE_THRESHOLD,
     val speakerThreshold: Float = DEFAULT_SPEAKER_THRESHOLD,
     val combinedThreshold: Float = DEFAULT_COMBINED_THRESHOLD,

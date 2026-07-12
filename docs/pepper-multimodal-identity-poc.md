@@ -1,4 +1,4 @@
-# Pepper向け 顔識別・話者識別・発話記録PoC 調査結果・実装計画
+# Pepper向け 顔識別・話者識別PoC 実装・性能検証結果
 
 更新日: 2026-07-12
 
@@ -13,7 +13,9 @@
 - パッケージ: `com.example.pepper_person_id_poc`
 - `minSdk`: 23
 - `targetSdk`: 36
-- 現状: Android StudioのEmpty Activity相当。顔識別、話者識別、音声認識、QiSDK連携は未実装
+- 現状: 顔登録・1対N顔識別・匿名顔識別、声登録・1対N話者識別・匿名話者識別を実装済み
+
+本PoCの完了範囲はローカルの顔識別と話者識別である。当初候補に含めた音声認識、顔と声の統合、会話履歴、QiSDK連携は今回の実装範囲外で、画面もプレースホルダーのままとする。
 
 PoCでは設定用Activityとメイン用Activityを分けない。起動時に`MainActivity`内の設定画面を表示し、各機能画面へ遷移する。各機能画面の戻るボタンとAndroidのシステム戻る操作は設定画面へ戻る。設定画面でシステム戻る操作を行った場合のみActivityを終了する。
 
@@ -114,7 +116,7 @@ MainActivity
 
 確認できたカメラプレビュー候補には`320x240`、`640x480`、`800x600`、`1280x720`、`1280x960`などがある。初期試験は`640x480`とし、処理負荷が高い場合は`320x240`へ下げる。
 
-## 旧Pepper実機で確認が必要な項目
+## 旧Pepper実機の確認状況
 
 - ~~16kHz mono PCM 16-bitの`AudioRecord`初期化・連続読み取り~~（2026-07-12確認済み）
 - 16kHzが利用できない場合の44.1kHz mono初期化
@@ -124,10 +126,10 @@ MainActivity
 - `SpeechRecognizer.isRecognitionAvailable()`と日本語認識
 - QiSDKのRobot Focus取得・喪失
 - HumanAwareness利用可否
-- OpenCV JNIの`armeabi-v7a`ロード
-- YuNet、SFace、face-reidentification-retail-0095のモデルロードと推論
-- sherpa-onnx JNI、Silero VAD、CAM++、ERes2Netのモデルロードと推論
-- モデルごとの処理時間、ピークRAM、Swap使用量
+- ~~OpenCV JNIの`armeabi-v7a`ロード~~（OpenCV 5.0.0で確認済み）
+- ~~YuNet、SFaceのモデルロードと推論~~（確認済み。`face-reidentification-retail-0095`は公式Android AARでは非対応と判定）
+- ~~sherpa-onnx JNI、Silero VAD、CAM++、ERes2Netのモデルロードと推論~~（確認済み）
+- ~~モデルごとの処理時間とNative heap~~（顔・話者スモーク試験で確認済み。ピークRAM・Swapのモデル別連続測定は未実施）
 - カメラ、音声、QiSDKを併用した15分連続動作
 
 ## 顔検出方式候補
@@ -189,7 +191,7 @@ MainActivity
 
 ## ローカル推論の成立可能性
 
-API・ABI上は成立する可能性があるが、実機性能上の成立は未確認である。
+API・ABI上の成立と、YuNet/SFace、Silero VAD、CAM++、ERes2Netのロード・推論は旧Pepper実機で確認済みである。ERes2Netは精度スモーク試験では暫定推奨だが、最大約27秒で5秒目標を満たさないため、性能上の制約は残る。
 
 肯定材料:
 
@@ -222,7 +224,7 @@ CPU推論を基本とし、識別モデルを複数同時常駐させない。�
 
 リモート実装も`FaceEmbeddingEngine`、`SpeakerEmbeddingEngine`、`TranscriptionEngine`の同じインターフェースへ適合させる。生画像・生音声を送信する場合は、送信・保存・削除・暗号化条件を別途確定する。
 
-## 追加予定ファイル
+## 当初の追加予定ファイル
 
 ```text
 app/src/main/java/com/example/pepper_person_id_poc/
@@ -282,7 +284,7 @@ app/src/main/java/com/example/pepper_person_id_poc/
 - `BenchmarkLogger.kt`
 - `PepperLifecycleController.kt`
 
-## 変更予定ファイル
+## 当初の変更予定ファイル
 
 - `app/build.gradle.kts`
 - `gradle/libs.versions.toml`
@@ -294,7 +296,9 @@ app/src/main/java/com/example/pepper_person_id_poc/
 
 モデル本体は初期段階でGitリポジトリへ追加しない。
 
-## 実装手順
+## 当初の実装手順と現在の範囲
+
+手順1～10と14のうち、顔・話者PoCに必要な部分を実装した。手順11～13の音声認識・統合・会話履歴、手順5のQiSDK、手順15の本番相当評価は今回の範囲外または未実施である。
 
 1. Gradleラッパーと空プロジェクトのビルド成立を確認する
 2. 単一Activityで設定画面から始まる画面遷移を実装する
@@ -316,30 +320,28 @@ app/src/main/java/com/example/pepper_person_id_poc/
 
 ## リスク
 
-- 現行`gradlew.bat`は空の`-classpath`を指定するため、`-classpath requires class path specification`で失敗する
-- `java -jar gradle\wrapper\gradle-wrapper.jar tasks`ではGradle設定の読み込みに成功している
+- Gradleラッパーは修正済みで、JVMテスト、debug APK、androidTest APKのビルドに成功している
 - AGP 9.2.1、Kotlin 2.2.10とQiSDK 1.8.5の互換性は未確認
-- OpenCVのAndroid配布物がAPI 23・`armeabi-v7a`を含むか未確認
-- sherpa-onnxの選定バージョンとONNX Runtimeの組み合わせを実ファイルで確認する必要がある
-- 顔・話者モデルの配布ファイル単位のライセンス確認が必要
+- OpenCV 5.0.0とsherpa-onnx 1.13.4のAPI 23・`armeabi-v7a`動作は実機確認済み
+- 利用する公式配布物のURL、ライセンス、SHA-256は`model-provenance.md`へ記録済み
 - カメラ、OpenCV、VAD、話者モデル、QiSDKの同時利用でRAMとCPUが不足する可能性がある
 - `SpeechRecognizer`と`AudioRecord`がマイクを競合する可能性がある
 - Swapによりクラッシュせずに性能目標だけを大幅に超過する可能性がある
-- 顔・声特徴量は生体情報として、ログ禁止、バックアップ除外、全削除を実装する必要がある
+- 顔・声特徴量は生体情報である。PoCでは特徴量をログへ出さず、`android:allowBackup="false"`、確認付き全削除、匿名特徴量のセッション終了時破棄を実装した。保存時暗号化は本番化時の課題とする
+- OpenCV 5.0.0の`FaceDetectorYN`と`FaceRecognizerSF` Java wrapperは公開release APIを持たず、画面離脱時に参照とカメラ解析を破棄した後のネイティブ解放はwrapperのfinalizerに依存する。Matは明示解放する
+- 話者モデルは明示解放するが、ERes2Net推論中の画面離脱では同期解放が推論完了を待ち、UI復帰が遅れる可能性がある
 
 ## 未確定事項
 
-- OpenCVとsherpa-onnxの採用バージョンおよび`armeabi-v7a`実体
-- 各モデルファイルの商用利用条件
+- 本番利用時の各モデル・評価データの利用条件の最終確認
 - 顔・声の登録サンプル数
 - 声登録1サンプルの長さ
-- `faceThreshold`、`speakerThreshold`、`combinedThreshold`の初期値
+- 本番用の`faceThreshold`、`speakerThreshold`（PoC初期値はともに0.60）
 - 最低発話時間、VAD閾値、許容ノイズ
 - 顔観測の保持時間と追跡終了条件
-- 特徴量の暗号化・永続化方式
-- アプリ再起動後の登録データ保持方針
+- 特徴量の暗号化方式（PoCではモデル別に内部ストレージへ永続化し、全削除UIとバックアップ無効化を実装）
 - リモート推論先、認証、通信、データ保存条件
-- ベンチマークファイルの保存先と回収方法
+- 本番運用時のベンチマークファイル回収方法（PoCではアプリ内部JSON Linesと画面表示）
 
 ## 実装開始ゲート
 
@@ -348,6 +350,14 @@ app/src/main/java/com/example/pepper_person_id_poc/
 ## 実装後のPepper実測
 
 2026-07-12時点の`LPT_200AR`実測。前面カメラに顔がいない状態で確認した。
+
+現行APKの回帰確認として、2026-07-12に端末`192.168.10.110:5555`で次を実行し、instrumentation 4件すべてが成功した（`OK (4 tests)`、132.480秒）。
+
+```powershell
+adb -s 192.168.10.110:5555 shell am instrument -w -r com.example.pepper_person_id_poc.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+内訳はアプリコンテキスト1件、SFace顔ベンチ1件、CAM++/ERes2Netの英語・中国語話者ベンチ2件である。顔ベンチは閾値0.60で同一人物受理・別人物拒否・スコア順序を、話者ベンチはERes2Netについて両データセットで同一話者受理・別話者拒否・スコア順序を自動判定する。CAM++は既知のスコア逆転を比較結果として残すため、分離成功をテスト条件にしない。
 
 | 項目 | 実測値 |
 |---|---|
@@ -375,7 +385,7 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 
 | モデル | 初期化 | 顔検出（3枚） | 特徴量生成（3枚） | 同一人物スコア | 別人物スコア | Native heap |
 |---|---:|---:|---:|---:|---:|---:|
-| SFace | 1,757 ms | 561 / 504 / 492 ms | 737 / 613 / 617 ms | 0.954 | 0.335 | 139,383,744 bytes |
+| SFace | 1,755 ms | 576 / 524 / 491 ms | 773 / 619 / 613 ms | 0.954 | 0.335 | 139,466,960 bytes |
 
 3枚すべてで顔を1件検出し、128次元の有限な特徴量を生成した。現在の顔閾値0.60では同一人物を受理し、別人物を`Unknown`へ分離できる。3枚だけのスモーク試験であり、FAR、FRR、人物間取り違え率や本番閾値を確定する根拠にはしない。
 
@@ -416,8 +426,8 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 
 | モデル | 初期化 | 登録入力 | 同一話者入力 | 別話者入力 | 同一スコア | 別話者スコア | Native heap |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CAM++ | 7,114 ms | 2,522 ms | 2,797 ms | 2,520 ms | 0.850 | 0.969 | 55,532,536 bytes |
-| ERes2Net | 3,390 ms | 7,160 ms | 7,946 ms | 7,154 ms | 0.765 | 0.115 | 48,645,840 bytes |
+| CAM++ | 6,775 ms | 2,522 ms | 2,798 ms | 2,526 ms | 0.850 | 0.969 | 56,652,136 bytes |
+| ERes2Net | 3,394 ms | 7,170 ms | 7,956 ms | 7,210 ms | 0.765 | 0.115 | 49,665,064 bytes |
 
 閾値0.60では、CAM++は同一話者も別話者も登録人物として受理し、別話者をより高く評価した。ERes2Netは同一話者を受理し、別話者を`Unknown speaker`へ分離できる。
 
@@ -425,8 +435,8 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 
 | モデル | 初期化 | 登録入力 | 同一話者入力 | 別話者入力 | 同一スコア | 別話者スコア | Native heap |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CAM++ | 7,139 ms | 2,750 ms | 6,440 ms | 9,330 ms | 0.576 | 0.886 | 55,399,192 bytes |
-| ERes2Net | 3,354 ms | 7,737 ms | 18,545 ms | 27,365 ms | 0.794 | 0.285 | 48,419,792 bytes |
+| CAM++ | 8,764 ms | 2,920 ms | 6,426 ms | 9,347 ms | 0.576 | 0.886 | 56,708,168 bytes |
+| ERes2Net | 3,863 ms | 7,743 ms | 18,468 ms | 27,324 ms | 0.794 | 0.285 | 49,788,096 bytes |
 
 閾値0.60では、CAM++は同一話者を`Unknown`とし、別話者を登録人物として受理する逆転が発生した。ERes2Netは同一話者を受理し、別話者を`Unknown speaker`へ分離できた。
 

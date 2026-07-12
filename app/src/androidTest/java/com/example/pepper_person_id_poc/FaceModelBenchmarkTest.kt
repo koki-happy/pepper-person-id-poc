@@ -79,6 +79,12 @@ class FaceModelBenchmarkTest {
             assertTrue(enrollment.embedding.all(Float::isFinite))
             assertTrue(sameScore.isFinite())
             assertTrue(differentScore.isFinite())
+            assertTrue("same person must be accepted at threshold $FACE_THRESHOLD: $sameScore", sameScore >= FACE_THRESHOLD)
+            assertTrue(
+                "different person must be rejected at threshold $FACE_THRESHOLD: $differentScore",
+                differentScore < FACE_THRESHOLD,
+            )
+            assertTrue("same-person score must exceed different-person score", sameScore > differentScore)
         } finally {
             images.values.forEach(Mat::release)
         }
@@ -140,5 +146,6 @@ class FaceModelBenchmarkTest {
 
     private companion object {
         const val TAG = "FaceBenchmark"
+        const val FACE_THRESHOLD = 0.60f
     }
 }

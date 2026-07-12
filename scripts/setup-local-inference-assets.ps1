@@ -7,6 +7,16 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 
 $artifacts = @(
     @{
+        RelativePath = "app/src/main/assets/models/face_detection_yunet_2026may.onnx"
+        Url = "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2026may.onnx"
+        Sha256 = "EBAFCE4E3C118D6554634BE5C27AB333B4C047A9A8C3FAF1D7CF93101C22F0F0"
+    },
+    @{
+        RelativePath = "app/src/main/assets/models/face_recognition_sface_2021dec.onnx"
+        Url = "https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx"
+        Sha256 = "0BA9FBFA01B5270C96627C4EF784DA859931E02F04419C829E83484087C34E79"
+    },
+    @{
         RelativePath = "app/libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"
         Url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"
         Sha256 = "DC5AC19A28DEE3BFFC5E5A5D50CB6AFA977703FC4A7EE535A308506990FDD295"
@@ -112,10 +122,6 @@ New-Item -ItemType Directory -Force $faceAssetDirectory | Out-Null
 foreach ($frame in $faceFrames) {
     $video = Join-Path $repoRoot "datasets/lombard-grid/samples/$($frame.Video)"
     $image = Join-Path $faceAssetDirectory $frame.Image
-    if ((Test-Path -LiteralPath $image) -and -not $Force) {
-        Write-Host "Verified app/src/androidTest/assets/face-test/$($frame.Image)"
-        continue
-    }
     & $ffmpeg.Source -loglevel error -y -ss 1.0 -i $video -frames:v 1 -update 1 $image
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $image)) {
         throw "Failed to extract $($frame.Image)"

@@ -78,7 +78,12 @@ fun ModelSelectionScreen(
                 SpeakerModelOption.entries.forEach { option ->
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = "${option.modelFileName}\n16 kHz mono PCM / sherpa-onnx",
+                        subtitle = buildString {
+                            append("${option.modelFileName}\n16 kHz mono PCM / sherpa-onnx")
+                            if (option == SpeakerModelOption.ERES2NET) {
+                                append("\nPepper実測の暫定推奨（閾値0.60）")
+                            }
+                        },
                         selected = settings.speakerModel == option,
                         onClick = { onSpeakerModelChanged(option) },
                     )
