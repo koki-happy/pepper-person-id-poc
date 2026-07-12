@@ -18,6 +18,7 @@ import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
 import com.example.pepper_person_id_poc.ui.screen.BenchmarkResultsScreen
+import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
 import com.example.pepper_person_id_poc.ui.theme.PepperpersonidpocTheme
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
@@ -91,6 +92,8 @@ class MainActivity : ComponentActivity() {
                         onBackToSettings = viewModel::returnToSettings,
                         onRefresh = viewModel::refreshBenchmarkEvents,
                     )
+                } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
+                    CameraPreviewScreen(onBackToSettings = viewModel::returnToSettings)
                 } else {
                     FeaturePlaceholderScreen(
                         screen = uiState.activeScreen,
