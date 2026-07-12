@@ -101,6 +101,14 @@ class MainActivity : ComponentActivity() {
                         benchmarkLogger = appContainer.benchmarkLogger,
                         onBackToSettings = viewModel::returnToSettings,
                     )
+                } else if (uiState.activeScreen == AppScreen.AnonymousFaceIdentification) {
+                    CameraPreviewScreen(
+                        mode = FaceCameraMode.AnonymousIdentification,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
                 } else if (uiState.activeScreen == AppScreen.PersonRegistration) {
                     CameraPreviewScreen(
                         mode = FaceCameraMode.Registration,

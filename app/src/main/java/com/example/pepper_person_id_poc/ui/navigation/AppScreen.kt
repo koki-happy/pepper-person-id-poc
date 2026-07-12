@@ -20,6 +20,10 @@ enum class AppScreen(
         title = "顔識別",
         description = "顔検出、追跡、1対N識別を個別に確認します",
     ),
+    AnonymousFaceIdentification(
+        title = "未登録リアルタイム顔識別",
+        description = "登録せずに同じ人物らしさを一時IDで識別します",
+    ),
     SpeakerIdentification(
         title = "話者識別",
         description = "PCM録音、VAD、1対N話者識別を個別に確認します",

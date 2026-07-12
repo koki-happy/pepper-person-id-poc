@@ -50,10 +50,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.application.contract.PersonRepository
+import com.example.pepper_person_id_poc.application.face.AnonymousFaceCoordinator
+import com.example.pepper_person_id_poc.application.face.AnonymousFaceUiState
 import com.example.pepper_person_id_poc.application.face.FaceIdentityCoordinator
 import com.example.pepper_person_id_poc.application.face.FaceIdentityUiState
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
+import com.example.pepper_person_id_poc.domain.face.AnonymousFaceClusterer
 import com.example.pepper_person_id_poc.domain.face.FaceIdentifier
 import com.example.pepper_person_id_poc.domain.face.FaceIdentityStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraStatus
@@ -65,6 +68,7 @@ import java.util.Locale
 enum class FaceCameraMode {
     Registration,
     Identification,
+    AnonymousIdentification,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,13 +92,32 @@ fun CameraPreviewScreen(
             onBenchmarkEvent = benchmarkLogger::append,
         )
     }
-    val faceDetector = remember {
+    val anonymousCoordinator = remember(settings.faceThreshold) {
+        AnonymousFaceCoordinator(
+            clusterer = AnonymousFaceClusterer(settings.faceThreshold),
+            modelName = embeddingEngine.modelName,
+            onBenchmarkEvent = benchmarkLogger::append,
+        )
+    }
+    val faceDetector = remember(mode) {
         YuNetFaceDetector(
             context = context,
             embeddingEngine = embeddingEngine,
-            onFeatureObservations = coordinator::onFeatureObservations,
-            onEmbeddingReady = coordinator::reportEmbeddingReady,
-            onEmbeddingError = coordinator::reportEmbeddingError,
+            onFeatureObservations = if (mode == FaceCameraMode.AnonymousIdentification) {
+                anonymousCoordinator::onFeatureObservations
+            } else {
+                coordinator::onFeatureObservations
+            },
+            onEmbeddingReady = if (mode == FaceCameraMode.AnonymousIdentification) {
+                anonymousCoordinator::reportEmbeddingReady
+            } else {
+                coordinator::reportEmbeddingReady
+            },
+            onEmbeddingError = if (mode == FaceCameraMode.AnonymousIdentification) {
+                anonymousCoordinator::reportEmbeddingError
+            } else {
+                coordinator::reportEmbeddingError
+            },
             onBenchmarkEvent = benchmarkLogger::append,
         )
     }
@@ -103,6 +126,7 @@ fun CameraPreviewScreen(
     val surfaceRequest by controller.surfaceRequest.collectAsState()
     val faceSnapshot by faceDetector.snapshot.collectAsState()
     val identityState by coordinator.state.collectAsState()
+    val anonymousState by anonymousCoordinator.state.collectAsState()
     var permissionGranted by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
@@ -126,7 +150,13 @@ fun CameraPreviewScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (mode == FaceCameraMode.Registration) "人物登録 - 顔" else "顔識別")
+                    Text(
+                        when (mode) {
+                            FaceCameraMode.Registration -> "人物登録 - 顔"
+                            FaceCameraMode.Identification -> "顔識別"
+                            FaceCameraMode.AnonymousIdentification -> "未登録リアルタイム顔識別"
+                        },
+                    )
                 },
                 navigationIcon = {
                     Button(onClick = onBackToSettings, modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -161,6 +191,8 @@ fun CameraPreviewScreen(
                     FaceDetectionOverlay(
                         detectionSnapshot = faceSnapshot,
                         identityState = identityState,
+                        anonymousState = anonymousState,
+                        anonymousMode = mode == FaceCameraMode.AnonymousIdentification,
                         debugMode = settings.debugMode,
                     )
                 } else {
@@ -185,7 +217,13 @@ fun CameraPreviewScreen(
                 ) {
                     CameraAndModelStatus(cameraState, faceSnapshot)
                     Text(
-                        "顔特徴量: ${if (identityState.embeddingModelReady) "SFace準備完了" else "SFace初期化中"}",
+                        "顔特徴量: ${if (
+                            if (mode == FaceCameraMode.AnonymousIdentification) {
+                                anonymousState.embeddingModelReady
+                            } else {
+                                identityState.embeddingModelReady
+                            }
+                        ) "SFace準備完了" else "SFace初期化中"}",
                     )
                     if (!permissionGranted) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -196,10 +234,13 @@ fun CameraPreviewScreen(
                     ) {
                         Button(onClick = { controller.bind(lifecycleOwner) }) { Text("カメラを再開") }
                     }
-                    if (mode == FaceCameraMode.Registration) {
-                        RegistrationPanel(coordinator, identityState)
-                    } else {
-                        IdentificationPanel(identityState, settings.debugMode)
+                    when (mode) {
+                        FaceCameraMode.Registration -> RegistrationPanel(coordinator, identityState)
+                        FaceCameraMode.Identification -> IdentificationPanel(identityState, settings.debugMode)
+                        FaceCameraMode.AnonymousIdentification -> AnonymousIdentificationPanel(
+                            state = anonymousState,
+                            onReset = anonymousCoordinator::resetSession,
+                        )
                     }
                 }
             }
@@ -312,16 +353,49 @@ private fun IdentificationPanel(
 }
 
 @Composable
+private fun AnonymousIdentificationPanel(
+    state: AnonymousFaceUiState,
+    onReset: () -> Unit,
+) {
+    Text("セッション内の一時人物", style = MaterialTheme.typography.titleMedium)
+    Text("識別済みクラスタ: ${state.clusterCount}人")
+    Text("登録・永続保存は行いません。アプリ終了またはリセットで一時IDは破棄されます。")
+    if (state.results.isEmpty()) {
+        Text("識別対象の顔がありません")
+    }
+    state.results.forEach { result ->
+        Text(result.anonymousId, style = MaterialTheme.typography.titleSmall)
+        Text(
+            "${result.trackId} / Similarity ${result.score.asScore()} / " +
+                "threshold ${result.threshold.asScore()} / samples ${result.clusterSampleCount}",
+        )
+        if (result.isNewCluster) Text("新しい一時人物として追加")
+    }
+    Button(onClick = onReset, enabled = state.clusterCount > 0, modifier = Modifier.fillMaxWidth()) {
+        Text("一時IDをリセット")
+    }
+    state.error?.let { Text("顔特徴量エラー: $it", color = MaterialTheme.colorScheme.error) }
+}
+
+@Composable
 private fun FaceDetectionOverlay(
     detectionSnapshot: FaceDetectionSnapshot,
     identityState: FaceIdentityUiState,
+    anonymousState: AnonymousFaceUiState,
+    anonymousMode: Boolean,
     debugMode: Boolean,
 ) {
     val identityByTrackId = identityState.results.associateBy { it.trackId }
+    val anonymousByTrackId = anonymousState.results.associateBy { it.trackId }
     Canvas(modifier = Modifier.fillMaxSize()) {
         detectionSnapshot.faces.forEach { face ->
             val identity = identityByTrackId[face.trackId]
-            val identified = identity?.status == FaceIdentityStatus.IDENTIFIED
+            val anonymous = anonymousByTrackId[face.trackId]
+            val identified = if (anonymousMode) {
+                anonymous != null
+            } else {
+                identity?.status == FaceIdentityStatus.IDENTIFIED
+            }
             val color = if (identified) Color.Green else Color.Yellow
             val mirroredLeft = 1f - face.boundingBox.right
             val left = mirroredLeft * size.width
@@ -334,7 +408,9 @@ private fun FaceDetectionOverlay(
                 size = Size(width, height),
                 style = Stroke(width = 4.dp.toPx()),
             )
-            val identityLabel = if (identified) {
+            val identityLabel = if (anonymousMode) {
+                anonymous?.anonymousId ?: "Analyzing"
+            } else if (identified) {
                 "${identity?.displayName}  ${identity?.personId?.value}"
             } else {
                 "Unknown"
@@ -345,7 +421,9 @@ private fun FaceDetectionOverlay(
                 ""
             }
             drawContext.canvas.nativeCanvas.drawText(
-                "$identityLabel  ${face.trackId}  Face ${identity?.score.asScore()}$debugLabel",
+                "$identityLabel  ${face.trackId}  Face ${
+                    if (anonymousMode) anonymous?.score.asScore() else identity?.score.asScore()
+                }$debugLabel",
                 left,
                 (top - 8.dp.toPx()).coerceAtLeast(24.dp.toPx()),
                 android.graphics.Paint().apply {
