@@ -14,7 +14,7 @@ enum class AppScreen(
     ),
     PersonRegistration(
         title = "人物登録",
-        description = "人物A・人物Bの顔特徴量と声特徴量を登録します",
+        description = "人物ごとの顔特徴量と声特徴量を登録します（人数上限なし）",
     ),
     FaceIdentification(
         title = "顔識別",

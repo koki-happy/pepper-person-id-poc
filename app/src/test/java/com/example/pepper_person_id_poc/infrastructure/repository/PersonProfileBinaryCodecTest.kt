@@ -35,4 +35,27 @@ class PersonProfileBinaryCodecTest {
         assertThat(decoded.faceEmbeddings.single().toList()).containsExactly(0.1f, 0.2f, 0.3f).inOrder()
         assertThat(decoded.speakerEmbeddings.single().toList()).containsExactly(0.4f, 0.5f).inOrder()
     }
+
+    @Test
+    fun writeThenRead_supportsMoreThanTwoPeople() {
+        val profiles = (1..10).map { index ->
+            PersonProfile(
+                personId = PersonId("person$index"),
+                displayName = "人物$index",
+                faceEmbeddings = listOf(floatArrayOf(index.toFloat())),
+                speakerEmbeddings = emptyList(),
+                faceModelName = "SFace 2021dec",
+                speakerModelName = null,
+                registeredAtMillis = index.toLong(),
+            )
+        }
+        val output = ByteArrayOutputStream()
+
+        PersonProfileBinaryCodec.write(output, profiles)
+        val decoded = PersonProfileBinaryCodec.read(ByteArrayInputStream(output.toByteArray()))
+
+        assertThat(decoded.map { it.personId.value })
+            .containsExactlyElementsIn(profiles.map { it.personId.value })
+            .inOrder()
+    }
 }

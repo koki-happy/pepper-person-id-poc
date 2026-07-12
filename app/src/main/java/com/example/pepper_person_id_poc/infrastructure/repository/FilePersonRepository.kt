@@ -60,9 +60,6 @@ class FilePersonRepository(
         val profiles = load().toMutableList()
         val index = profiles.indexOfFirst { it.personId == personId }
         if (index < 0) {
-            require(profiles.size < MAX_REGISTERED_PERSONS) {
-                "The initial PoC supports at most $MAX_REGISTERED_PERSONS registered persons"
-            }
             profiles += PersonProfile(
                 personId = personId,
                 displayName = displayName.trim(),
@@ -103,7 +100,4 @@ class FilePersonRepository(
         speakerEmbeddings = speakerEmbeddings.map(FloatArray::copyOf),
     )
 
-    private companion object {
-        const val MAX_REGISTERED_PERSONS = 2
-    }
 }

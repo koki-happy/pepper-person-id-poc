@@ -30,7 +30,7 @@ object PersonProfileBinaryCodec {
             require(input.readInt() == MAGIC) { "Invalid person profile file" }
             require(input.readInt() == VERSION) { "Unsupported person profile file version" }
             val count = input.readInt()
-            require(count in 0..MAX_PERSON_COUNT) { "Invalid person profile count" }
+            require(count >= 0) { "Invalid person profile count" }
             List(count) {
                 PersonProfile(
                     personId = PersonId(input.readUTF()),
@@ -73,7 +73,6 @@ object PersonProfileBinaryCodec {
 
     private const val MAGIC = 0x50495031
     private const val VERSION = 1
-    private const val MAX_PERSON_COUNT = 2
     private const val MAX_SAMPLE_COUNT = 100
     private const val MAX_EMBEDDING_DIMENSION = 4096
 }
