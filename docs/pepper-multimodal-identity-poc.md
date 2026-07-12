@@ -343,4 +343,24 @@ app/src/main/java/com/example/pepper_person_id_poc/
 
 ## 実装開始ゲート
 
-この調査結果の確認を受けるまでは、大規模ライブラリ、モデル、顔識別・話者識別の本実装を追加しない。承認後は「端末診断」と「単一Activityの設定起点UI」から開始する。
+2026-07-12に調査結果の確認を受け、実装を開始した。大規模ライブラリとモデルは機能単位で配布元、ライセンス、ABI、APIレベルを確認してから追加し、モデル本体はGitへコミットしない。
+
+## 実装後のPepper実測
+
+2026-07-12時点の`LPT_200AR`実測。前面カメラに顔がいない状態で確認した。
+
+| 項目 | 実測値 |
+|---|---|
+| CameraX前面プレビュー | 640x480、動作 |
+| OpenCV | 5.0.0 `armeabi-v7a`、ロード成功 |
+| YuNet | `face_detection_yunet_2026may.onnx`、ロード・推論成功 |
+| YuNet顔なし推論 | 約490～631ms |
+| SFace | `face_recognition_sface_2021dec.onnx`、初期化成功 |
+| SFace初回初期化 | 2,844ms |
+| アプリTOTAL PSS | 約140,460kB |
+| Native Heap PSS | 約83,590kB |
+| TOTAL SWAP PSS | 約16,392kB |
+| 画面離脱後のカメラ | `Active Camera Clients: []` |
+| クラッシュ・OOM | 発生なし |
+
+YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがある。CPU占有を抑えるため、解析開始間隔は1,000msとする。実人物の顔検出、SFace特徴量生成、登録、1対N識別は人物がカメラ範囲にいる条件で追加確認する。

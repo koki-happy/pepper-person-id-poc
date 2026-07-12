@@ -20,7 +20,8 @@ android {
 
         ndk {
             // Keep one APK usable by the API 23 x86 emulator and the ARMv7 Pepper.
-            abiFilters += setOf("x86", "armeabi-v7a")
+            val requestedAbi = providers.gradleProperty("targetAbi").orNull
+            abiFilters += requestedAbi?.let(::setOf) ?: setOf("x86", "armeabi-v7a")
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

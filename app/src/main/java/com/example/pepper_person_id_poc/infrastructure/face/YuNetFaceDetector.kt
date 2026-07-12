@@ -24,6 +24,10 @@ import org.opencv.objdetect.FaceDetectorYN
 
 class YuNetFaceDetector(
     context: Context,
+    private val embeddingEngine: FaceEmbeddingEngine? = null,
+    private val onFeatureObservations: (List<FaceFeatureObservation>) -> Unit = {},
+    private val onEmbeddingReady: () -> Unit = {},
+    private val onEmbeddingError: (Throwable) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
 ) : CameraFrameProcessor, Closeable {
     private val appContext = context.applicationContext
@@ -34,6 +38,8 @@ class YuNetFaceDetector(
     private var nextAnalysisAtMillis = 0L
     private var closed = false
     private var initializationAttempted = false
+    private var embeddingPreparationAttempted = false
+    private var embeddingPrepared = false
 
     val snapshot: StateFlow<FaceDetectionSnapshot> = mutableSnapshot.asStateFlow()
 
@@ -63,6 +69,80 @@ class YuNetFaceDetector(
                 val detectedFaces = rawFaces.zip(tracked).map { (raw, track) ->
                     DetectedFace(track.trackId, track.boundingBox, raw.score)
                 }
+                val activeEmbeddingEngine = embeddingEngine
+                if (activeEmbeddingEngine != null && !embeddingPreparationAttempted) {
+                    embeddingPreparationAttempted = true
+                    val preparationStartedAtNanos = SystemClock.elapsedRealtimeNanos()
+                    runCatching(activeEmbeddingEngine::prepare)
+                        .onSuccess {
+                            embeddingPrepared = true
+                            onEmbeddingReady()
+                            onBenchmarkEvent(
+                                BenchmarkEvent(
+                                    event = "face_embedding_model_init",
+                                    timestampMillis = System.currentTimeMillis(),
+                                    durationMillis =
+                                        (SystemClock.elapsedRealtimeNanos() - preparationStartedAtNanos) / 1_000_000L,
+                                    status = "SUCCESS",
+                                    attributes = mapOf("model" to activeEmbeddingEngine.modelName),
+                                ),
+                            )
+                        }
+                        .onFailure { throwable ->
+                            onEmbeddingError(throwable)
+                            onBenchmarkEvent(
+                                BenchmarkEvent(
+                                    event = "face_embedding_model_init",
+                                    timestampMillis = System.currentTimeMillis(),
+                                    status = "ERROR",
+                                    attributes = mapOf("model" to activeEmbeddingEngine.modelName),
+                                    error = throwable.message ?: throwable::class.java.simpleName,
+                                ),
+                            )
+                        }
+                }
+                val featureObservations = if (activeEmbeddingEngine == null || !embeddingPrepared) {
+                    emptyList()
+                } else {
+                    tracked.mapIndexedNotNull { index, track ->
+                        val embeddingStartedAtNanos = SystemClock.elapsedRealtimeNanos()
+                        val detectedFace = faces.row(index)
+                        try {
+                            runCatching {
+                                activeEmbeddingEngine.extract(bgr, detectedFace)
+                            }.onFailure { throwable ->
+                                onEmbeddingError(throwable)
+                                onBenchmarkEvent(
+                                    BenchmarkEvent(
+                                        event = "face_embedding",
+                                        timestampMillis = System.currentTimeMillis(),
+                                        status = "ERROR",
+                                        attributes = mapOf("model" to activeEmbeddingEngine.modelName),
+                                        error = throwable.message ?: throwable::class.java.simpleName,
+                                    ),
+                                )
+                            }.getOrNull()?.let { embedding ->
+                                val embeddingMillis =
+                                    (SystemClock.elapsedRealtimeNanos() - embeddingStartedAtNanos) / 1_000_000L
+                                onBenchmarkEvent(
+                                    BenchmarkEvent(
+                                        event = "face_embedding",
+                                        timestampMillis = System.currentTimeMillis(),
+                                        durationMillis = embeddingMillis,
+                                        status = "SUCCESS",
+                                        attributes = mapOf(
+                                            "model" to activeEmbeddingEngine.modelName,
+                                            "dimension" to embedding.size.toString(),
+                                        ),
+                                    ),
+                                )
+                                FaceFeatureObservation(track.trackId, embedding, embeddingMillis)
+                            }
+                        } finally {
+                            detectedFace.release()
+                        }
+                    }
+                }
                 val status = when (detectedFaces.size) {
                     0 -> FaceDetectionStatus.NO_FACE
                     1 -> FaceDetectionStatus.FACE_DETECTED
@@ -73,6 +153,7 @@ class YuNetFaceDetector(
                     faces = detectedFaces,
                     processingTimeMillis = processingMillis,
                 )
+                onFeatureObservations(featureObservations)
                 onBenchmarkEvent(
                     BenchmarkEvent(
                         event = "face_detection",
@@ -203,7 +284,7 @@ class YuNetFaceDetector(
         const val SCORE_THRESHOLD = 0.80f
         const val NMS_THRESHOLD = 0.30f
         const val TOP_K = 5000
-        const val ANALYSIS_INTERVAL_MILLIS = 500L
+        const val ANALYSIS_INTERVAL_MILLIS = 1_000L
         const val RGBA_PIXEL_STRIDE = 4
         const val FACE_RESULT_COLUMN_COUNT = 15
     }

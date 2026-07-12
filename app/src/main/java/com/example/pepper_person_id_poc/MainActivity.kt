@@ -11,26 +11,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.example.pepper_person_id_poc.infrastructure.repository.SharedPreferencesSettingsRepository
-import com.example.pepper_person_id_poc.infrastructure.device.AndroidDeviceDiagnosticsProvider
-import com.example.pepper_person_id_poc.infrastructure.benchmark.JsonLinesBenchmarkLogger
+import com.example.pepper_person_id_poc.infrastructure.AppContainer
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
 import com.example.pepper_person_id_poc.ui.screen.BenchmarkResultsScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
+import com.example.pepper_person_id_poc.ui.screen.FaceCameraMode
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
 import com.example.pepper_person_id_poc.ui.theme.PepperpersonidpocTheme
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModelFactory
 
 class MainActivity : ComponentActivity() {
-    private val benchmarkLogger by lazy { JsonLinesBenchmarkLogger(applicationContext) }
+    private val appContainer by lazy { AppContainer(applicationContext) }
     private val viewModel: MainViewModel by viewModels {
         MainViewModelFactory(
-            settingsRepository = SharedPreferencesSettingsRepository(applicationContext),
-            diagnosticsProvider = AndroidDeviceDiagnosticsProvider(applicationContext),
-            benchmarkLogger = benchmarkLogger,
+            settingsRepository = appContainer.settingsRepository,
+            diagnosticsProvider = appContainer.diagnosticsProvider,
+            benchmarkLogger = appContainer.benchmarkLogger,
         )
     }
 
@@ -95,7 +94,18 @@ class MainActivity : ComponentActivity() {
                     )
                 } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
                     CameraPreviewScreen(
-                        benchmarkLogger = benchmarkLogger,
+                        mode = FaceCameraMode.Identification,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
+                } else if (uiState.activeScreen == AppScreen.PersonRegistration) {
+                    CameraPreviewScreen(
+                        mode = FaceCameraMode.Registration,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
                         onBackToSettings = viewModel::returnToSettings,
                     )
                 } else {
