@@ -55,6 +55,21 @@ $artifacts = @(
         RelativePath = "app/src/androidTest/assets/speaker-test/lombard-s16-plain.wav"
         Url = "https://spandh.dcs.shef.ac.uk/avlombard/samples/s16_p_bgah2n.wav"
         Sha256 = "FE5A3BEA6FBF846CAF326885FF3A7E3B2A90746903571748EEA1026E0AB26F0F"
+    },
+    @{
+        RelativePath = "datasets/lombard-grid/samples/s22_p.mov"
+        Url = "https://spandh.dcs.shef.ac.uk/avlombard/samples/s22_p_sgbe5s.mov"
+        Sha256 = "A3B283956A36BD6CB4084D20C3A8BDB84324CB0E7C3557F73B0E9409916002AC"
+    },
+    @{
+        RelativePath = "datasets/lombard-grid/samples/s22_l.mov"
+        Url = "https://spandh.dcs.shef.ac.uk/avlombard/samples/s22_l_sgbe5s.mov"
+        Sha256 = "59588A014518AA3909ECC1FAE843751C5A860009500FEC7AAD2F44CEF9E2BD54"
+    },
+    @{
+        RelativePath = "datasets/lombard-grid/samples/s16_p.mov"
+        Url = "https://spandh.dcs.shef.ac.uk/avlombard/samples/s16_p_bgah2n.mov"
+        Sha256 = "9AEB5333C71F21B71E124D9C62FF4559A0F83257467B677DE33603853C8761FA"
     }
 )
 
@@ -80,6 +95,31 @@ foreach ($artifact in $artifacts) {
         throw "SHA-256 mismatch for $($artifact.RelativePath): $actualHash"
     }
     Move-Item -LiteralPath $temporary -Destination $destination -Force
+}
+
+$ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
+if ($null -eq $ffmpeg) {
+    throw "ffmpeg is required to create the ignored Lombard GRID face benchmark frames"
+}
+
+$faceFrames = @(
+    @{ Video = "s22_p.mov"; Image = "lombard-s22-plain.png" },
+    @{ Video = "s22_l.mov"; Image = "lombard-s22-lombard.png" },
+    @{ Video = "s16_p.mov"; Image = "lombard-s16-plain.png" }
+)
+$faceAssetDirectory = Join-Path $repoRoot "app/src/androidTest/assets/face-test"
+New-Item -ItemType Directory -Force $faceAssetDirectory | Out-Null
+foreach ($frame in $faceFrames) {
+    $video = Join-Path $repoRoot "datasets/lombard-grid/samples/$($frame.Video)"
+    $image = Join-Path $faceAssetDirectory $frame.Image
+    if ((Test-Path -LiteralPath $image) -and -not $Force) {
+        Write-Host "Verified app/src/androidTest/assets/face-test/$($frame.Image)"
+        continue
+    }
+    & $ffmpeg.Source -loglevel error -y -ss 1.0 -i $video -frames:v 1 -update 1 $image
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $image)) {
+        throw "Failed to extract $($frame.Image)"
+    }
 }
 
 Write-Host "Local inference assets are ready. Binary files remain ignored by Git."

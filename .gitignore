@@ -23,3 +23,4 @@ local.properties
 /app/src/main/assets/models/
 /app/libs/sherpa-onnx-*.aar
 /app/src/androidTest/assets/speaker-test/
+/app/src/androidTest/assets/face-test/
