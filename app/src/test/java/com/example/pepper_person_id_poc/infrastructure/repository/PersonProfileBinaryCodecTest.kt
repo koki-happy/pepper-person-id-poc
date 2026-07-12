@@ -5,6 +5,7 @@ import com.example.pepper_person_id_poc.domain.person.PersonProfile
 import com.google.common.truth.Truth.assertThat
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -57,5 +58,73 @@ class PersonProfileBinaryCodecTest {
         assertThat(decoded.map { it.personId.value })
             .containsExactlyElementsIn(profiles.map { it.personId.value })
             .inOrder()
+    }
+
+    @Test
+    fun writeThenRead_preservesEmbeddingsForEachModel() {
+        val profile = PersonProfile(
+            personId = PersonId("person1"),
+            displayName = "人物A",
+            faceEmbeddings = listOf(floatArrayOf(1f, 0f)),
+            speakerEmbeddings = listOf(floatArrayOf(1f, 0f, 0f)),
+            faceModelName = "SFace",
+            speakerModelName = "CAM++",
+            registeredAtMillis = 123L,
+            faceEmbeddingsByModel = mapOf(
+                "SFace" to listOf(floatArrayOf(1f, 0f)),
+                "0095" to listOf(floatArrayOf(0f, 1f)),
+            ),
+            speakerEmbeddingsByModel = mapOf(
+                "CAM++" to listOf(floatArrayOf(1f, 0f, 0f)),
+                "ERes2Net" to listOf(floatArrayOf(0f, 1f, 0f)),
+            ),
+        )
+        val output = ByteArrayOutputStream()
+
+        PersonProfileBinaryCodec.write(output, listOf(profile))
+        val decoded = PersonProfileBinaryCodec.read(ByteArrayInputStream(output.toByteArray())).single()
+
+        assertThat(decoded.forFaceModel("SFace").faceEmbeddings.single().toList())
+            .containsExactly(1f, 0f).inOrder()
+        assertThat(decoded.forFaceModel("0095").faceEmbeddings.single().toList())
+            .containsExactly(0f, 1f).inOrder()
+        assertThat(decoded.forSpeakerModel("CAM++").speakerEmbeddings.single().toList())
+            .containsExactly(1f, 0f, 0f).inOrder()
+        assertThat(decoded.forSpeakerModel("ERes2Net").speakerEmbeddings.single().toList())
+            .containsExactly(0f, 1f, 0f).inOrder()
+    }
+
+    @Test
+    fun read_migratesVersion1SamplesIntoTheirRecordedModel() {
+        val output = ByteArrayOutputStream()
+        DataOutputStream(output).use { data ->
+            data.writeInt(0x50495031)
+            data.writeInt(1)
+            data.writeInt(1)
+            data.writeUTF("person1")
+            data.writeUTF("人物A")
+            data.writeLong(123L)
+            data.writeBoolean(true)
+            data.writeUTF("SFace")
+            data.writeBoolean(true)
+            data.writeUTF("CAM++")
+            data.writeEmbedding(floatArrayOf(1f, 0f))
+            data.writeEmbedding(floatArrayOf(0f, 1f, 0f))
+        }
+
+        val decoded = PersonProfileBinaryCodec.read(ByteArrayInputStream(output.toByteArray())).single()
+
+        assertThat(decoded.faceEmbeddingsByModel.keys).containsExactly("SFace")
+        assertThat(decoded.speakerEmbeddingsByModel.keys).containsExactly("CAM++")
+        assertThat(decoded.forFaceModel("SFace").faceSampleCount).isEqualTo(1)
+        assertThat(decoded.forFaceModel("0095").faceSampleCount).isEqualTo(0)
+        assertThat(decoded.forSpeakerModel("CAM++").speakerSampleCount).isEqualTo(1)
+        assertThat(decoded.forSpeakerModel("ERes2Net").speakerSampleCount).isEqualTo(0)
+    }
+
+    private fun DataOutputStream.writeEmbedding(embedding: FloatArray) {
+        writeInt(1)
+        writeInt(embedding.size)
+        embedding.forEach(::writeFloat)
     }
 }

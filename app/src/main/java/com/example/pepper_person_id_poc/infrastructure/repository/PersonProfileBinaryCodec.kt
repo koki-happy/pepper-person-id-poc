@@ -21,6 +21,8 @@ object PersonProfileBinaryCodec {
                 output.writeNullableUtf(profile.speakerModelName)
                 output.writeEmbeddings(profile.faceEmbeddings)
                 output.writeEmbeddings(profile.speakerEmbeddings)
+                output.writeEmbeddingGroups(profile.faceEmbeddingsByModel)
+                output.writeEmbeddingGroups(profile.speakerEmbeddingsByModel)
             }
         }
     }
@@ -28,18 +30,34 @@ object PersonProfileBinaryCodec {
     fun read(inputStream: InputStream): List<PersonProfile> =
         DataInputStream(inputStream.buffered()).use { input ->
             require(input.readInt() == MAGIC) { "Invalid person profile file" }
-            require(input.readInt() == VERSION) { "Unsupported person profile file version" }
+            val version = input.readInt()
+            require(version in MIN_SUPPORTED_VERSION..VERSION) { "Unsupported person profile file version" }
             val count = input.readInt()
             require(count >= 0) { "Invalid person profile count" }
             List(count) {
+                val personId = PersonId(input.readUTF())
+                val displayName = input.readUTF()
+                val registeredAtMillis = input.readLong()
+                val faceModelName = input.readNullableUtf()
+                val speakerModelName = input.readNullableUtf()
+                val faceEmbeddings = input.readEmbeddings()
+                val speakerEmbeddings = input.readEmbeddings()
+                val faceGroups = if (version >= 2) input.readEmbeddingGroups() else {
+                    faceModelName?.let { mapOf(it to faceEmbeddings) }.orEmpty()
+                }
+                val speakerGroups = if (version >= 2) input.readEmbeddingGroups() else {
+                    speakerModelName?.let { mapOf(it to speakerEmbeddings) }.orEmpty()
+                }
                 PersonProfile(
-                    personId = PersonId(input.readUTF()),
-                    displayName = input.readUTF(),
-                    registeredAtMillis = input.readLong(),
-                    faceModelName = input.readNullableUtf(),
-                    speakerModelName = input.readNullableUtf(),
-                    faceEmbeddings = input.readEmbeddings(),
-                    speakerEmbeddings = input.readEmbeddings(),
+                    personId = personId,
+                    displayName = displayName,
+                    registeredAtMillis = registeredAtMillis,
+                    faceModelName = faceModelName,
+                    speakerModelName = speakerModelName,
+                    faceEmbeddings = faceEmbeddings,
+                    speakerEmbeddings = speakerEmbeddings,
+                    faceEmbeddingsByModel = faceGroups,
+                    speakerEmbeddingsByModel = speakerGroups,
                 )
             }
         }
@@ -71,8 +89,33 @@ object PersonProfileBinaryCodec {
         }
     }
 
+    private fun DataOutputStream.writeEmbeddingGroups(groups: Map<String, List<FloatArray>>) {
+        require(groups.size <= MAX_MODEL_COUNT)
+        writeInt(groups.size)
+        groups.toSortedMap().forEach { (modelName, embeddings) ->
+            require(modelName.isNotBlank())
+            writeUTF(modelName)
+            writeEmbeddings(embeddings)
+        }
+    }
+
+    private fun DataInputStream.readEmbeddingGroups(): Map<String, List<FloatArray>> {
+        val count = readInt()
+        require(count in 0..MAX_MODEL_COUNT) { "Invalid model count" }
+        return buildMap(count) {
+            repeat(count) {
+                val modelName = readUTF()
+                require(modelName.isNotBlank()) { "Invalid model name" }
+                require(modelName !in this) { "Duplicate model name" }
+                put(modelName, readEmbeddings())
+            }
+        }
+    }
+
     private const val MAGIC = 0x50495031
-    private const val VERSION = 1
+    private const val VERSION = 2
+    private const val MIN_SUPPORTED_VERSION = 1
+    private const val MAX_MODEL_COUNT = 16
     private const val MAX_SAMPLE_COUNT = 100
     private const val MAX_EMBEDDING_DIMENSION = 4096
 }

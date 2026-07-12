@@ -18,7 +18,12 @@ class FakePersonRepository(
         modelName: String,
         registeredAtMillis: Long,
     ): PersonProfile = update(personId, displayName, registeredAtMillis) {
-        it.copy(faceEmbeddings = it.faceEmbeddings + embedding.copyOf(), faceModelName = modelName)
+        val samples = it.faceEmbeddingsByModel[modelName].orEmpty() + embedding.copyOf()
+        it.copy(
+            faceEmbeddings = samples,
+            faceModelName = modelName,
+            faceEmbeddingsByModel = it.faceEmbeddingsByModel + (modelName to samples),
+        )
     }
 
     override fun addSpeakerEmbedding(
@@ -28,7 +33,12 @@ class FakePersonRepository(
         modelName: String,
         registeredAtMillis: Long,
     ): PersonProfile = update(personId, displayName, registeredAtMillis) {
-        it.copy(speakerEmbeddings = it.speakerEmbeddings + embedding.copyOf(), speakerModelName = modelName)
+        val samples = it.speakerEmbeddingsByModel[modelName].orEmpty() + embedding.copyOf()
+        it.copy(
+            speakerEmbeddings = samples,
+            speakerModelName = modelName,
+            speakerEmbeddingsByModel = it.speakerEmbeddingsByModel + (modelName to samples),
+        )
     }
 
     override fun deleteAll() {

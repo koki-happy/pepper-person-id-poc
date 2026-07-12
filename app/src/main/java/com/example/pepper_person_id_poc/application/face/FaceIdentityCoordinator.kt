@@ -21,12 +21,12 @@ class FaceIdentityCoordinator(
 ) {
     private val pendingRegistration = AtomicReference<RegistrationRequest?>(null)
     private val mutableState = MutableStateFlow(
-        FaceIdentityUiState(profiles = personRepository.getAll()),
+        FaceIdentityUiState(profiles = personRepository.getAllForFaceModel(faceModelName)),
     )
     val state: StateFlow<FaceIdentityUiState> = mutableState.asStateFlow()
 
     fun onFeatureObservations(observations: List<FaceFeatureObservation>) {
-        val profilesBeforeRegistration = personRepository.getAll()
+        val profilesBeforeRegistration = personRepository.getAllForFaceModel(faceModelName)
         val identityResults = observations.map { observation ->
             val startedAtNanos = System.nanoTime()
             faceIdentifier.identify(
@@ -79,7 +79,7 @@ class FaceIdentityCoordinator(
                 )
                 mutableState.value = FaceIdentityUiState(
                     results = identityResults,
-                    profiles = personRepository.getAll(),
+                    profiles = personRepository.getAllForFaceModel(faceModelName),
                     registrationMessage =
                         "${profile.displayName} の顔サンプルを登録しました (${profile.faceSampleCount})",
                     embeddingModelReady = mutableState.value.embeddingModelReady,
@@ -87,7 +87,7 @@ class FaceIdentityCoordinator(
             }.onFailure { throwable ->
                 mutableState.value = mutableState.value.copy(
                     results = identityResults,
-                    profiles = personRepository.getAll(),
+                    profiles = personRepository.getAllForFaceModel(faceModelName),
                     registrationMessage = null,
                     error = throwable.message ?: throwable::class.java.simpleName,
                 )

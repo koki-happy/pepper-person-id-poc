@@ -46,7 +46,7 @@ class SpeakerIdentityCoordinator(
     private val threshold = speakerThreshold
     private val mutableState = MutableStateFlow(
         SpeakerIdentityUiState(
-            profiles = personRepository.getAll(),
+            profiles = personRepository.getAllForSpeakerModel(embeddingEngine.modelName),
             modelName = embeddingEngine.modelName,
         ),
     )
@@ -175,7 +175,7 @@ class SpeakerIdentityCoordinator(
             registeredAtMillis = System.currentTimeMillis(),
         )
         mutableState.value = mutableState.value.copy(
-            profiles = personRepository.getAll(),
+            profiles = personRepository.getAllForSpeakerModel(embeddingEngine.modelName),
             registrationMessage = "${profile.displayName} の声サンプルを登録しました (${profile.speakerSampleCount})",
             inferenceTimeMillis = processingMillis,
         )
@@ -194,7 +194,7 @@ class SpeakerIdentityCoordinator(
         val result = speakerIdentifier.identify(
             utteranceId = utteranceId,
             embedding = embedding,
-            profiles = personRepository.getAll(),
+            profiles = personRepository.getAllForSpeakerModel(embeddingEngine.modelName),
             threshold = threshold,
             processingTimeMillis = processingMillis,
         )

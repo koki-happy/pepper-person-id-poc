@@ -23,6 +23,10 @@ data class PersonProfile(
     val faceModelName: String?,
     val speakerModelName: String?,
     val registeredAtMillis: Long,
+    val faceEmbeddingsByModel: Map<String, List<FloatArray>> =
+        faceModelName?.let { mapOf(it to faceEmbeddings) }.orEmpty(),
+    val speakerEmbeddingsByModel: Map<String, List<FloatArray>> =
+        speakerModelName?.let { mapOf(it to speakerEmbeddings) }.orEmpty(),
 ) {
     init {
         require(displayName.isNotBlank())
@@ -30,4 +34,16 @@ data class PersonProfile(
 
     val faceSampleCount: Int get() = faceEmbeddings.size
     val speakerSampleCount: Int get() = speakerEmbeddings.size
+
+    /** Returns a view containing only samples produced by [modelName]. */
+    fun forFaceModel(modelName: String): PersonProfile = copy(
+        faceEmbeddings = faceEmbeddingsByModel[modelName].orEmpty(),
+        faceModelName = modelName,
+    )
+
+    /** Returns a view containing only samples produced by [modelName]. */
+    fun forSpeakerModel(modelName: String): PersonProfile = copy(
+        speakerEmbeddings = speakerEmbeddingsByModel[modelName].orEmpty(),
+        speakerModelName = modelName,
+    )
 }

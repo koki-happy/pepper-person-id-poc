@@ -6,6 +6,12 @@ import com.example.pepper_person_id_poc.domain.person.PersonProfile
 interface PersonRepository {
     fun getAll(): List<PersonProfile>
 
+    fun getAllForFaceModel(modelName: String): List<PersonProfile> =
+        getAll().map { it.forFaceModel(modelName) }
+
+    fun getAllForSpeakerModel(modelName: String): List<PersonProfile> =
+        getAll().map { it.forSpeakerModel(modelName) }
+
     fun addFaceEmbedding(
         personId: PersonId,
         displayName: String,

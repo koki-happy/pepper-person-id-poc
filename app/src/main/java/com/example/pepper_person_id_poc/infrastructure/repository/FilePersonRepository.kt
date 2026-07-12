@@ -25,9 +25,11 @@ class FilePersonRepository(
         modelName: String,
         registeredAtMillis: Long,
     ): PersonProfile = updatePerson(personId, displayName, registeredAtMillis) { profile ->
+        val samples = profile.faceEmbeddingsByModel[modelName].orEmpty() + embedding.copyOf()
         profile.copy(
-            faceEmbeddings = profile.faceEmbeddings + embedding.copyOf(),
+            faceEmbeddings = samples,
             faceModelName = modelName,
+            faceEmbeddingsByModel = profile.faceEmbeddingsByModel + (modelName to samples),
         )
     }
 
@@ -39,9 +41,11 @@ class FilePersonRepository(
         modelName: String,
         registeredAtMillis: Long,
     ): PersonProfile = updatePerson(personId, displayName, registeredAtMillis) { profile ->
+        val samples = profile.speakerEmbeddingsByModel[modelName].orEmpty() + embedding.copyOf()
         profile.copy(
-            speakerEmbeddings = profile.speakerEmbeddings + embedding.copyOf(),
+            speakerEmbeddings = samples,
             speakerModelName = modelName,
+            speakerEmbeddingsByModel = profile.speakerEmbeddingsByModel + (modelName to samples),
         )
     }
 
@@ -98,6 +102,12 @@ class FilePersonRepository(
     private fun PersonProfile.deepCopy(): PersonProfile = copy(
         faceEmbeddings = faceEmbeddings.map(FloatArray::copyOf),
         speakerEmbeddings = speakerEmbeddings.map(FloatArray::copyOf),
+        faceEmbeddingsByModel = faceEmbeddingsByModel.mapValues { (_, samples) ->
+            samples.map(FloatArray::copyOf)
+        },
+        speakerEmbeddingsByModel = speakerEmbeddingsByModel.mapValues { (_, samples) ->
+            samples.map(FloatArray::copyOf)
+        },
     )
 
 }
