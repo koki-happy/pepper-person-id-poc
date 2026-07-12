@@ -2,6 +2,7 @@ package com.example.pepper_person_id_poc.infrastructure.camera
 
 import android.content.Context
 import android.util.Size
+import android.os.SystemClock
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -14,6 +15,7 @@ import androidx.lifecycle.LifecycleOwner
 import java.io.Closeable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import com.example.pepper_person_id_poc.domain.benchmark.RateMeter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ class CameraXPreviewController(
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageAnalysis: ImageAnalysis? = null
     private var analyzedFrameCount = 0L
+    private val inputFrameRateMeter = RateMeter()
     private var closed = false
 
     val surfaceRequest: StateFlow<SurfaceRequest?> = mutableSurfaceRequest.asStateFlow()
@@ -37,6 +40,8 @@ class CameraXPreviewController(
     fun bind(lifecycleOwner: LifecycleOwner) {
         if (closed || mutableState.value.status == CameraStatus.Starting) return
         mutableState.value = CameraPreviewState(status = CameraStatus.Starting)
+        analyzedFrameCount = 0L
+        inputFrameRateMeter.reset()
 
         val providerFuture = ProcessCameraProvider.getInstance(appContext)
         providerFuture.addListener(
@@ -68,12 +73,14 @@ class CameraXPreviewController(
                                 try {
                                     frameProcessor.process(image)
                                     analyzedFrameCount += 1
+                                    val inputFps = inputFrameRateMeter.record(SystemClock.elapsedRealtime())
                                     if (analyzedFrameCount == 1L ||
                                         analyzedFrameCount % STATE_UPDATE_FRAME_INTERVAL == 0L
                                     ) {
                                         mutableState.value = CameraPreviewState(
                                             status = CameraStatus.Running,
                                             frameCount = analyzedFrameCount,
+                                            inputFramesPerSecond = inputFps,
                                             resolution = "${image.width}x${image.height}",
                                         )
                                     }
@@ -104,6 +111,7 @@ class CameraXPreviewController(
         cameraProvider?.unbindAll()
         cameraProvider = null
         mutableSurfaceRequest.value = null
+        inputFrameRateMeter.reset()
         if (!closed) {
             mutableState.value = mutableState.value.copy(status = CameraStatus.Stopped)
         }

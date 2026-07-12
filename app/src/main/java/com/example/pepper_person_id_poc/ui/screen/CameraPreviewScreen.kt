@@ -265,7 +265,9 @@ private fun CameraAndModelStatus(
     faceSnapshot: FaceDetectionSnapshot,
 ) {
     Text("カメラ: ${cameraState.status}")
-    Text("解析フレーム: ${cameraState.frameCount} / ${cameraState.resolution ?: "取得中"}")
+    Text("カメラ入力: ${cameraState.frameCount} frames / ${cameraState.resolution ?: "取得中"}")
+    Text("カメラ入力FPS: ${cameraState.inputFramesPerSecond.asFps()}")
+    Text("顔解析FPS: ${faceSnapshot.analysisFramesPerSecond.asFps()}")
     Text("顔状態: ${faceSnapshot.status} / ${faceSnapshot.faces.size}人")
     Text("顔検出: ${faceSnapshot.processingTimeMillis ?: "-"} ms / ${faceSnapshot.modelName}")
     cameraState.error?.let { Text("カメラエラー: $it", color = MaterialTheme.colorScheme.error) }
@@ -448,3 +450,4 @@ private fun FaceDetectionOverlay(
 }
 
 private fun Float?.asScore(): String = this?.let { String.format(Locale.US, "%.2f", it) } ?: "-"
+private fun Float.asFps(): String = String.format(Locale.US, "%.2f fps", this)

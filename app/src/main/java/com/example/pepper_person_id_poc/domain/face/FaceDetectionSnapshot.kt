@@ -4,6 +4,7 @@ data class FaceDetectionSnapshot(
     val status: FaceDetectionStatus = FaceDetectionStatus.NOT_STARTED,
     val faces: List<DetectedFace> = emptyList(),
     val processingTimeMillis: Long? = null,
+    val analysisFramesPerSecond: Float = 0f,
     val modelName: String = "YuNet 2026may",
     val error: String? = null,
 )

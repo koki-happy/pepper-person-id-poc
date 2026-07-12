@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import androidx.camera.core.ImageProxy
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
+import com.example.pepper_person_id_poc.domain.benchmark.RateMeter
 import com.example.pepper_person_id_poc.domain.face.DetectedFace
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionStatus
@@ -40,6 +41,7 @@ class YuNetFaceDetector(
     private var initializationAttempted = false
     private var embeddingPreparationAttempted = false
     private var embeddingPrepared = false
+    private val analysisRateMeter = RateMeter(minimumWindowMillis = 1_500L)
 
     val snapshot: StateFlow<FaceDetectionSnapshot> = mutableSnapshot.asStateFlow()
 
@@ -50,6 +52,7 @@ class YuNetFaceDetector(
         nextAnalysisAtMillis = now + ANALYSIS_INTERVAL_MILLIS
 
         val startedAtNanos = SystemClock.elapsedRealtimeNanos()
+        val analysisFps = analysisRateMeter.record(now)
         runCatching {
             val activeDetector = getOrCreateDetector(image.width, image.height) ?: return
             val rgba = image.toRgbaMat()
@@ -152,6 +155,7 @@ class YuNetFaceDetector(
                     status = status,
                     faces = detectedFaces,
                     processingTimeMillis = processingMillis,
+                    analysisFramesPerSecond = analysisFps,
                 )
                 onFeatureObservations(featureObservations)
                 onBenchmarkEvent(
