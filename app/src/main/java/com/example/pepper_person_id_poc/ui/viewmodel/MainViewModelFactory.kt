@@ -3,13 +3,15 @@ package com.example.pepper_person_id_poc.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
+import com.example.pepper_person_id_poc.application.contract.DeviceDiagnosticsProvider
 
 class MainViewModelFactory(
     private val settingsRepository: SettingsRepository,
+    private val diagnosticsProvider: DeviceDiagnosticsProvider,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(MainViewModel::class.java))
-        return MainViewModel(settingsRepository) as T
+        return MainViewModel(settingsRepository, diagnosticsProvider) as T
     }
 }

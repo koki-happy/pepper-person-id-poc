@@ -1,16 +1,21 @@
 package com.example.pepper_person_id_poc
 
 import android.os.Bundle
+import android.Manifest
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.example.pepper_person_id_poc.infrastructure.repository.SharedPreferencesSettingsRepository
+import com.example.pepper_person_id_poc.infrastructure.device.AndroidDeviceDiagnosticsProvider
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
+import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
 import com.example.pepper_person_id_poc.ui.theme.PepperpersonidpocTheme
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
@@ -18,7 +23,10 @@ import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModelFactory
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(SharedPreferencesSettingsRepository(applicationContext))
+        MainViewModelFactory(
+            settingsRepository = SharedPreferencesSettingsRepository(applicationContext),
+            diagnosticsProvider = AndroidDeviceDiagnosticsProvider(applicationContext),
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +50,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             PepperpersonidpocTheme {
                 val uiState by viewModel.uiState.collectAsState()
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions(),
+                ) {
+                    viewModel.refreshDiagnostics()
+                }
                 if (uiState.activeScreen == AppScreen.Settings) {
                     SettingsScreen(
                         settings = uiState.settings,
@@ -53,6 +66,19 @@ class MainActivity : ComponentActivity() {
                         onDebugModeChanged = viewModel::updateDebugMode,
                         onSave = viewModel::saveSettings,
                         onOpenScreen = viewModel::showScreen,
+                    )
+                } else if (uiState.activeScreen == AppScreen.DeviceDiagnostics) {
+                    DeviceDiagnosticsScreen(
+                        diagnostics = uiState.diagnostics,
+                        isLoading = uiState.diagnosticsLoading,
+                        error = uiState.diagnosticsError,
+                        onBackToSettings = viewModel::returnToSettings,
+                        onRequestPermissions = {
+                            permissionLauncher.launch(
+                                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
+                            )
+                        },
+                        onRefresh = viewModel::refreshDiagnostics,
                     )
                 } else {
                     FeaturePlaceholderScreen(
