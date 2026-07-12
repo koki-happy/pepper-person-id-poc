@@ -11,4 +11,7 @@ data class MainUiState(
     val diagnostics: DeviceDiagnostics? = null,
     val diagnosticsLoading: Boolean = false,
     val diagnosticsError: String? = null,
+    val benchmarkOutputPath: String = "",
+    val recentBenchmarkEvents: List<String> = emptyList(),
+    val benchmarkError: String? = null,
 )

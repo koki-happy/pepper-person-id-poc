@@ -3,6 +3,8 @@ package com.example.pepper_person_id_poc.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pepper_person_id_poc.application.contract.DeviceDiagnosticsProvider
+import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
+import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
@@ -18,6 +20,7 @@ import kotlinx.coroutines.withContext
 class MainViewModel(
     private val settingsRepository: SettingsRepository,
     private val diagnosticsProvider: DeviceDiagnosticsProvider,
+    private val benchmarkLogger: BenchmarkLogger,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
         MainUiState(settings = settingsRepository.load()),
@@ -27,6 +30,7 @@ class MainViewModel(
     fun showScreen(screen: AppScreen) {
         mutableUiState.update { it.copy(activeScreen = screen, settingsSaved = false) }
         if (screen == AppScreen.DeviceDiagnostics) refreshDiagnostics()
+        if (screen == AppScreen.BenchmarkResults) refreshBenchmarkEvents()
     }
 
     fun returnToSettings() {
@@ -74,6 +78,21 @@ class MainViewModel(
                         diagnosticsError = null,
                     )
                 }
+                appendBenchmarkEvent(
+                    BenchmarkEvent(
+                        event = "device_diagnostics",
+                        timestampMillis = diagnostics.collectedAtMillis,
+                        status = "SUCCESS",
+                        attributes = mapOf(
+                            "apiLevel" to diagnostics.apiLevel.toString(),
+                            "abis" to diagnostics.supportedAbis.joinToString(","),
+                            "availableProcessors" to diagnostics.availableProcessors.toString(),
+                            "availableMemoryBytes" to diagnostics.availableMemoryBytes.toString(),
+                            "frontCameraCount" to diagnostics.frontCameras.size.toString(),
+                            "networkConnected" to diagnostics.networkConnected.toString(),
+                        ),
+                    ),
+                )
             }.onFailure { throwable ->
                 mutableUiState.update {
                     it.copy(
@@ -81,7 +100,43 @@ class MainViewModel(
                         diagnosticsError = throwable.message ?: throwable::class.java.simpleName,
                     )
                 }
+                appendBenchmarkEvent(
+                    BenchmarkEvent(
+                        event = "device_diagnostics",
+                        timestampMillis = System.currentTimeMillis(),
+                        status = "ERROR",
+                        error = throwable.message ?: throwable::class.java.simpleName,
+                    ),
+                )
             }
+        }
+    }
+
+    fun refreshBenchmarkEvents() {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    benchmarkLogger.outputFile().absolutePath to benchmarkLogger.readRecent(RECENT_EVENT_LIMIT)
+                }
+            }.onSuccess { (path, events) ->
+                mutableUiState.update {
+                    it.copy(
+                        benchmarkOutputPath = path,
+                        recentBenchmarkEvents = events,
+                        benchmarkError = null,
+                    )
+                }
+            }.onFailure { throwable ->
+                mutableUiState.update {
+                    it.copy(benchmarkError = throwable.message ?: throwable::class.java.simpleName)
+                }
+            }
+        }
+    }
+
+    private fun appendBenchmarkEvent(event: BenchmarkEvent) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { benchmarkLogger.append(event) }
         }
     }
 
@@ -89,5 +144,9 @@ class MainViewModel(
         mutableUiState.update { state ->
             state.copy(settings = state.settings.block(), settingsSaved = false)
         }
+    }
+
+    private companion object {
+        const val RECENT_EVENT_LIMIT = 20
     }
 }

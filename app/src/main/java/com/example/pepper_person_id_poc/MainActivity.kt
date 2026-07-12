@@ -13,9 +13,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.example.pepper_person_id_poc.infrastructure.repository.SharedPreferencesSettingsRepository
 import com.example.pepper_person_id_poc.infrastructure.device.AndroidDeviceDiagnosticsProvider
+import com.example.pepper_person_id_poc.infrastructure.benchmark.JsonLinesBenchmarkLogger
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
+import com.example.pepper_person_id_poc.ui.screen.BenchmarkResultsScreen
 import com.example.pepper_person_id_poc.ui.screen.SettingsScreen
 import com.example.pepper_person_id_poc.ui.theme.PepperpersonidpocTheme
 import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModel
@@ -26,6 +28,7 @@ class MainActivity : ComponentActivity() {
         MainViewModelFactory(
             settingsRepository = SharedPreferencesSettingsRepository(applicationContext),
             diagnosticsProvider = AndroidDeviceDiagnosticsProvider(applicationContext),
+            benchmarkLogger = JsonLinesBenchmarkLogger(applicationContext),
         )
     }
 
@@ -79,6 +82,14 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         onRefresh = viewModel::refreshDiagnostics,
+                    )
+                } else if (uiState.activeScreen == AppScreen.BenchmarkResults) {
+                    BenchmarkResultsScreen(
+                        outputPath = uiState.benchmarkOutputPath,
+                        recentEvents = uiState.recentBenchmarkEvents,
+                        error = uiState.benchmarkError,
+                        onBackToSettings = viewModel::returnToSettings,
+                        onRefresh = viewModel::refreshBenchmarkEvents,
                     )
                 } else {
                     FeaturePlaceholderScreen(
