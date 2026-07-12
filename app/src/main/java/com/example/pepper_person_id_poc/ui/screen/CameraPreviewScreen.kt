@@ -253,7 +253,7 @@ private fun RegistrationPanel(
     identityState.registrationMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
     identityState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
-    Text("登録人物 (${identityState.profiles.size}/2)", style = MaterialTheme.typography.titleMedium)
+    Text("登録人物 (${identityState.profiles.size}人)", style = MaterialTheme.typography.titleMedium)
     identityState.profiles.forEach { profile ->
         Text(
             "${profile.displayName} / ${profile.personId.value} / 顔 ${profile.faceSampleCount} / 声 ${profile.speakerSampleCount}",
@@ -289,7 +289,7 @@ private fun IdentificationPanel(
     debugMode: Boolean,
 ) {
     Text("識別結果", style = MaterialTheme.typography.titleMedium)
-    Text("登録人物: ${identityState.profiles.size}/2")
+    Text("登録人物: ${identityState.profiles.size}人")
     if (identityState.results.isEmpty()) {
         Text("識別対象の顔がありません")
     }
