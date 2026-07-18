@@ -13,7 +13,26 @@ data class DetectedFace(
     val trackId: String,
     val boundingBox: NormalizedBoundingBox,
     val detectionScore: Float,
+    val landmarks: List<FaceLandmark> = emptyList(),
 )
+
+data class FaceLandmark(
+    val type: FaceLandmarkType,
+    val x: Float,
+    val y: Float,
+) {
+    init {
+        require(x in 0f..1f && y in 0f..1f)
+    }
+}
+
+enum class FaceLandmarkType(val displayName: String) {
+    RIGHT_EYE("右目"),
+    LEFT_EYE("左目"),
+    NOSE_TIP("鼻"),
+    RIGHT_MOUTH_CORNER("右口角"),
+    LEFT_MOUTH_CORNER("左口角"),
+}
 
 enum class FaceDetectionStatus {
     NOT_STARTED,

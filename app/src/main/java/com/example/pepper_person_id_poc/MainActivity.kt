@@ -66,6 +66,15 @@ class MainActivity : ComponentActivity() {
                         settings = uiState.settings,
                         settingsSaved = uiState.settingsSaved,
                         onFaceThresholdChanged = viewModel::updateFaceThreshold,
+                        onFaceMarginChanged = viewModel::updateFaceMargin,
+                        onFaceRegistrationAnalysisIntervalChanged = viewModel::updateFaceRegistrationAnalysisIntervalMillis,
+                        onFaceIdentificationAnalysisIntervalChanged = viewModel::updateFaceIdentificationAnalysisIntervalMillis,
+                        onFacePoseStableDurationChanged = viewModel::updateFacePoseStableDurationMillis,
+                        onFaceFrontYawChanged = viewModel::updateFaceFrontYawDegrees,
+                        onFaceFrontPitchChanged = viewModel::updateFaceFrontPitchDegrees,
+                        onFaceSideMinimumYawChanged = viewModel::updateFaceSideMinimumYawDegrees,
+                        onFaceSideMaximumYawChanged = viewModel::updateFaceSideMaximumYawDegrees,
+                        onFaceSmoothingSampleCountChanged = viewModel::updateFaceSmoothingSampleCount,
                         onSpeakerThresholdChanged = viewModel::updateSpeakerThreshold,
                         onCombinedThresholdChanged = viewModel::updateCombinedThreshold,
                         onObservationWindowChanged = viewModel::updateObservationWindowMillis,
@@ -107,14 +116,6 @@ class MainActivity : ComponentActivity() {
                 } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
                     CameraPreviewScreen(
                         mode = FaceCameraMode.Identification,
-                        settings = uiState.settings,
-                        personRepository = appContainer.personRepository,
-                        benchmarkLogger = appContainer.benchmarkLogger,
-                        onBackToSettings = viewModel::returnToSettings,
-                    )
-                } else if (uiState.activeScreen == AppScreen.AnonymousFaceIdentification) {
-                    CameraPreviewScreen(
-                        mode = FaceCameraMode.AnonymousIdentification,
                         settings = uiState.settings,
                         personRepository = appContainer.personRepository,
                         benchmarkLogger = appContainer.benchmarkLogger,

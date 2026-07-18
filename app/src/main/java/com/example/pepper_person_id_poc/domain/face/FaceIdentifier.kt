@@ -9,26 +9,36 @@ class FaceIdentifier {
         embedding: FloatArray,
         profiles: List<PersonProfile>,
         threshold: Float,
+        minimumMargin: Float = 0f,
         processingTimeMillis: Long = 0L,
     ): FaceIdentityResult {
         require(threshold in 0f..1f)
-        val best = profiles
+        require(minimumMargin in 0f..2f)
+        val candidates = profiles
             .mapNotNull { profile ->
                 profile.faceEmbeddings
                     .mapNotNull { registered -> cosineSimilarityOrNull(embedding, registered) }
                     .maxOrNull()
                     ?.let { score -> profile to score }
             }
-            .maxByOrNull { (_, score) -> score }
-        val matched = best?.takeIf { (_, score) -> score >= threshold }
+            .sortedByDescending { (_, score) -> score }
+        val best = candidates.firstOrNull()
+        val second = candidates.getOrNull(1)
+        val margin = if (best != null && second != null) best.second - second.second else null
+        val matched = best?.takeIf { (_, score) ->
+            score >= threshold && (margin == null || margin >= minimumMargin)
+        }
         return FaceIdentityResult(
             trackId = trackId,
             status = if (matched != null) FaceIdentityStatus.IDENTIFIED else FaceIdentityStatus.UNKNOWN,
             personId = matched?.first?.personId,
             displayName = matched?.first?.displayName,
             score = best?.second,
+            secondScore = second?.second,
+            margin = margin,
             bestCandidatePersonId = best?.first?.personId,
             threshold = threshold,
+            minimumMargin = minimumMargin,
             processingTimeMillis = processingTimeMillis,
         )
     }

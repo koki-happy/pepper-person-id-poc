@@ -7,4 +7,5 @@ interface BenchmarkLogger {
     fun append(event: BenchmarkEvent)
     fun outputFile(): File
     fun readRecent(limit: Int): List<String>
+    fun deleteAll()
 }

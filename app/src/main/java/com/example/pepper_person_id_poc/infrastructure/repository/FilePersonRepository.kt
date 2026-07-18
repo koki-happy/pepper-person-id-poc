@@ -50,8 +50,34 @@ class FilePersonRepository(
     }
 
     @Synchronized
+    override fun replaceFaceEmbeddings(
+        personId: PersonId,
+        displayName: String,
+        embeddings: List<FloatArray>,
+        modelName: String,
+        registeredAtMillis: Long,
+    ): PersonProfile {
+        require(embeddings.isNotEmpty())
+        val copied = embeddings.map(FloatArray::copyOf)
+        return updatePerson(personId, displayName, registeredAtMillis) { profile ->
+            profile.copy(
+                faceEmbeddings = copied,
+                faceModelName = modelName,
+                registeredAtMillis = registeredAtMillis,
+                faceEmbeddingsByModel = profile.faceEmbeddingsByModel + (modelName to copied),
+            )
+        }
+    }
+
+    @Synchronized
     override fun deleteAll() {
         atomicFile.delete()
+    }
+
+    @Synchronized
+    override fun deletePerson(personId: PersonId) {
+        val remaining = load().filterNot { it.personId == personId }
+        if (remaining.isEmpty()) atomicFile.delete() else save(remaining)
     }
 
     private fun updatePerson(

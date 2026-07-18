@@ -43,6 +43,42 @@ class MainViewModel(
         copy(faceThreshold = value.coerceIn(PocSettings.SCORE_RANGE))
     }
 
+    fun updateFaceMargin(value: Float) = updateSettings {
+        copy(faceMargin = value.coerceIn(PocSettings.MARGIN_RANGE))
+    }
+
+    fun updateFaceRegistrationAnalysisIntervalMillis(value: Long) = updateSettings {
+        copy(faceRegistrationAnalysisIntervalMillis = value.coerceIn(PocSettings.FACE_REGISTRATION_INTERVAL_RANGE))
+    }
+
+    fun updateFaceIdentificationAnalysisIntervalMillis(value: Long) = updateSettings {
+        copy(faceIdentificationAnalysisIntervalMillis = value.coerceIn(PocSettings.FACE_IDENTIFICATION_INTERVAL_RANGE))
+    }
+
+    fun updateFacePoseStableDurationMillis(value: Long) = updateSettings {
+        copy(facePoseStableDurationMillis = value.coerceIn(PocSettings.FACE_POSE_STABLE_DURATION_RANGE))
+    }
+
+    fun updateFaceFrontYawDegrees(value: Float) = updateSettings {
+        copy(faceFrontYawDegrees = value.coerceIn(PocSettings.FACE_FRONT_ANGLE_RANGE))
+    }
+
+    fun updateFaceFrontPitchDegrees(value: Float) = updateSettings {
+        copy(faceFrontPitchDegrees = value.coerceIn(PocSettings.FACE_FRONT_ANGLE_RANGE))
+    }
+
+    fun updateFaceSideMinimumYawDegrees(value: Float) = updateSettings {
+        copy(faceSideMinimumYawDegrees = value.coerceIn(PocSettings.FACE_SIDE_ANGLE_RANGE).coerceAtMost(faceSideMaximumYawDegrees - 1f))
+    }
+
+    fun updateFaceSideMaximumYawDegrees(value: Float) = updateSettings {
+        copy(faceSideMaximumYawDegrees = value.coerceIn(PocSettings.FACE_SIDE_ANGLE_RANGE).coerceAtLeast(faceSideMinimumYawDegrees + 1f))
+    }
+
+    fun updateFaceSmoothingSampleCount(value: Int) = updateSettings {
+        copy(faceSmoothingSampleCount = value.coerceIn(PocSettings.FACE_SMOOTHING_SAMPLE_COUNT_RANGE))
+    }
+
     fun updateFaceModel(value: FaceModelOption) = updateSettings {
         copy(faceModel = value)
     }

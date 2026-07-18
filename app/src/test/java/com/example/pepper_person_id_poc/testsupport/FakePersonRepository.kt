@@ -41,8 +41,28 @@ class FakePersonRepository(
         )
     }
 
+    override fun replaceFaceEmbeddings(
+        personId: PersonId,
+        displayName: String,
+        embeddings: List<FloatArray>,
+        modelName: String,
+        registeredAtMillis: Long,
+    ): PersonProfile = update(personId, displayName, registeredAtMillis) {
+        val copied = embeddings.map(FloatArray::copyOf)
+        it.copy(
+            faceEmbeddings = copied,
+            faceModelName = modelName,
+            registeredAtMillis = registeredAtMillis,
+            faceEmbeddingsByModel = it.faceEmbeddingsByModel + (modelName to copied),
+        )
+    }
+
     override fun deleteAll() {
         profiles.clear()
+    }
+
+    override fun deletePerson(personId: PersonId) {
+        profiles.removeAll { it.personId == personId }
     }
 
     private fun update(

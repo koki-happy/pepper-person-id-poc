@@ -20,6 +20,14 @@ interface PersonRepository {
         registeredAtMillis: Long,
     ): PersonProfile
 
+    fun replaceFaceEmbeddings(
+        personId: PersonId,
+        displayName: String,
+        embeddings: List<FloatArray>,
+        modelName: String,
+        registeredAtMillis: Long,
+    ): PersonProfile
+
     fun addSpeakerEmbedding(
         personId: PersonId,
         displayName: String,
@@ -29,4 +37,6 @@ interface PersonRepository {
     ): PersonProfile
 
     fun deleteAll()
+
+    fun deletePerson(personId: PersonId)
 }

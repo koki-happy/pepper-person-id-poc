@@ -8,8 +8,11 @@ data class FaceIdentityResult(
     val personId: PersonId?,
     val displayName: String?,
     val score: Float?,
+    val secondScore: Float?,
+    val margin: Float?,
     val bestCandidatePersonId: PersonId?,
     val threshold: Float,
+    val minimumMargin: Float,
     val processingTimeMillis: Long,
 )
 

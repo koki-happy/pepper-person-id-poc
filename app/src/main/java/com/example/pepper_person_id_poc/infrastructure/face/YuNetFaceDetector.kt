@@ -2,13 +2,17 @@ package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
 import android.os.SystemClock
+import android.os.Debug
 import androidx.camera.core.ImageProxy
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.domain.benchmark.RateMeter
 import com.example.pepper_person_id_poc.domain.face.DetectedFace
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionStatus
+import com.example.pepper_person_id_poc.domain.face.FaceLandmark
+import com.example.pepper_person_id_poc.domain.face.FaceLandmarkType
 import com.example.pepper_person_id_poc.domain.face.FaceTracker
+import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraFrameProcessor
 import java.io.Closeable
@@ -18,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.CvType
+import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
@@ -26,13 +31,20 @@ import org.opencv.objdetect.FaceDetectorYN
 class YuNetFaceDetector(
     context: Context,
     private val embeddingEngine: FaceEmbeddingEngine? = null,
+    private val analysisIntervalMillis: Long = DEFAULT_ANALYSIS_INTERVAL_MILLIS,
+    private val estimateHeadPose: Boolean = true,
+    private val onPoseObservations: (Int, List<FacePoseObservation>) -> Set<String> = { _, _ -> emptySet() },
     private val onFeatureObservations: (List<FaceFeatureObservation>) -> Unit = {},
     private val onEmbeddingReady: () -> Unit = {},
     private val onEmbeddingError: (Throwable) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
 ) : CameraFrameProcessor, Closeable {
+    init {
+        require(analysisIntervalMillis > 0L)
+    }
     private val appContext = context.applicationContext
     private val tracker = FaceTracker()
+    private val headPoseEstimator = HeadPoseEstimator()
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot())
     private var detector: FaceDetectorYN? = null
     private var detectorInputSize: Size? = null
@@ -41,37 +53,79 @@ class YuNetFaceDetector(
     private var initializationAttempted = false
     private var embeddingPreparationAttempted = false
     private var embeddingPrepared = false
+    private var analyzerInputFrameCount = 0L
+    private var analyzedFrameCount = 0L
+    private var throttleSkippedFrameCount = 0L
     private val analysisRateMeter = RateMeter(minimumWindowMillis = 1_500L)
 
     val snapshot: StateFlow<FaceDetectionSnapshot> = mutableSnapshot.asStateFlow()
 
     override fun process(image: ImageProxy) {
         if (closed) return
+        analyzerInputFrameCount += 1L
         val now = SystemClock.elapsedRealtime()
-        if (now < nextAnalysisAtMillis) return
-        nextAnalysisAtMillis = now + ANALYSIS_INTERVAL_MILLIS
+        if (now < nextAnalysisAtMillis) {
+            throttleSkippedFrameCount += 1L
+            emitPipelineCountersIfDue()
+            return
+        }
+        nextAnalysisAtMillis = now + analysisIntervalMillis
+        analyzedFrameCount += 1L
 
         val startedAtNanos = SystemClock.elapsedRealtimeNanos()
         val analysisFps = analysisRateMeter.record(now)
         runCatching {
             val activeDetector = getOrCreateDetector(image.width, image.height) ?: return
             val rgba = image.toRgbaMat()
+            val rawBgr = Mat()
             val bgr = Mat()
             val faces = Mat()
             try {
-                Imgproc.cvtColor(rgba, bgr, Imgproc.COLOR_RGBA2BGR)
-                val requestedSize = Size(image.width.toDouble(), image.height.toDouble())
+                Imgproc.cvtColor(rgba, rawBgr, Imgproc.COLOR_RGBA2BGR)
+                rawBgr.rotateInto(bgr, image.imageInfo.rotationDegrees)
+                val requestedSize = Size(bgr.cols().toDouble(), bgr.rows().toDouble())
                 if (detectorInputSize != requestedSize) {
                     activeDetector.setInputSize(requestedSize)
                     detectorInputSize = requestedSize
                 }
                 activeDetector.detect(bgr, faces)
-                val rawFaces = faces.toBoundingBoxes(image.width, image.height, image.imageInfo.rotationDegrees)
+                val rawFaces = faces.toRawFaces(bgr.cols(), bgr.rows())
                 val tracked = tracker.update(rawFaces.map { it.boundingBox })
                 val processingMillis = (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
                 val detectedFaces = rawFaces.zip(tracked).map { (raw, track) ->
-                    DetectedFace(track.trackId, track.boundingBox, raw.score)
+                    DetectedFace(
+                        trackId = track.trackId,
+                        boundingBox = track.boundingBox,
+                        detectionScore = raw.score,
+                        landmarks = raw.normalizedLandmarks(bgr.cols(), bgr.rows()),
+                    )
                 }
+                val poseStartedAtNanos = SystemClock.elapsedRealtimeNanos()
+                val poseObservations = rawFaces.zip(tracked).map { (raw, track) ->
+                    FacePoseObservation(
+                        trackId = track.trackId,
+                        headPose = if (estimateHeadPose) {
+                            headPoseEstimator.estimate(raw.landmarks, bgr.cols(), bgr.rows())
+                        } else {
+                            null
+                        },
+                    )
+                }
+                val poseMillis = (SystemClock.elapsedRealtimeNanos() - poseStartedAtNanos) / 1_000_000L
+                onBenchmarkEvent(
+                    BenchmarkEvent(
+                        event = "face_pose",
+                        timestampMillis = System.currentTimeMillis(),
+                        durationMillis = poseMillis,
+                        status = "SUCCESS",
+                        attributes = mapOf(
+                            "faceCount" to detectedFaces.size.toString(),
+                            "estimatedPoseCount" to poseObservations.count { it.headPose != null }.toString(),
+                            "nativeHeapBytes" to Debug.getNativeHeapAllocatedSize().toString(),
+                        ),
+                    ),
+                )
+                val embeddingTrackIds = onPoseObservations(detectedFaces.size, poseObservations)
                 val activeEmbeddingEngine = embeddingEngine
                 if (activeEmbeddingEngine != null && !embeddingPreparationAttempted) {
                     embeddingPreparationAttempted = true
@@ -108,6 +162,7 @@ class YuNetFaceDetector(
                     emptyList()
                 } else {
                     tracked.mapIndexedNotNull { index, track ->
+                        if (track.trackId !in embeddingTrackIds) return@mapIndexedNotNull null
                         val embeddingStartedAtNanos = SystemClock.elapsedRealtimeNanos()
                         val detectedFace = faces.row(index)
                         try {
@@ -158,6 +213,9 @@ class YuNetFaceDetector(
                     analysisFramesPerSecond = analysisFps,
                 )
                 onFeatureObservations(featureObservations)
+                val pipelineFinishedAtNanos = SystemClock.elapsedRealtimeNanos()
+                val pipelineMillis = (pipelineFinishedAtNanos - startedAtNanos) / 1_000_000L
+                val captureToStateReadyNanos = pipelineFinishedAtNanos - image.imageInfo.timestamp
                 onBenchmarkEvent(
                     BenchmarkEvent(
                         event = "face_detection",
@@ -169,15 +227,69 @@ class YuNetFaceDetector(
                             "faceCount" to detectedFaces.size.toString(),
                             "frameWidth" to image.width.toString(),
                             "frameHeight" to image.height.toString(),
+                            "orientedFrameWidth" to bgr.cols().toString(),
+                            "orientedFrameHeight" to bgr.rows().toString(),
+                            "rotationDegrees" to image.imageInfo.rotationDegrees.toString(),
+                            "analysisIntervalMillis" to analysisIntervalMillis.toString(),
+                            "nativeHeapBytes" to Debug.getNativeHeapAllocatedSize().toString(),
                         ),
                     ),
                 )
+                onBenchmarkEvent(
+                    BenchmarkEvent(
+                        event = "face_pipeline_frame",
+                        timestampMillis = System.currentTimeMillis(),
+                        durationMillis = pipelineMillis,
+                        status = status.name,
+                        attributes = mapOf(
+                            "faceCount" to detectedFaces.size.toString(),
+                            "embeddingCount" to featureObservations.size.toString(),
+                            "analyzerInputFrameCount" to analyzerInputFrameCount.toString(),
+                            "analyzedFrameCount" to analyzedFrameCount.toString(),
+                            "throttleSkippedFrameCount" to throttleSkippedFrameCount.toString(),
+                            "analysisFramesPerSecond" to analysisFps.toString(),
+                            "captureToStateReadyMillis" to if (
+                                captureToStateReadyNanos in 0L..MAX_REASONABLE_CAPTURE_TO_STATE_READY_NANOS
+                            ) {
+                                (captureToStateReadyNanos / 1_000_000L).toString()
+                            } else {
+                                "UNAVAILABLE_TIMEBASE_MISMATCH"
+                            },
+                            "imageTimestampNanos" to image.imageInfo.timestamp.toString(),
+                            "stateReadyElapsedRealtimeNanos" to pipelineFinishedAtNanos.toString(),
+                        ),
+                    ),
+                )
+                emitPipelineCountersIfDue()
             } finally {
                 faces.release()
                 bgr.release()
+                rawBgr.release()
                 rgba.release()
             }
         }.onFailure(::reportError)
+    }
+
+    private fun emitPipelineCountersIfDue() {
+        if (analyzerInputFrameCount % PIPELINE_COUNTER_INTERVAL != 0L) return
+        onBenchmarkEvent(
+            BenchmarkEvent(
+                event = "face_pipeline_counters",
+                timestampMillis = System.currentTimeMillis(),
+                status = "SUCCESS",
+                attributes = mapOf(
+                    "analyzerInputFrameCount" to analyzerInputFrameCount.toString(),
+                    "analyzedFrameCount" to analyzedFrameCount.toString(),
+                    "throttleSkippedFrameCount" to throttleSkippedFrameCount.toString(),
+                    "analyzerThrottleDropRate" to if (analyzerInputFrameCount == 0L) {
+                        "0.0"
+                    } else {
+                        (throttleSkippedFrameCount.toDouble() / analyzerInputFrameCount).toString()
+                    },
+                    "cameraProducerDroppedFrameCount" to "UNAVAILABLE_KEEP_ONLY_LATEST",
+                ),
+            ),
+        )
     }
 
     override fun close() {
@@ -260,10 +372,9 @@ class YuNetFaceDetector(
         return Mat(height, width, CvType.CV_8UC4).apply { put(0, 0, packed) }
     }
 
-    private fun Mat.toBoundingBoxes(
+    private fun Mat.toRawFaces(
         imageWidth: Int,
         imageHeight: Int,
-        rotationDegrees: Int,
     ): List<RawFace> = (0 until rows()).map { row ->
         val values = FloatArray(FACE_RESULT_COLUMN_COUNT)
         get(row, 0, values)
@@ -272,24 +383,47 @@ class YuNetFaceDetector(
         val right = ((values[0] + values[2]) / imageWidth).coerceIn(0f, 1f)
         val bottom = ((values[1] + values[3]) / imageHeight).coerceIn(0f, 1f)
         RawFace(
-            boundingBox = NormalizedBoundingBox(left, top, right, bottom).rotated(rotationDegrees),
+            boundingBox = NormalizedBoundingBox(left, top, right, bottom),
             score = values[14],
+            landmarks = values.copyOfRange(4, 14),
         )
+    }
+
+    private fun Mat.rotateInto(output: Mat, rotationDegrees: Int) {
+        when (rotationDegrees) {
+            0 -> copyTo(output)
+            90 -> Core.rotate(this, output, Core.ROTATE_90_CLOCKWISE)
+            180 -> Core.rotate(this, output, Core.ROTATE_180)
+            270 -> Core.rotate(this, output, Core.ROTATE_90_COUNTERCLOCKWISE)
+            else -> error("Unsupported image rotation: $rotationDegrees")
+        }
     }
 
     private data class RawFace(
         val boundingBox: NormalizedBoundingBox,
         val score: Float,
-    )
+        val landmarks: FloatArray,
+    ) {
+        fun normalizedLandmarks(imageWidth: Int, imageHeight: Int): List<FaceLandmark> =
+            FaceLandmarkType.entries.mapIndexed { index, type ->
+                FaceLandmark(
+                    type = type,
+                    x = (landmarks[index * 2] / imageWidth).coerceIn(0f, 1f),
+                    y = (landmarks[index * 2 + 1] / imageHeight).coerceIn(0f, 1f),
+                )
+            }
+    }
 
     private companion object {
+        const val MAX_REASONABLE_CAPTURE_TO_STATE_READY_NANOS = 60_000_000_000L
+        const val PIPELINE_COUNTER_INTERVAL = 30L
         const val MODEL_NAME = "YuNet 2026may"
         const val MODEL_FILE_NAME = "face_detection_yunet_2026may.onnx"
         const val MODEL_ASSET_PATH = "models/$MODEL_FILE_NAME"
         const val SCORE_THRESHOLD = 0.80f
         const val NMS_THRESHOLD = 0.30f
         const val TOP_K = 5000
-        const val ANALYSIS_INTERVAL_MILLIS = 1_000L
+        const val DEFAULT_ANALYSIS_INTERVAL_MILLIS = 1_000L
         const val RGBA_PIXEL_STRIDE = 4
         const val FACE_RESULT_COLUMN_COUNT = 15
     }

@@ -128,5 +128,6 @@ class SpeakerIdentityCoordinatorTest {
         override fun append(event: BenchmarkEvent) = Unit
         override fun outputFile() = File("unused")
         override fun readRecent(limit: Int) = emptyList<String>()
+        override fun deleteAll() = Unit
     }
 }

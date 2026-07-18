@@ -26,4 +26,8 @@ class JsonLinesBenchmarkLogger(
             if (!file.exists()) emptyList() else file.readLines().takeLast(limit)
         }
     }
+
+    override fun deleteAll() {
+        synchronized(lock) { file.delete() }
+    }
 }
