@@ -17,6 +17,10 @@
 local.properties
 /screenshots/
 /datasets/
+/evaluation-results/
+__pycache__/
+*.py[cod]
+.venv/
 *.hprof
 
 # Model binaries are obtained separately after license and device validation.

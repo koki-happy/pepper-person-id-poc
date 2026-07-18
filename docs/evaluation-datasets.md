@@ -2,6 +2,54 @@
 
 評価データ本体、展開ファイル、抽出フレーム、変換音声はGitへコミットしない。ローカルの`datasets/`以下へ保存する。
 
+## Pointing'04（2026-07-18取得・検証）
+
+- Official article: https://figshare.com/articles/dataset/Pointing04_DB/5142466/2
+- Version: 2
+- License: CC BY 4.0
+- Citation: Gourier, Hall, Crowley, “Estimating Face Orientation from Robust Detection of Salient
+  Facial Features,” Pointing 2004
+- Official archives: 31 files, 28,282,725 bytes; every supplied size and MD5 verified
+- Archive manifest SHA-256: `82a8ec3569d4bc276074a448fd95d5ff7e8de383220d24ac9161a1cf2ec5db12`
+- Canonical evaluation body: 15 subjects × 2 series × 93 poses = 2,790 JPEG files
+- Image verification: all 2,790 images decoded at 384×288; zero duplicate subject/series/pose keys
+- Labels: 9 pitch values and 13 yaw values encoded in official filenames
+- Local paths: `datasets/pointing04/archives/` and `datasets/pointing04/extracted/`
+- User-supplied Figshare bundle: `5142466.zip`, 28,287,325 bytes, SHA-256
+  `70876d36f9a6c3bd2af5c66b587c06db36e977c1acaec593fb47cb3a304b9c95`; all 31 embedded
+  archive names, sizes, and MD5 values match the already verified official archive set
+
+The separate `deFace` convenience directory contains 30 frontal files and is not part of the canonical
+2,790 trials. Generated manifests under `config/face-evaluation/` use subjects 01–09 as enrolled,
+10–12 as development Unknown, and 13–15 as final Unknown. Series 1 supplies enrollment/development
+registered probes and series 2 supplies final registered probes.
+
+## BIWI Kinect Head Pose（2026-07-18配布障害）
+
+- Dataset page: https://huggingface.co/datasets/ETHZurich/biwi_kinect_head_pose
+- Official archive URL: https://data.vision.ee.ethz.ch/cvl/gfanelli/kinect_head_pose_db.tgz
+- License: non-commercial university research and education
+- Expected archive size: 6,014,398,431 bytes
+- Expected SHA-256: `d8fc0fee11b6b865b18b292de7c21dd2181492bd770c4fe13821e8dc630f5549`
+- Expected body: 24 sequences, 20 subjects, over 15,000 RGB/depth frames and pose matrices
+
+The Hugging Face repository contains a loader rather than the body, and the loader's ETH Zurich URL
+currently returns HTTP 403. Hugging Face issue #3822 also records the unavailable source in April 2025.
+The HyperAI torrent mirror contains a complete `db_annotations.zip` with 15,677 binary pose labels
+across sequences 01–24. Its 6 GB `faces_0.zip`, however, is only an incomplete sparse aria2 target:
+the logical size is preallocated, an `.aria2` control file remains, and RGB entries cannot be
+enumerated. The mirror is also not proven byte-identical to the official ETH archive or covered by
+verified redistribution terms. BIWI MUST remain `BLOCKED_UPSTREAM` until usable RGB images and their
+provenance/permission are verified; annotation-only or incomplete mirrors must not be reported as full
+BIWI evidence.
+
+The supplied `biwi_kinect_head_pose.py` is a 7,234-byte Hugging Face loader, not the dataset body.
+Its `_URLS` entry points to the same unavailable ETH archive. Internet Archive availability,
+Arquivo.pt, Common Crawl, and Hugging Face-hosted files did not provide a publicly retrievable copy
+whose origin, usage terms, byte count, and SHA-256 could all be verified. The next legitimate step is
+to ask the ETH dataset owner to restore or reissue the archive and confirm that this company PoC is
+permitted by the non-commercial research/education terms.
+
 ## Lombard GRID
 
 - Official name: The Audio-Visual Lombard Grid Speech corpus
