@@ -52,7 +52,7 @@
 
 - [x] T018 Run all app unit tests, lint, and the arm64/ARMv7 debug builds using gradle/wrapper/gradle-wrapper.jar
 - [x] T019 Install and smoke-test guided registration, both models, live identification, and stale-result clearing on Nothing Phone (3a) using specs/001-face-identification/quickstart.md
-- [ ] T020 Install the ARMv7 APK on Pepper and record installed, runtime-working, and app-operable evidence in specs/001-face-identification/quickstart.md
+- [x] T020 Install the ARMv7 APK on Pepper and record installed, runtime-working, and app-operable evidence in specs/001-face-identification/quickstart.md
 - [x] T021 Confirm no captured media is persisted and update implementation status in specs/001-face-identification/spec.md
 
 ## Dependencies & Execution Order
