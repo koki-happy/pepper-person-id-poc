@@ -48,7 +48,8 @@ is a later phase.
 - Multi-face logic: unit test passed with two simultaneous tracks (one enrolled, one Unknown). A
   two-person physical-device frame remains to be captured as expanded acceptance evidence.
 - Pepper: ARMv7 APK installed (`primaryCpuAbi=armeabi-v7a`), MainActivity resumed, permissions granted,
-  and no crash was recorded. Face-screen operator interaction on Pepper remains for T020 completion.
+  and no crash was recorded. The operator completed front/left/right guided registration and confirmed
+  continuous enrolled-person face identification on the Pepper face screen. T020 is complete.
 - No captured image/video/audio file exists in app-private storage; persisted outputs are model assets,
   person embeddings/metadata, and structured benchmark records.
 
