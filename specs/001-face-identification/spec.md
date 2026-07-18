@@ -1,176 +1,125 @@
 # Feature Specification: Guided Face Registration and Real-time Enrolled-person Identification
 
-**Feature Branch**: `codex/face-identification`
+**Feature Branch**: `codex/face-identification`  
+**Created**: 2026-07-18  
+**Status**: Implemented and validated on Nothing Phone (3a) and Pepper API 23 / ARMv7
 
-**Created**: 2026-07-18
+## Source of truth
 
-**Status**: Implemented and validated on Nothing Phone (3a); installed/model-tested on Pepper
+- Project principles: [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md)
+- Implementation plan: [`plan.md`](plan.md)
+- Completed implementation tasks: [`tasks.md`](tasks.md)
+- Device validation evidence: [`quickstart.md`](quickstart.md)
+- Current behavior: code on `codex/face-identification`; when prose and code disagree, record the discrepancy and treat code as the As-Is source of truth.
 
-**Input**: Complete face identification first on Nothing Phone (3a), then validate on Pepper. Defer
-dataset performance evaluation and speaker implementation while fixing their later-phase boundaries.
+## Scope
 
-## User Scenarios & Testing
+This feature completes the face-only PoC path:
 
-### User Story 1 - Guided three-pose face registration (Priority: P1)
+1. guided front / left / right face registration;
+2. continuous identification of all currently visible faces against explicitly enrolled profiles;
+3. threshold and top-two-margin rejection to `Unknown`;
+4. face settings, deletion, privacy explanation, structured timing evidence, and Pepper acceptance.
 
-An operator registers one person by following front, left, and right pose guidance. A pose is saved
-only after exactly one face remains within the target range for 1,000 ms continuously.
+Speaker implementation, speech recognition, face-speaker fusion, conversation history, full dataset qualification, and long-duration performance qualification are separate features.
 
-**Why this priority**: Identification cannot be demonstrated reliably without repeatable enrollment.
+## User Story 1 — Guided three-pose registration (P1)
 
-**Independent Test**: Register a person while moving in and out of each target range; verify that
-exactly three embeddings are stored only after front, left, and right succeed in order.
+An operator registers one person by following front, left, and right guidance. A pose is accepted only when exactly one face remains inside the target range for 1,000 ms continuously.
 
-**Acceptance Scenarios**:
+### Acceptance scenarios
 
-1. **Given** one visible face, **When** front, left, and right each remain in range for 1,000 ms,
-   **Then** one embedding for each pose is saved and registration completes with three samples.
-2. **Given** a target pose is being held, **When** the face leaves the range before 1,000 ms,
-   **Then** the hold timer resets and no embedding is generated.
-3. **Given** zero or multiple visible faces, **When** registration is active, **Then** no embedding is
-   saved and the operator sees a face-count instruction.
+1. Given one visible face, when front, left, and right each remain valid for 1,000 ms, then exactly three embeddings are stored for the selected model.
+2. Given a valid hold, when the face leaves the range before completion, then the hold timer resets and no embedding is captured for that attempt.
+3. Given zero or multiple faces, then registration is blocked and the UI explains the required face count.
+4. Given cancellation, foreground loss, or navigation away, then partial embeddings are discarded and the previous completed profile remains unchanged.
+5. Given re-registration, then the existing selected-model embeddings are replaced only after all three new poses succeed.
 
----
+## User Story 2 — Real-time enrolled-person identification (P1)
 
-### User Story 2 - Real-time multi-person enrolled face identification (Priority: P1)
+While the identification screen is active, the camera continuously evaluates every current face track. Each track receives an enrolled display name or `Unknown`; no identification button is required.
 
-The camera continuously compares every visible face with enrolled profiles and overlays the enrolled
-person name or Unknown for each tracked face. It never creates anonymous IDs or anonymous clusters.
+### Acceptance scenarios
 
-**Why this priority**: Registered-person identification is the face PoC's primary operator flow. Its
-scope is limited to explicit enrolled profiles, avoiding anonymous-person tracking or persistence.
+1. Given one or more visible faces and enrolled profiles, when the configured analysis interval elapses, then every current track is compared independently.
+2. Given a best score below threshold or a best-minus-second score below the minimum margin, then the result is `Unknown`.
+3. Given a face disappears or its detector track changes, then stale results are cleared and the current tracks are evaluated automatically.
+4. Given an unenrolled face, then no anonymous ID or anonymous cluster is created.
 
-**Independent Test**: Register at least two people, show multiple known and unknown faces together,
-and verify that every face is refreshed at the configured interval using threshold and top-two margin.
+### Identification terminology
 
-**Acceptance Scenarios**:
+- System level: multiple input faces × multiple enrolled people, therefore N-to-N identification.
+- Internal calculation: each current track embedding is compared 1-to-N against all enrolled people.
+- Per-person score: the maximum cosine similarity across that person's registered embeddings, including front, left, and right samples.
+- The current implementation does not aggregate three query frames; it uses one query embedding per track at each configured analysis interval.
 
-1. **Given** one or more visible faces and registered profiles, **When** an analysis interval elapses,
-   **Then** every visible face is compared and receives an enrolled name or Unknown overlay.
-2. **Given** any visible face, **When** either threshold or minimum margin is not met, **Then** that
-   face is displayed as Unknown without creating an anonymous identity.
-3. **Given** prior results, **When** faces disappear or tracking IDs change, **Then** stale results are
-   cleared and the next visible tracks are evaluated automatically.
+## User Story 3 — Controls, privacy, and deletion (P1)
 
----
+An operator can tune bounded face parameters, understand persisted data, delete one person's profile, or delete all profiles and evaluation logs.
 
-### User Story 3 - Face controls and deletion (Priority: P1)
+### Acceptance scenarios
 
-An operator can tune bounded face parameters and remove persisted PoC registrations.
+1. Valid settings persist and are restored after restart; invalid values are rejected.
+2. Deleting one person removes that person's persisted profile.
+3. Full deletion removes all face and speaker profile data plus evaluation logs after the scope is shown explicitly.
+4. The UI explains that captured images and video are not persisted and that embeddings remain in app-private storage without external transmission.
 
-**Why this priority**: Device tuning and deletion are required to operate the PoC safely.
+## Functional Requirements
 
-**Independent Test**: Save non-default face settings, restart the app, verify restoration, then delete
-all profiles and confirm no face match is possible.
+- **FR-001**: A completed registration MUST store exactly three face embeddings: front, left, and right.
+- **FR-002**: A target pose MUST remain continuously valid for 1,000 ms; leaving the range MUST reset progress.
+- **FR-003**: Registration analysis MUST default to 200 ms and median smoothing over the most recent five pose samples for the current track.
+- **FR-004**: Initial pose ranges MUST be front `|yaw| <= 8°`, `|pitch| <= 8°`, and side absolute yaw from `18°` through `32°`, with device direction/sign validated in the UI.
+- **FR-005**: Expensive embedding extraction MUST occur only after a registration pose succeeds or once per current face at the configured identification interval.
+- **FR-006**: Every current face MUST be evaluated independently using threshold plus top-two minimum margin.
+- **FR-007**: Identification MUST update continuously without a button and MUST clear stale track results.
+- **FR-008**: Anonymous face identities, anonymous clusters, and anonymous-face navigation MUST NOT exist.
+- **FR-009**: Face threshold, margin, registration and identification intervals, stable duration, pose ranges, and smoothing count MUST be persisted and validated.
+- **FR-010**: The UI MUST expose face count, smoothed yaw/pitch/roll, target pose, hold progress, model readiness, current results, and actionable errors.
+- **FR-011**: Face images and video MUST NOT be persisted; only embeddings and person metadata may be stored.
+- **FR-012**: The face path MUST operate offline on Nothing Phone (3a) for development and Pepper Android 6.0 / API 23 / ARMv7 for acceptance.
+- **FR-013**: Detection, pose, embedding, comparison, full-pipeline, and request-total durations MUST be emitted as structured evidence where measurable.
+- **FR-014**: Dataset bodies MUST remain outside the APK and version control.
+- **FR-015**: Speaker work remains a separate feature. Its current boundary is 16 kHz mono PCM16, speech-segment detection, minimum voiced duration, registered-person comparison, and `Unknown` / `INSUFFICIENT_AUDIO` outcomes.
+- **FR-016**: Removing anonymous face tracking MUST NOT remove continuous comparison against explicitly enrolled profiles.
+- **FR-017**: The UI MUST explain stored and non-stored data, purpose, location, retention, deletion, and external transmission status.
+- **FR-018**: Operators MUST be able to delete one profile or all profile and evaluation data with explicit scope.
+- **FR-019**: Re-registration MUST atomically replace only the selected model's three embeddings after all poses succeed.
+- **FR-020**: Registration MUST support explicit cancellation and discard partial state on interruption.
+- **FR-021**: Registration is single-person; identification supports all faces in the current analyzed frame and associates each result with its detector track ID.
 
-**Acceptance Scenarios**:
+## Key Entities
 
-1. **Given** valid face parameter values, **When** settings are saved and the app restarts,
-   **Then** the same values are restored.
-2. **Given** an out-of-range setting, **When** saving is attempted, **Then** it is not persisted.
-3. **Given** stored registrations, **When** delete-all is confirmed, **Then** all person embeddings are
-   removed and the UI confirms deletion.
+- **Head pose**: yaw, pitch, and roll associated with a current face track.
+- **Registration session**: person ID, display name, ordered targets, hold progress, completed poses, and captured embeddings not yet persisted.
+- **Identification frame**: current track IDs and their per-track results.
+- **Face identity result**: `IDENTIFIED` or `UNKNOWN`, best score, second score, margin, threshold, selected person, and processing duration.
+- **Face settings**: bounded thresholds, intervals, pose ranges, stable duration, and smoothing count.
 
-### Edge Cases
+## Success Criteria and Current Evidence
 
-- Tracking ID changes during a hold: reset smoothing and hold state for the new track.
-- The second candidate does not exist: treat the margin as satisfied only after threshold passes.
-- Model initialization or embedding extraction fails: show an error and clear stale identity results.
-- Pose sign differs between a mirrored preview and camera coordinates: expose current signed yaw and
-  validate direction on each device before accepting Pepper completion.
-- App leaves the foreground during registration: abandon the in-progress hold without saving.
+- **SC-001 — PASS**: Front, left, and right registration stores exactly three samples; interrupted registration stores no partial samples.
+- **SC-002 — PASS**: Current face tracks receive periodically refreshed enrolled-name or `Unknown` results and stale tracks are cleared.
+- **SC-003 — PASS**: Domain, coordinator, settings, alignment, repository, and model tests pass together with lint and ARM64 / ARMv7 builds.
+- **SC-004 — PASS**: Nothing Phone (3a) directly exercised three-pose registration, SFace and 0095, continuous identification, and stale-result clearing without a crash.
+- **SC-005 — PASS**: Pepper ARMv7 installed and opened the application; the operator completed front / left / right registration and confirmed continuous enrolled-person identification on the face screen.
+- **SC-006 — PASS**: No captured face image, video, or audio file is present in app-private output; persisted outputs are model assets, embeddings/metadata, settings, and structured benchmark records.
 
-## Requirements
-
-### Functional Requirements
-
-- **FR-001**: Registration MUST save exactly three face embeddings per completed attempt: front,
-  left, and right.
-- **FR-002**: A pose MUST remain continuously valid for 1,000 ms; leaving the range MUST reset it.
-- **FR-003**: Registration analysis MUST default to a 200 ms interval and median smoothing over the
-  most recent five pose samples.
-- **FR-004**: Front MUST initially allow absolute yaw and pitch up to 8 degrees; left and right MUST
-  initially use absolute yaw from 18 through 32 degrees. On the Nothing Phone (3a) front camera's
-  oriented analysis image, the user's left turn MUST use positive yaw and the user's right turn MUST
-  use negative yaw. Because the front-camera preview is mirrored, its on-image arrows MUST point right
-  for the user's left turn and left for the user's right turn. The UI MUST show this guidance over the
-  camera image and show the currently interpreted direction in the control panel.
-- **FR-005**: Face embeddings MUST be generated only when a registration pose succeeds or, in the
-  identification screen, once per visible face at the configured analysis interval.
-- **FR-006**: Every visible face MUST be evaluated independently. Identification MUST require a best
-  score at or above the threshold and a best-minus-second score at or above the minimum margin.
-- **FR-007**: The identification screen MUST continuously replace results for all current track IDs
-  and clear results when no face is visible; it MUST NOT require a button press.
-- **FR-008**: Anonymous face identities and anonymous face clusters MUST NOT be exposed or updated.
-- **FR-009**: The app MUST persist and validate face threshold, minimum margin, analysis intervals,
-  stable time, pose ranges, and smoothing sample count.
-- **FR-010**: The UI MUST show face count, current smoothed yaw/pitch/roll, target pose, hold progress,
-  model readiness, and errors needed to complete registration and identification.
-- **FR-011**: The app MUST NOT persist face images or video; only embeddings and person metadata may
-  be stored.
-- **FR-012**: The face path MUST remain offline and run on Nothing Phone (3a) for development and on
-  Pepper API 23/ARMv7 for acceptance.
-- **FR-013**: Face detection, pose, embedding, comparison, and total request durations MUST be emitted
-  as structured events so device performance can be evaluated later.
-- **FR-014**: Dataset files MUST remain external to the APK; BIWI and Pointing'04 evaluation is a
-  later phase and does not block completion of this feature.
-- **FR-015**: Speaker registration and identification MUST remain a later implementation phase. Its
-  fixed contract is 16 kHz mono PCM16, Silero VAD, minimum 1,000 ms voiced audio, threshold plus
-  top-two margin, and Unknown/INSUFFICIENT_AUDIO outcomes.
-- **FR-016**: Only real-time anonymous face identification and its temporary clusters MUST be removed;
-  real-time multi-person comparison against explicitly enrolled profiles MUST remain available.
-- **FR-017**: The UI MUST explain stored/non-stored data, purpose, app-private location, retention,
-  deletion, and that no external transmission occurs.
-- **FR-018**: Operators MUST be able to delete one person's profile or all profiles and evaluation
-  logs, with explicit scope shown before full deletion.
-- **FR-019**: A guided re-registration MUST replace that person's three embeddings for the selected
-  model only after all poses succeed; cancellation or interruption MUST preserve the prior profile.
-- **FR-020**: Registration MUST offer explicit cancel, and leaving the face screen MUST discard the
-  in-progress session without persisting partial embeddings.
-- **FR-021**: Registration MUST remain single-person, while identification MUST support all faces in
-  the current analyzed frame and associate each result with its detector track ID.
-
-### Key Entities
-
-- **Head pose**: Smoothed yaw, pitch, and roll associated with a current face track.
-- **Registration session**: Person identity, ordered target poses, hold start, completed poses, and
-  current progress.
-- **Identification frame**: The current set of detector track IDs and their per-track comparison results.
-- **Face identity result**: Identified or Unknown status, best and second scores, margin, threshold,
-  and processing duration.
-- **Face settings**: Validated threshold, margin, analysis intervals, pose bounds, stable duration,
-  and smoothing count.
-
-## Success Criteria
-
-### Measurable Outcomes
-
-- **SC-001**: A user can complete front, left, and right enrollment with exactly three stored samples
-  and no saved samples from interrupted holds.
-- **SC-002**: At each configured identification interval, every visible face receives one enrolled-name
-  or Unknown result, and stale track results disappear when faces leave the frame.
-- **SC-003**: All domain and repository tests for pose ranges, timed stability, margin rejection,
-  settings validation, and three-sample persistence pass.
-- **SC-004**: The full face flow installs and opens on Nothing Phone (3a), and camera registration plus
-  real-time registered-person identification are directly exercised without a crash.
-- **SC-005**: The ARMv7 build installs and opens on Pepper; device-only tuning values may remain
-  labelled provisional, but install/runtime status is reported separately from accuracy status.
-- **SC-006**: No APK asset or app-private output contains captured face images or video.
+A physical two-person Pepper frame and the 30-minute sustained run are evaluation-feature work, not blockers for completion of this face-function feature.
 
 ## Traceability
 
-| Requirements | Acceptance / success evidence | Tests | Tasks | Main files |
-| --- | --- | --- | --- | --- |
-| FR-001..005, FR-019..020 | US1 scenarios, SC-001/003 | HeadPoseGuidanceTest, FaceIdentityCoordinatorTest | T004, T006, T008..T011 | domain/face, application/face, infrastructure/face, CameraPreviewScreen.kt |
-| FR-006..008, FR-016, FR-021 | US2 scenarios, SC-002/003 | FaceIdentifierTest, FaceIdentityCoordinatorTest | T005, T007, T012..T014 | FaceIdentifier.kt, FaceIdentityCoordinator.kt, CameraPreviewScreen.kt, AppScreen.kt |
-| FR-009..010 | US3 settings scenarios, SC-003 | PocSettingsTest | T015..T017 | PocSettings.kt, SharedPreferencesSettingsRepository.kt, SettingsScreen.kt |
-| FR-011, FR-017..018 | US3 deletion scenario, SC-006 | FaceIdentityCoordinatorTest, repository tests | T017, T021 | PersonRepository.kt, FilePersonRepository.kt, SettingsScreen.kt, CameraPreviewScreen.kt |
-| FR-012..013 | SC-004/005 | builds, adb smoke and instrumentation | T018..T020 | YuNetFaceDetector.kt, BenchmarkEvent.kt, quickstart.md |
-| FR-014..015 | Deferred boundary | Later feature validation | Not in face MVP | Canonical specification supplied 2026-07-18 |
+| Requirements | Acceptance / evidence | Tests / tasks | Primary files |
+| --- | --- | --- | --- |
+| FR-001..005, FR-019..020 | US1, SC-001/003/004/005 | T004, T006, T008..T011, T018..T020 | `HeadPoseGuidance.kt`, `FaceIdentityCoordinator.kt`, `YuNetFaceDetector.kt`, `CameraPreviewScreen.kt` |
+| FR-006..008, FR-016, FR-021 | US2, SC-002/003/004/005 | T005, T007, T012..T014, T018..T020 | `FaceIdentifier.kt`, `FaceIdentityResult.kt`, `FaceIdentityCoordinator.kt`, `AppScreen.kt` |
+| FR-009..010 | US3 settings, SC-003 | T015..T017 | `PocSettings.kt`, `SharedPreferencesSettingsRepository.kt`, `SettingsScreen.kt` |
+| FR-011, FR-017..018 | US3 privacy/deletion, SC-006 | T017, T021 | `PersonRepository.kt`, `FilePersonRepository.kt`, `SettingsScreen.kt` |
+| FR-012..013 | SC-004/005 and `quickstart.md` | T018..T020 | `YuNetFaceDetector.kt`, benchmark logger/events, device scripts |
+| FR-014..015 | Explicit deferred boundary | Separate dataset/speaker features | `specs/002-face-evaluation/`, later speaker spec |
 
-## Assumptions
+## Assumptions and Deferred Work
 
-- SFace remains the default face embedding model; converted 0095 remains selectable for comparison.
-- Nothing Phone (3a) arm64 evidence accelerates development but does not replace Pepper acceptance.
-- Face dataset performance and tuning, speaker implementation, encryption, and long-duration load
-  tests are explicitly deferred and tracked outside this face MVP.
+- SFace remains the default face model; converted 0095 remains selectable for comparison.
+- Pointing'04 results and Pepper short-run telemetry are evidence for the separate evaluation feature, not proof of production accuracy.
+- BIWI acquisition, 30-minute Pepper telemetry, a physical multi-face Pepper run, speaker re-specification, encryption, and production access controls remain separately tracked work.
