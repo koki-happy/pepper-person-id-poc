@@ -5,64 +5,78 @@
 
 ## Summary
 
-Converge the existing speaker path into a constitution-compliant registered-speaker feature. Preserve the working PCM, VAD, embedding, registration, and threshold comparison path; remove anonymous-speaker functionality; add top-two margin; make the 16 kHz boundary explicit; and qualify the models with Japanese speech and Pepper microphone evidence.
+Converge the existing speaker path into a constitution-compliant registered-speaker feature. Preserve working PCM, VAD, embedding, and raw-template storage; remove anonymous-speaker functionality; add top-two margin; make the 16 kHz boundary explicit; implement model-independent matching strategies; and select the model, method, threshold, and margin from Japanese and Pepper microphone evidence.
 
 ## Constitution Check
 
-- **Unknown-first**: Partial. Threshold rejection exists; top-two margin remains.
-- **No anonymous identity**: Fail. Anonymous-speaker screen, clusterer, coordinator branch, results, and logs remain.
-- **Privacy by Design**: Pass for raw media persistence. PCM/WAV are not stored; embeddings and metadata persist locally.
-- **Pepper-first**: Partial. Model and VAD smoke evidence exists; Japanese / Pepper microphone qualification and sustained performance remain.
-- **Evidence and Traceability**: Partial. Existing tests cover threshold identification, but the speaker feature was not previously separated into its own Spec Kit artifacts.
+- **Unknown-first**: Partial. Threshold rejection exists; margin remains.
+- **No anonymous identity**: Fail. Anonymous-speaker path remains.
+- **Privacy by Design**: Pass for raw media persistence. PCM/WAV are not stored.
+- **Pepper-first**: Partial. Model/VAD smoke evidence exists; microphone qualification and sustained performance remain.
+- **Evidence and Traceability**: Partial. Model and method have not previously been separated in reports.
 
 ## Technical Context
 
 - Input: `AudioRecord`, mono PCM16, 16 kHz preferred, 44.1 kHz fallback
 - VAD: Silero VAD at 16 kHz; energy-based fallback otherwise
-- Segmentation: start at first speech, complete after 600 ms trailing silence or 10 s total
 - Minimum voiced duration: 1,000 ms
-- Embedding: sherpa-onnx `SpeakerEmbeddingExtractor`, CPU, one thread
-- Models: CAM++ and ERes2Net
-- Matching: cosine similarity, per-person maximum registered-template score
+- Models: `Voice-Model-1` CAM++ and `Voice-Model-2` ERes2Net
+- Current method: `Voice-Method-1`, per-person maximum registered-template cosine score
+- Required comparison: `Voice-Method-2`, L2-normalized person centroid cosine score
+- Optional later method: `Voice-Method-3`, quality-weighted centroid
 - Current decision: threshold only
 - Target decision: threshold plus top-two margin
-- Persistence: model-separated speaker templates in app-private person profiles
+- Persistence: model-separated raw speaker templates in app-private profiles
 - Acceptance device: Pepper API 23 / ARMv7
 
 ## Architecture changes
 
-1. Remove `AnonymousSpeakerIdentification` from `AppScreen` and `MainActivity`.
-2. Remove `ANONYMOUS_IDENTIFICATION` from `SpeakerScreenMode`.
-3. Remove `AnonymousSpeakerClusterer`, anonymous state, anonymous result UI, reset action, and anonymous benchmark events.
-4. Extend `SpeakerIdentityResult` with second score and margin.
-5. Extend `SpeakerIdentifier.identify` with `minimumMargin` and sorted candidate handling matching the face identifier contract.
-6. Add `speakerMargin` to `PocSettings`, validation, SharedPreferences codec, and settings UI.
-7. Reject or resample non-16-kHz utterances before the speaker embedding engine. Initial implementation should reject explicitly unless a resampling design is separately approved.
-8. Keep speaker templates separate by person and model; do not introduce average-template persistence.
-9. Add structured VAD, segment, embedding, comparison, threshold, second-score, margin, and decision evidence.
+1. Remove anonymous-speaker navigation, mode, clusterer, state, UI, tests, and logs.
+2. Extend `SpeakerIdentityResult` with second score, margin, minimum margin, model ID, and method ID.
+3. Introduce a pure domain matching boundary, such as `SpeakerTemplateScorer`, that accepts one query and a person's raw templates.
+4. Implement `Voice-Method-1` and `Voice-Method-2` behind that boundary.
+5. Keep raw templates separated by person and model. Do not replace stored templates with only a centroid.
+6. Derive and cache a centroid only when necessary; invalidate it when a template is added, deleted, or the model changes.
+7. Add `speakerMethod` and `speakerMargin` to validated settings only after domain tests exist.
+8. Reject non-16-kHz utterances before the embedding engine unless a separate resampling design is approved.
+9. Log model, method, template count, best score, second score, margin, thresholds, and decision.
 
 ## Evaluation plan
 
-1. Define deterministic enrolled/development/final splits for J-SpAW and JVS.
-2. Record dataset provenance, license, exclusions, hashes, and sample-rate handling.
-3. Evaluate CAM++ and ERes2Net under identical utterance and scoring rules.
-4. Sweep threshold and margin on development data only.
-5. Report FAR, MIR, Accuracy, FRR, EER, insufficient-audio rate, and processing time.
-6. Record Pepper microphone samples without persisting raw PCM/WAV beyond the active processing session.
-7. Run short and sustained Pepper sessions, reporting CPU, memory, utterance latency, VAD segmentation delay, embedding time, and decision time.
+### Method comparison
+
+1. Fix one speaker model and one deterministic data split.
+2. Compare `Voice-Method-1` and `Voice-Method-2` on exactly the same embeddings and probes.
+3. Select threshold and margin independently for each method using development data only.
+4. Report FAR, MIR, Accuracy, FRR, EER, insufficient-audio rate, and score distributions.
+5. Record performance cost and template-count sensitivity.
+6. Add `Voice-Method-3` only if Method-2 leaves a documented quality problem and a reproducible quality weight can be defined.
+
+### Model comparison
+
+1. Fix the selected matching method.
+2. Compare CAM++ and ERes2Net under identical segmentation, templates, probes, thresholds-search process, and metrics.
+3. Do not infer model superiority from results that changed both model and method.
+
+### Pepper qualification
+
+1. Validate functional registration and identification with Pepper microphone input.
+2. Run sustained sessions and report CPU, memory, VAD delay, utterance duration, embedding time, aggregation time, comparison time, stalls, and errors.
+3. Compare dataset/file input and Pepper microphone behavior.
 
 ## Dependency order
 
 1. Constitution alignment and anonymous-path removal
-2. Pure domain margin tests and implementation
-3. Settings and result-model changes
-4. Coordinator/UI integration
+2. Pure-domain matching-method tests and implementation
+3. Top-two margin and result-model changes
+4. Settings and UI integration
 5. Sample-rate boundary correction
-6. Unit/lint/build validation
-7. Japanese dataset evaluation
-8. Pepper microphone and sustained performance evidence
-9. Final results and model/threshold decision
+6. Unit/lint/ARM64/ARMv7 validation
+7. Japanese method comparison
+8. Japanese model comparison with method fixed
+9. Pepper microphone and sustained evidence
+10. Final model/method/threshold/margin decision
 
 ## Completion boundary
 
-This feature is complete only when anonymous-speaker identity is removed, threshold-plus-margin is implemented and tested, unsupported sample rates are handled explicitly, and Japanese plus Pepper microphone evidence is published. English/Chinese model smoke tests alone are insufficient for final model selection.
+This feature is complete only when anonymous-speaker identity is removed, `Voice-Method-1` and `Voice-Method-2` are reproducibly evaluated, the selected method has threshold-plus-margin behavior, unsupported sample rates are handled explicitly, and Japanese plus Pepper microphone evidence identifies the final model, method, threshold, and margin. Smoke tests alone are insufficient.
