@@ -1,7 +1,7 @@
 # Feature Specification: Registered-speaker Identification
 
 **Feature Branch**: `codex/face-identification`  
-**Status**: Current implementation documented; constitution alignment and evaluation remain incomplete
+**Status**: Current implementation documented; constitution alignment, method selection, and evaluation remain incomplete
 
 ## Source of truth
 
@@ -9,183 +9,216 @@
 - Code-grounded overview: [`../../docs/openwiki-current-state.md`](../../docs/openwiki-current-state.md)
 - Implementation plan: [`plan.md`](plan.md)
 - Remaining work: [`tasks.md`](tasks.md)
-- Current behavior: `AndroidPcmAudioRecorder`, `PcmUtteranceSegmenter`, `SherpaSileroVoiceActivityDetector`, `SherpaOnnxSpeakerEmbeddingEngine`, `SpeakerIdentifier`, and `SpeakerIdentityCoordinator`.
 
 ## Scope
 
 This feature defines registered-speaker registration and identification using local PCM input and speaker embeddings. It does not include speech recognition, speaker diarization, overlapping-speaker separation, face-speaker fusion, or conversation history.
 
-The current code already supports PCM capture, VAD segmentation, CAM++ / ERes2Net embeddings, multiple templates per registered person, and threshold-based 1-to-N identification. The feature remains incomplete because anonymous-speaker identification still exists, top-two margin is not implemented, and Japanese / Pepper microphone qualification is not complete.
+The feature distinguishes two independent axes:
+
+1. **Speaker embedding model**: converts an utterance into an embedding.
+2. **Template aggregation and matching method**: combines multiple enrollment embeddings and produces a person score.
+
+A model conclusion MUST NOT be inferred from a comparison that also changed the matching method. A method conclusion MUST NOT be inferred from a comparison that also changed the embedding model.
+
+## Models
+
+| ID | Model | Runtime dimension | State |
+| --- | --- | ---: | --- |
+| `Voice-Model-1` | CAM++ English VoxCeleb | 512 | Implemented |
+| `Voice-Model-2` | ERes2Net English VoxCeleb | 192 | Implemented; current default |
+| `Voice-Reference` | RyuseiNet | model-dependent | PC reference; not deployed to Pepper |
+
+Runtime dimension is read from `SpeakerEmbeddingExtractor.dim()`.
+
+## Matching methods
+
+| ID | Enrollment aggregation | Person score | State |
+| --- | --- | --- | --- |
+| `Voice-Method-1` | Store every accepted utterance separately | Maximum cosine similarity across all templates | Current implementation |
+| `Voice-Method-2` | L2-normalize each template, average, then L2-normalize the centroid | Cosine similarity to one person centroid | Required comparison candidate |
+| `Voice-Method-3` | Quality-weighted L2-normalized centroid | Cosine similarity to weighted centroid | Optional after Method-2 |
+| `Voice-Method-4` | PLDA-compatible enrollment representation | PLDA log-likelihood ratio | PC research candidate; not initial Pepper scope |
 
 ## User Story 1 — Register speaker samples
 
-An operator selects a person, requests registration, and provides at least one second of voiced audio. Each accepted utterance adds one speaker embedding for the selected model.
+An operator selects a person, requests registration, and provides at least one second of voiced audio. Each accepted utterance adds one embedding for the selected model.
 
 ### Acceptance scenarios
 
-1. Given a pending registration and at least 1,000 ms of voiced audio, one embedding is appended to that person's selected-model templates.
-2. Given less than 1,000 ms of voiced audio, the result is `INSUFFICIENT_AUDIO` and no template is stored.
-3. Given a different speaker model, templates remain separated by model name.
-4. Given a PCM or model error, no invalid or partial embedding is stored.
+1. Given a pending registration and at least 1,000 ms voiced audio, one embedding is appended to the selected person's selected-model templates.
+2. Given less than 1,000 ms voiced audio, return `INSUFFICIENT_AUDIO` and store no template.
+3. Templates remain separated by person and model.
+4. PCM/model errors store no invalid or partial template.
+5. Stored templates remain available for all supported matching methods; changing method does not require re-extracting embeddings from raw audio.
 
 ## User Story 2 — Identify a registered speaker
 
-For every completed utterance, the application compares one query embedding against all registered people for the selected speaker model and returns a registered person or `Unknown`.
+For every completed utterance, the application creates one query embedding, calculates one score per enrolled person using the selected method, and returns a person or `Unknown`.
 
 ### Acceptance scenarios
 
-1. Given valid 16 kHz audio and registered templates, each utterance is evaluated once after segmentation.
-2. Given the best person score below threshold, the result is `Unknown`.
-3. Given a future top-two margin implementation, a best-minus-second score below the minimum margin also returns `Unknown`.
-4. Given no registered templates, no registered person is returned.
-5. Given overlapping speakers, the application does not claim to separate them; the mixed utterance remains outside the guaranteed acceptance scope.
+1. Every valid 16 kHz completed utterance is evaluated once.
+2. A best score below threshold returns `Unknown`.
+3. A best-minus-second score below minimum margin returns `Unknown` after the margin implementation is complete.
+4. Reports include `model_id`, `method_id`, threshold, margin, and template count.
+5. Overlapping speakers are not claimed to be separated.
 
 ## Mathematical specification
 
 ### PCM normalization
 
-AudioRecord produces mono PCM16 samples $x[n]\in[-32768,32767]$. Inference uses
+For mono PCM16 sample $x[n]\in[-32768,32767]$:
 
 $$
 z[n]=\frac{x[n]}{32768}
 $$
 
-The recorder tries 16 kHz first and 44.1 kHz second. The current speaker embedding engine requires 16 kHz, so 44.1 kHz capture is not a valid speaker-embedding path without resampling.
+The recorder tries 16 kHz before 44.1 kHz. Current speaker models require 16 kHz; unsupported sample rates must be rejected or resampled explicitly before embedding.
 
 ### VAD and utterance segmentation
 
-At 16 kHz, Silero VAD uses threshold 0.5, window size 512, minimum silence 0.6 s, minimum speech 1.0 s, maximum speech 10.0 s, CPU provider, and one thread.
+At 16 kHz, Silero VAD uses threshold 0.5, window 512, minimum silence 0.6 s, minimum speech 1.0 s, maximum speech 10.0 s, CPU provider, and one thread.
 
-For chunk $k$, let $v_k\in\{0,1\}$ be the speech decision and $N_k$ its sample count. Voiced duration is
+For chunk $k$, speech decision $v_k\in\{0,1\}$, sample count $N_k$, and sample rate $F_s$:
 
 $$
 T_{voice}=\frac{1000}{F_s}\sum_kN_kv_k
 $$
 
-The input is sufficient only when
-
 $$
 \operatorname{SufficientAudio}\iff T_{voice}\ge1000\,\mathrm{ms}
 $$
 
-The segment starts at the first speech chunk and ends after 600 ms trailing silence or 10,000 ms total duration.
-
 ### Speaker embedding
 
-For utterance $U$ and selected model $m$:
+For utterance $U$ and model $m$:
 
 $$
 \mathbf q^{voice}=g_m(U)\in\mathbb R^{d_m}
 $$
 
-Current models are CAM++ and ERes2Net. Runtime dimension is taken from `SpeakerEmbeddingExtractor.dim()`; the current English models produce 512 and 192 dimensions respectively.
-
-### Registered template storage
-
-For person $p$ and model $m$, speaker templates are stored separately and appended per accepted registration utterance:
+For person $p$, model $m$, and accepted enrollment utterances:
 
 $$
 R^{voice}_{p,m}=\{\mathbf r_{p,m,1},\ldots,\mathbf r_{p,m,M_p}\}
 $$
 
-The implementation does **not** average or concatenate the templates. $M_p$ is not fixed.
+The raw enrollment embeddings are stored separately. Aggregated centroids are derived data and need not replace the stored templates.
 
-### Current identification aggregation
-
-Cosine similarity is
-
-$$
-\cos(\mathbf a,\mathbf b)=\frac{\mathbf a^\top\mathbf b}{\|\mathbf a\|_2\|\mathbf b\|_2}
-$$
-
-For person $p$ and registered template $j$:
+### Voice-Method-1 — current maximum-template score
 
 $$
 c^{voice}_{p,j}=\cos(\mathbf q^{voice},\mathbf r_{p,m,j})
 $$
 
-The person's score is the maximum similarity across that person's templates:
-
 $$
-s^{voice}_{p}=\max_{1\le j\le M_p}c^{voice}_{p,j}
+s^{voice,\max}_p=\max_{1\le j\le M_p}c^{voice}_{p,j}
 $$
 
-The best person is
+This method can favor people with more stored templates because more comparisons increase the chance of an extreme score. Template count MUST therefore be reported.
+
+### Voice-Method-2 — normalized centroid
+
+Normalize each enrollment embedding:
 
 $$
-p_1=\arg\max_ps^{voice}_p
+\widetilde{\mathbf r}_{p,m,j}=\frac{\mathbf r_{p,m,j}}{\|\mathbf r_{p,m,j}\|_2}
 $$
 
-Current code uses threshold only:
+Create and normalize the person centroid:
 
 $$
-\widehat y^{voice}=\begin{cases}
-p_1,&s^{voice}_{p_1}\ge\tau_{voice}\\
+\overline{\mathbf r}^{voice}_{p,m}
+=
+\frac{\sum_{j=1}^{M_p}\widetilde{\mathbf r}_{p,m,j}}
+{\left\|\sum_{j=1}^{M_p}\widetilde{\mathbf r}_{p,m,j}\right\|_2}
+$$
+
+Normalize the query and score:
+
+$$
+\widetilde{\mathbf q}^{voice}=\frac{\mathbf q^{voice}}{\|\mathbf q^{voice}\|_2}
+$$
+
+$$
+s^{voice,centroid}_p
+=
+\widetilde{\mathbf q}^{voice\top}\overline{\mathbf r}^{voice}_{p,m}
+$$
+
+`Voice-Method-2` is the first comparison candidate because it reduces person-score dependence on enrollment-template count and keeps one comparison per person.
+
+### Voice-Method-3 — quality-weighted centroid
+
+For non-negative quality weights $w_j$ with $\sum_jw_j=1$:
+
+$$
+\overline{\mathbf r}^{voice,w}_{p,m}
+=
+\operatorname{Normalize}\left(\sum_{j=1}^{M_p}w_j\widetilde{\mathbf r}_{p,m,j}\right)
+$$
+
+Quality may use voiced duration, SNR, clipping, or another versioned and testable measure. This method is not adopted until the quality signal is defined and Method-2 has been evaluated.
+
+### Decision rule
+
+Let $s_p$ be the score produced by the selected matching method:
+
+$$
+p_1=\arg\max_ps_p,\qquad p_2=\arg\max_{p\ne p_1}s_p
+$$
+
+$$
+d^{voice}=s_{p_1}-s_{p_2}
+$$
+
+$$
+\widehat y^{voice}=
+\begin{cases}
+p_1,&s_{p_1}\ge\tau_{voice}\land d^{voice}\ge\delta_{voice}\\
 \mathrm{Unknown},&\text{otherwise}
 \end{cases}
 $$
 
-Current default is $\tau_{voice}=0.60$.
-
-### Required convergence: top-two margin
-
-The target feature adds
-
-$$
-p_2=\arg\max_{p\ne p_1}s^{voice}_p
-$$
-
-$$
-d^{voice}=s^{voice}_{p_1}-s^{voice}_{p_2}
-$$
-
-and decides
-
-$$
-\widehat y^{voice}_{target}=\begin{cases}
-p_1,&s^{voice}_{p_1}\ge\tau_{voice}\land d^{voice}\ge\delta_{voice}\\
-\mathrm{Unknown},&\text{otherwise}
-\end{cases}
-$$
-
-This margin equation is a target requirement and is not yet the current `SpeakerIdentifier` behavior.
+Current code implements threshold-only `Voice-Method-1`; top-two margin and selectable method support are not yet implemented.
 
 ## Functional Requirements
 
-- **FR-001**: Capture MUST prefer 16 kHz mono PCM16 and normalize samples by 32768 for VAD and speaker inference.
-- **FR-002**: Silero VAD MUST segment 16 kHz audio with explicit threshold, minimum speech, minimum silence, and maximum duration settings.
-- **FR-003**: Less than 1,000 ms voiced duration MUST return `INSUFFICIENT_AUDIO` and MUST NOT store a template.
-- **FR-004**: Each accepted registration utterance MUST append one separate template for the selected model.
-- **FR-005**: Registered templates MUST remain separated by person and speaker model.
-- **FR-006**: Current per-person score MUST be the maximum cosine similarity across that person's registered templates.
-- **FR-007**: Identification MUST return `Unknown` below threshold.
-- **FR-008**: The completed feature MUST also return `Unknown` below the top-two minimum margin.
-- **FR-009**: Anonymous-speaker IDs, clusters, navigation, result UI, and anonymous logging MUST be removed.
-- **FR-010**: PCM and WAV MUST NOT be persisted; only embeddings, metadata, and structured performance events may be stored.
-- **FR-011**: The feature MUST be evaluated with Japanese speech and Pepper microphone input before model and threshold selection is final.
-- **FR-012**: Overlapping-speaker separation and diarization are out of scope and MUST NOT be represented as implemented.
-- **FR-013**: Unsupported sample-rate behavior MUST be explicit; 44.1 kHz capture MUST be resampled or rejected before speaker embedding.
+- **FR-001**: Capture MUST prefer 16 kHz mono PCM16 and normalize samples by 32768.
+- **FR-002**: VAD and segmentation settings MUST be explicit and logged.
+- **FR-003**: Less than 1,000 ms voiced duration MUST return `INSUFFICIENT_AUDIO` and store no template.
+- **FR-004**: Every accepted registration utterance MUST append one model-separated raw embedding.
+- **FR-005**: Model selection and matching-method selection MUST be separate settings/report fields.
+- **FR-006**: `Voice-Method-1` and `Voice-Method-2` MUST be implemented in a pure, testable domain component before final evaluation.
+- **FR-007**: Reports MUST include model, method, template count, threshold, second score, margin, and decision.
+- **FR-008**: Identification MUST return `Unknown` below threshold or margin.
+- **FR-009**: Anonymous-speaker IDs, clusters, navigation, UI, and logs MUST be removed.
+- **FR-010**: PCM/WAV MUST NOT be persisted.
+- **FR-011**: Unsupported sample rates MUST be rejected or resampled explicitly.
+- **FR-012**: Japanese and Pepper-microphone evaluation MUST compare models under a fixed method and methods under a fixed model.
+- **FR-013**: Threshold and margin MUST be selected separately for every model-method pair using development data only.
+- **FR-014**: Overlapping-speaker separation and diarization remain out of scope.
 
 ## Current status
 
 | Capability | State |
 | --- | --- |
-| PCM16 capture | Implemented |
-| 16 kHz Silero VAD | Implemented |
-| 44.1 kHz energy-VAD fallback | Implemented for segmentation, but incompatible with current 16 kHz-only speaker embedding |
-| Minimum 1,000 ms voiced duration | Implemented |
+| PCM16 capture and 16 kHz Silero VAD | Implemented |
+| Minimum voiced duration | Implemented |
 | CAM++ / ERes2Net embedding | Implemented |
-| Multiple templates per person | Implemented |
-| Per-person maximum similarity | Implemented |
-| Threshold-based `Unknown` | Implemented |
+| Separate raw templates per person/model | Implemented |
+| `Voice-Method-1` maximum score | Implemented |
+| `Voice-Method-2` normalized centroid | Not implemented |
 | Top-two margin | Not implemented |
 | Anonymous-speaker removal | Not implemented |
 | Japanese / Pepper microphone qualification | Not complete |
 
 ## Success criteria
 
-- Anonymous-speaker functionality is absent from navigation, code, tests, and logs.
-- Threshold and margin decisions are covered by unit tests.
+- Anonymous-speaker functionality is absent from code, UI, tests, and logs.
+- `Voice-Method-1` and `Voice-Method-2` have deterministic unit tests.
+- Model and method are separately selectable or separately evaluated without ambiguity.
 - Unsupported sample rates cannot reach speaker embedding silently.
-- J-SpAW, JVS, and Pepper microphone evidence report FAR, MIR, Accuracy, FRR, and EER under a reproducible protocol.
-- Selected models and thresholds are based on Japanese and Pepper measurements rather than English-only smoke evidence.
+- J-SpAW, JVS, and Pepper evidence report metrics for each evaluated model-method pair.
+- Final model, method, threshold, and margin are selected from Japanese and Pepper evidence rather than smoke tests.
