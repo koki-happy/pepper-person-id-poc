@@ -1,148 +1,150 @@
 # Feature Specification: Face Accuracy and Pepper Performance Evaluation
 
-**Feature Branch**: `codex/face-identification`
+**Feature Branch**: `codex/face-identification`  
+**Status**: Partially implemented
 
-**Created**: 2026-07-18
+## Scope
 
-**Status**: Approved for implementation
+Evaluate enrolled-person face identification on BIWI and Pointing'04, then evaluate sustained operation on the legacy Pepper tablet. The evaluation MUST distinguish the embedding model from the template/query aggregation and decision method.
 
-**Input**: Evaluate enrolled-person face identification with the full BIWI and Pointing'04 datasets,
-then evaluate sustained face detection, pose guidance, and identification performance on the legacy
-Pepper tablet.
+## Evaluation axes
 
-## User Scenarios & Testing
+### Embedding models
 
-### User Story 1 - Dataset identity evaluation (Priority: P1)
+- `Face-Model-1`: SFace 2021dec, 128 dimensions
+- `Face-Model-2`: face-reidentification-retail-0095, 256 dimensions
 
-An evaluator can reproduce identity results for both supported face models across yaw/pitch bands,
-registration strategies, enrolled subjects, and held-out Unknown subjects.
+### Matching methods
 
-**Why this priority**: False acceptance and wrong-person identification are the highest-risk failures.
+- `Face-Method-1`: current method; one template per front/left/right pose and maximum similarity across poses.
+- `Face-Method-2`: normalize samples, average within the same pose, normalize the pose centroid, then take the maximum across pose centroids.
+- `Face-Method-3`: normalize all enrollment samples across all poses into one centroid; comparison baseline only.
+- `Face-Method-4`: aggregate a short same-track query window, then apply `Face-Method-2`; stability/performance comparison only.
 
-**Independent Test**: A fixed manifest produces per-model CSV/JSON/Markdown reports from BIWI and
-Pointing'04 without using device camera input.
+Model comparison MUST hold the method constant. Method comparison MUST hold the model, data split, detector, thresholds-search process, and probe set constant.
 
-**Acceptance Scenarios**:
+## Mathematical protocol
 
-1. **Given** disjoint enrolled and Unknown subjects, **When** evaluation runs, **Then** FAR,
-   misidentification, correct identification, FRR, and EER are reported overall and by pose band.
-2. **Given** front-only and front/left/right enrollment protocols, **When** the same probes are scored,
-   **Then** the performance delta is reported under identical thresholds.
-3. **Given** subjects with two capture series, **When** enrollment and probe series differ, **Then** a
-   cross-series report is produced without sample leakage.
+For person $p$, model $m$, pose $o$, and enrollment sample $j$:
 
----
+$$
+\widetilde{\mathbf r}_{p,m,o,j}=\frac{\mathbf r_{p,m,o,j}}{\|\mathbf r_{p,m,o,j}\|_2}
+$$
 
-### User Story 2 - Threshold and ambiguity evaluation (Priority: P1)
+`Face-Method-2` pose centroid:
 
-An evaluator can select a threshold and top-two margin from development data while keeping final
-subjects isolated, with Unknown returned below threshold or below the minimum margin.
+$$
+\overline{\mathbf r}_{p,m,o}
+=
+\operatorname{Normalize}\left(
+\sum_{j=1}^{K_{p,o}}w_{p,o,j}\widetilde{\mathbf r}_{p,m,o,j}
+\right)
+$$
 
-**Why this priority**: A single favorable threshold measured on the final set would overstate safety.
+with uniform weights $w_{p,o,j}=1/K_{p,o}$ unless an explicitly versioned quality rule is evaluated.
 
-**Independent Test**: A threshold sweep reports FAR/FRR/EER and rejects a deliberately ambiguous
-first-versus-second candidate case.
+For normalized query $\widetilde{\mathbf q}_i$:
 
-**Acceptance Scenarios**:
+$$
+s^{face}_{i,p}=\max_{o\in\{F,L,R\}}\widetilde{\mathbf q}_i^\top\overline{\mathbf r}_{p,m,o}
+$$
 
-1. **Given** development and final splits, **When** thresholds and margins are swept, **Then** chosen
-   parameters derive only from development data and final metrics remain isolated.
-2. **Given** a best score below threshold or a top-two gap below margin, **When** classified, **Then**
-   the output is Unknown.
+When $K_{p,o}=1$, `Face-Method-2` reduces to the current `Face-Method-1` behavior.
 
----
+`Face-Method-3` uses one all-pose centroid:
 
-### User Story 3 - Pepper sustained performance (Priority: P1)
+$$
+\overline{\mathbf r}^{all}_{p,m}
+=
+\operatorname{Normalize}\left(
+\sum_{o,j}\widetilde{\mathbf r}_{p,m,o,j}
+\right)
+$$
 
-An operator can run the real app face pipeline on Pepper and receive a reproducible short-run and
-continuous-run performance report, including stalls and resource growth.
+$$
+s^{face,all}_{i,p}=\widetilde{\mathbf q}_i^\top\overline{\mathbf r}^{all}_{p,m}
+$$
 
-**Why this priority**: Offline correctness is insufficient if the legacy tablet cannot sustain it.
+The best and second candidates are:
 
-**Independent Test**: A bounded Pepper session produces timing distributions, update frequency, CPU,
-memory, dropped-work, and stall measurements from actual camera processing.
+$$
+p_1=\arg\max_p s_{i,p},\qquad p_2=\arg\max_{p\ne p_1}s_{i,p}
+$$
 
-**Acceptance Scenarios**:
+$$
+d_i=s_{i,p_1}-s_{i,p_2}
+$$
 
-1. **Given** one face moving front/left/right/up/down, **When** the short run completes, **Then** average,
-   maximum, and P95 are reported for detection, pose, identification, frame total, and UI-visible delay.
-2. **Given** continuous operation, **When** the long run completes, **Then** CPU, memory growth, effective
-   FPS, dropped work, stalls, and pose-display update frequency are reported.
-3. **Given** multiple faces where practical, **When** identification runs, **Then** throughput and stalls
-   are recorded separately from the single-face baseline.
+$$
+\widehat y_i=
+\begin{cases}
+p_1,&s_{i,p_1}\ge\tau\land d_i\ge\delta\\
+\mathrm{Unknown},&\text{otherwise}
+\end{cases}
+$$
 
-### Edge Cases
+Threshold $\tau$ and margin $\delta$ MUST be selected separately for each model-method pair using development data only.
 
-- Missing/corrupt dataset files fail validation before scoring and identify the exact sample.
-- Subjects, sequences, or images cannot occur in both enrollment and final probe roles.
-- Images with no face or multiple faces are counted and reported rather than silently discarded.
-- Pose labels outside declared dataset ranges are rejected.
-- A dataset unsuitable for a requested comparison reports the supported subset explicitly.
-- Pepper process death, camera loss, counter reset, or incomplete run marks the run invalid.
+## User Story 1 — Dataset identity evaluation
 
-## Requirements
+An evaluator can reproduce identity results across models, methods, pose bands, enrollment protocols, enrolled subjects, and held-out Unknown subjects.
 
-### Functional Requirements
+### Acceptance scenarios
 
-- **FR-001**: Evaluation MUST use the full available BIWI RGB frames and Pointing'04 images with their
-  official subject, series, yaw, and pitch metadata.
-- **FR-002**: Dataset provenance, license, source URL, downloaded file hashes, extraction result, and
-  exclusions MUST be recorded.
-- **FR-003**: A deterministic manifest MUST assign subjects and samples to enrollment, development,
-  final registered probes, and final Unknown probes without subject or sample leakage.
-- **FR-004**: Both SFace and converted 0095 MUST run under the same detection, enrollment, probe, and
-  scoring protocol.
-- **FR-005**: Reports MUST include pose-banded correct identification, registered-person
-  misidentification, FAR, FRR, and sample counts.
-- **FR-006**: Reports MUST include EER and threshold/margin sweeps, with parameter selection isolated
-  from the final split.
-- **FR-007**: Front-only enrollment MUST be compared with front/left/right enrollment.
-- **FR-008**: Cross-series evaluation MUST cover all Pointing'04 subjects and the four BIWI subjects
-  that have two series, subject to verified dataset metadata.
-- **FR-009**: Below-threshold and insufficient-margin probes MUST produce Unknown.
-- **FR-010**: Every result MUST be reproducible from a versioned manifest and machine-readable report.
-- **FR-011**: Dataset bodies MUST remain outside the APK and excluded from version control.
-- **FR-012**: Pepper evaluation MUST run the installed application pipeline on Android 6.0/API 23/ARMv7.
-- **FR-013**: Pepper reports MUST include average, maximum, and P95 detection, pose, identification,
-  full-pipeline, and camera-to-visible-update latency where each boundary can be measured directly.
-- **FR-014**: Pepper reports MUST include average/minimum effective FPS, CPU average/maximum, memory
-  average/maximum/growth, dropped count/rate, stall count/maximum duration, and pose update frequency.
-- **FR-015**: Pepper MUST be evaluated for both a short functional run and a continuous run; the report
-  MUST state exact duration, face count, pose actions, model, settings, and any invalid measurements.
-- **FR-016**: Dataset and Pepper evidence MUST distinguish measured values from unavailable or inferred
-  values; unavailable metrics MUST NOT be reported as zero.
+1. Disjoint enrolled and Unknown subjects produce FAR, MIR, Accuracy, FRR, and EER overall and by pose band.
+2. Front-only and front/left/right enrollment are compared on the same probes.
+3. The report contains distinct `model_id` and `method_id` fields.
+4. Model comparisons keep `method_id` fixed.
+5. Method comparisons keep `model_id` fixed.
+6. If a dataset contains only one accepted sample per pose, the report states that `Face-Method-1` and `Face-Method-2` are mathematically equivalent for that protocol.
 
-### Key Entities
+## User Story 2 — Threshold and ambiguity evaluation
 
-- **Dataset sample**: Dataset, subject, series, image path, yaw, pitch, roll when available, and checksum.
-- **Evaluation manifest**: Immutable role assignments, enrollment protocol, model, threshold sweep,
-  margin sweep, exclusions, and random seed.
-- **Identity trial**: Probe subject, expected enrolled ID or Unknown, candidates, scores, decision, and
-  pose band.
-- **Accuracy report**: Counts and metrics overall, by dataset, pose, model, protocol, and threshold.
-- **Pepper run**: Device facts, app/model/settings, timing samples, resource samples, drops, stalls, and
-  start/end state.
+An evaluator selects threshold and top-two margin from development data while final subjects remain isolated.
+
+### Acceptance scenarios
+
+1. Each model-method pair receives an independent threshold/margin sweep.
+2. A best score below threshold or top-two gap below margin returns `Unknown`.
+3. Final metrics are produced without retuning on final data.
+
+## User Story 3 — Pepper sustained performance
+
+An operator can run the installed face pipeline on Pepper and obtain short-run, continuous-run, and multiple-face reports.
+
+### Acceptance scenarios
+
+1. Short runs report average, maximum, and P95 for detection, pose, embedding, comparison, pipeline, and UI-ready delay where measurable.
+2. Long runs report CPU, memory growth, effective processing rate, skipped work, stalls, and errors.
+3. Multiple-face runs are reported separately from the one-face baseline.
+4. A method that adds query-window aggregation reports its additional latency and memory independently.
+
+## Functional Requirements
+
+- **FR-001**: Record dataset provenance, license, source URL, hashes, extraction results, and exclusions.
+- **FR-002**: Use deterministic, leakage-free enrollment/development/final roles.
+- **FR-003**: Run SFace and 0095 with identical detection, samples, and selected method for model comparison.
+- **FR-004**: Run method comparisons with identical model, samples, split, and parameter-search protocol.
+- **FR-005**: Store `model_id`, `method_id`, enrollment protocol, threshold, margin, and random seed in every report.
+- **FR-006**: Report FAR, MIR, Accuracy, FRR, EER, exclusions, and sample counts overall and by pose.
+- **FR-007**: Threshold and margin selection MUST use development data only.
+- **FR-008**: Pointing'04 cross-series evaluation MUST avoid sample and role leakage.
+- **FR-009**: Missing/corrupt samples and no-face/multiple-face samples MUST be counted explicitly.
+- **FR-010**: Dataset bodies MUST remain outside the APK and version control.
+- **FR-011**: Pepper evaluation MUST use the installed API 23 / ARMv7 application pipeline.
+- **FR-012**: Unavailable metrics MUST remain unavailable and MUST NOT be reported as zero.
+- **FR-013**: Query temporal aggregation, when evaluated, MUST use only the same track ID and MUST report the selected window and weights.
+- **FR-014**: Changing model or method requires reselecting thresholds and margins; existing values MUST NOT be reused without evidence.
 
 ## Success Criteria
 
-### Measurable Outcomes
+- All discovered official samples are scored or assigned a counted exclusion reason.
+- Each result row identifies both model and method.
+- Re-running the same manifest produces identical decisions and counts.
+- Leakage validation reports zero cross-role overlap.
+- Model and method conclusions are stated separately.
+- Pepper reports contain all directly measurable metrics and explicitly mark unavailable boundaries.
 
-- **SC-001**: 100% of discovered official RGB samples are either scored or listed with a specific,
-  counted exclusion reason.
-- **SC-002**: Both models produce overall and pose-banded FAR, misidentification, correct-identification,
-  FRR, and EER results for both datasets.
-- **SC-003**: Re-running an unchanged manifest produces identical trial decisions and metric counts.
-- **SC-004**: Automated leakage checks find zero overlap between enrollment/development/final subjects
-  and samples under the declared protocol.
-- **SC-005**: Pepper short-run and continuous-run reports contain every directly measurable metric in
-  FR-013/FR-014, and explicitly label metrics that the current pipeline cannot measure.
-- **SC-006**: No dataset image is added to the APK or version control.
+## Current evidence boundary
 
-## Assumptions
-
-- Dataset use is limited to local research/evaluation under each publisher's license.
-- Full dataset download time and storage are acceptable; acquisition begins before evaluator execution.
-- Pose bands use official labels/poses and include a separately reported frontal band.
-- Where BIWI metadata differs from the supplied summary, verified publisher metadata takes precedence
-  and the discrepancy is recorded.
-- Pepper continuous run defaults to at least 30 minutes when no longer duration is specified.
+Current Pointing'04 results use `Face-Method-1`. They establish neither the superiority of all maximum-score methods nor production thresholds for Pepper camera conditions. `Face-Method-2` is equal to the current method while each pose has only one stored template; its benefit requires multiple accepted samples within at least one pose.
