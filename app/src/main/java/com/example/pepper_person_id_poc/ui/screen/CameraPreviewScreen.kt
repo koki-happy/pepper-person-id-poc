@@ -54,6 +54,7 @@ import com.example.pepper_person_id_poc.application.contract.PersonRepository
 import com.example.pepper_person_id_poc.application.face.FaceIdentityCoordinator
 import com.example.pepper_person_id_poc.application.face.FaceIdentityUiState
 import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.face.FaceDetectionSnapshot
 import com.example.pepper_person_id_poc.domain.face.FaceIdentifier
@@ -63,14 +64,16 @@ import com.example.pepper_person_id_poc.domain.face.RegistrationPose
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraStatus
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngine
-import com.example.pepper_person_id_poc.infrastructure.face.FaceReidentificationRetail0095EmbeddingEngine
-import com.example.pepper_person_id_poc.infrastructure.face.SFaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineFactory
+import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorPipeline
+import com.example.pepper_person_id_poc.infrastructure.face.MlKitFaceDetector
 import com.example.pepper_person_id_poc.infrastructure.face.YuNetFaceDetector
 import java.util.Locale
 
 enum class FaceCameraMode {
     Registration,
     Identification,
+    LearningIdentification,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,12 +87,8 @@ fun CameraPreviewScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val embeddingEngine: FaceEmbeddingEngine = remember(settings.faceModel) {
-        when (settings.faceModel) {
-            FaceModelOption.SFACE_2021DEC -> SFaceEmbeddingEngine(context)
-            FaceModelOption.FACE_REIDENTIFICATION_RETAIL_0095 ->
-                FaceReidentificationRetail0095EmbeddingEngine(context)
-        }
+    val embeddingEngine: FaceEmbeddingEngine = remember(settings.faceModel, settings.faceInferenceBackend) {
+        FaceEmbeddingEngineFactory.create(context, settings.faceModel, settings.faceInferenceBackend)
     }
     val coordinator = remember(mode, personRepository, settings, embeddingEngine.modelName) {
         FaceIdentityCoordinator(
@@ -97,27 +96,50 @@ fun CameraPreviewScreen(
             faceIdentifier = FaceIdentifier(),
             settings = settings,
             faceModelName = embeddingEngine.modelName,
-            realTimeIdentificationEnabled = mode == FaceCameraMode.Identification,
+            realTimeIdentificationEnabled = mode != FaceCameraMode.Registration,
+            anonymousLearningEnabled = mode == FaceCameraMode.LearningIdentification,
             onBenchmarkEvent = benchmarkLogger::append,
             onDeleteAllBenchmarkEvents = benchmarkLogger::deleteAll,
         )
     }
-    val faceDetector = remember(mode, coordinator, embeddingEngine.modelName) {
-        YuNetFaceDetector(
-            context = context,
-            embeddingEngine = embeddingEngine,
-            analysisIntervalMillis = if (mode == FaceCameraMode.Registration) {
-                settings.faceRegistrationAnalysisIntervalMillis
-            } else {
-                settings.faceIdentificationAnalysisIntervalMillis
-            },
-            estimateHeadPose = mode == FaceCameraMode.Registration,
-            onPoseObservations = coordinator::onFaceAnalysis,
-            onFeatureObservations = coordinator::onFeatureObservations,
-            onEmbeddingReady = coordinator::reportEmbeddingReady,
-            onEmbeddingError = coordinator::reportEmbeddingError,
-            onBenchmarkEvent = benchmarkLogger::append,
-        )
+    val faceDetector: FaceDetectorPipeline = remember(
+        mode,
+        coordinator,
+        embeddingEngine.modelName,
+        settings.faceDetector,
+    ) {
+        val interval = if (mode == FaceCameraMode.Registration) {
+            settings.faceRegistrationAnalysisIntervalMillis
+        } else {
+            settings.faceIdentificationAnalysisIntervalMillis
+        }
+        when (settings.faceDetector) {
+            FaceDetectorOption.ML_KIT_BUNDLED -> MlKitFaceDetector(
+                context = context,
+                embeddingEngine = embeddingEngine,
+                analysisIntervalMillis = interval,
+                estimateHeadPose = mode == FaceCameraMode.Registration,
+                onPoseObservations = coordinator::onFaceAnalysis,
+                onFeatureObservations = coordinator::onFeatureObservations,
+                onEmbeddingReady = coordinator::reportEmbeddingReady,
+                onEmbeddingError = coordinator::reportEmbeddingError,
+                onBenchmarkEvent = benchmarkLogger::append,
+            )
+            FaceDetectorOption.YUNET_OPEN_CV,
+            FaceDetectorOption.YUNET_2023MAR_INT8_OPEN_CV,
+            -> YuNetFaceDetector(
+                context = context,
+                detectorOption = settings.faceDetector,
+                embeddingEngine = embeddingEngine,
+                analysisIntervalMillis = interval,
+                estimateHeadPose = mode == FaceCameraMode.Registration,
+                onPoseObservations = coordinator::onFaceAnalysis,
+                onFeatureObservations = coordinator::onFeatureObservations,
+                onEmbeddingReady = coordinator::reportEmbeddingReady,
+                onEmbeddingError = coordinator::reportEmbeddingError,
+                onBenchmarkEvent = benchmarkLogger::append,
+            )
+        }
     }
     val controller = remember(faceDetector) { CameraXPreviewController(context, frameProcessor = faceDetector) }
     val cameraState by controller.state.collectAsState()
@@ -139,15 +161,24 @@ fun CameraPreviewScreen(
     DisposableEffect(controller) {
         onDispose {
             coordinator.cancelFaceRegistration()
-            controller.close()
-            faceDetector.close()
+            if (controller.closeAndAwaitAnalysis()) {
+                faceDetector.close()
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (mode == FaceCameraMode.Registration) "人物登録 - 顔" else "顔識別") },
+                title = {
+                    Text(
+                        when (mode) {
+                            FaceCameraMode.Registration -> "人物登録 - 顔"
+                            FaceCameraMode.Identification -> "リアルタイム顔検出+登録人物識別"
+                            FaceCameraMode.LearningIdentification -> "リアルタイム顔検出+特徴量抽出"
+                        },
+                    )
+                },
                 navigationIcon = {
                     Button(onClick = onBackToSettings, modifier = Modifier.padding(horizontal = 8.dp)) {
                         Text("← 設定")
@@ -168,12 +199,14 @@ fun CameraPreviewScreen(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize(),
                     )
-                    FaceDetectionOverlay(faceSnapshot, identityState, settings, settings.debugMode)
+                    FaceDetectionOverlay(faceSnapshot, identityState, settings)
                 } else {
                     Text(
                         if (permissionGranted) "カメラを開始しています" else "カメラ権限が必要です",
                         color = Color.White,
                     )
+                    Text("顔検出・追跡: ${settings.faceDetector.displayName}")
+                    Text("推論基盤: ${settings.faceInferenceBackend.displayName}")
                 }
             }
         }
@@ -183,15 +216,11 @@ fun CameraPreviewScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
                 ) {
-                    CameraAndModelStatus(cameraState, faceSnapshot)
-                    Text(
-                        "顔特徴量: ${if (identityState.embeddingModelReady) {
-                            "${embeddingEngine.modelName} 準備完了"
-                        } else if (identityState.error != null) {
-                            "${embeddingEngine.modelName} 初期化失敗"
-                        } else {
-                            "${embeddingEngine.modelName} 初期化中"
-                        }}",
+                    CameraAndModelStatus(
+                        cameraState = cameraState,
+                        faceSnapshot = faceSnapshot,
+                        identityState = identityState,
+                        embeddingModelName = embeddingEngine.modelName,
                     )
                     if (!permissionGranted) {
                         Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -203,7 +232,12 @@ fun CameraPreviewScreen(
                     if (mode == FaceCameraMode.Registration) {
                         RegistrationPanel(coordinator, identityState, settings)
                     } else {
-                        IdentificationPanel(coordinator, identityState, settings.debugMode)
+                        IdentificationPanel(
+                            coordinator = coordinator,
+                            state = identityState,
+                            learningEnabled = mode == FaceCameraMode.LearningIdentification,
+                            inferenceBackendName = settings.faceInferenceBackend.displayName,
+                        )
                     }
                 }
             }
@@ -228,13 +262,19 @@ fun CameraPreviewScreen(
 private fun CameraAndModelStatus(
     cameraState: com.example.pepper_person_id_poc.infrastructure.camera.CameraPreviewState,
     faceSnapshot: FaceDetectionSnapshot,
+    identityState: FaceIdentityUiState,
+    embeddingModelName: String,
 ) {
-    Text("カメラ: ${cameraState.status}")
-    Text("カメラ入力: ${cameraState.frameCount} frames / ${cameraState.resolution ?: "取得中"}")
-    Text("カメラ入力FPS: ${cameraState.inputFramesPerSecond.asFps()}")
-    Text("顔解析FPS: ${faceSnapshot.analysisFramesPerSecond.asFps()}")
-    Text("顔状態: ${faceSnapshot.status} / ${faceSnapshot.faces.size}人")
-    Text("顔検出: ${faceSnapshot.processingTimeMillis ?: "-"} ms / ${faceSnapshot.modelName}")
+    Text(
+        "顔検出: ${faceSnapshot.processingTimeMillis ?: "-"} ms/frame / " +
+            "${faceSnapshot.analysisFramesPerSecond.asFps()} / ${faceSnapshot.modelName}",
+    )
+    Text(
+        "顔特徴量: ${identityState.lastEmbeddingAverageTimeMillis?.let { "$it ms/face" } ?: "未計測"} / " +
+            "最大 ${identityState.lastEmbeddingMaximumTimeMillis?.let { "$it ms" } ?: "-"} / " +
+            "処理 ${identityState.lastEmbeddingFaceCount} faces / " +
+            if (identityState.embeddingModelReady) embeddingModelName else "$embeddingModelName 初期化中",
+    )
     cameraState.error?.let { Text("カメラエラー: $it", color = MaterialTheme.colorScheme.error) }
     faceSnapshot.error?.let { Text("顔検出エラー: $it", color = MaterialTheme.colorScheme.error) }
 }
@@ -324,19 +364,21 @@ private fun RegistrationPanel(
 private fun IdentificationPanel(
     coordinator: FaceIdentityCoordinator,
     state: FaceIdentityUiState,
-    debugMode: Boolean,
+    learningEnabled: Boolean,
+    inferenceBackendName: String,
 ) {
-    Text("リアルタイム複数人顔識別", style = MaterialTheme.typography.titleMedium)
+    Text("リアルタイム複数顔識別（複数1対N）", style = MaterialTheme.typography.titleMedium)
+    Text("推論基盤: $inferenceBackendName")
     Text("登録人物: ${state.profiles.size}人 / 検出顔数: ${state.visibleFaceCount}")
-    Text("短期trackIdで顔を追跡し、登録人物は名前、未登録人物はセッション内anonymousIdで再識別します")
-    Text("未登録人物クラスタ: ${state.anonymousClusterCount}人（画面を閉じると破棄）")
-    Button(
-        onClick = coordinator::resetAnonymousSession,
-        enabled = state.anonymousClusterCount > 0,
-        modifier = Modifier.fillMaxWidth(),
-    ) { Text("未登録人物の一時IDをリセット") }
+    if (learningEnabled) {
+        Text("学習中の未登録人物: ${state.anonymousClusterCount}人 / 最大20 samples")
+        Button(
+            onClick = coordinator::resetAnonymousSession,
+            enabled = state.anonymousClusterCount > 0,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("未登録人物の一時IDをリセット") }
+    }
     state.identificationMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-    if (state.results.isEmpty()) Text("顔を検出すると自動で識別します")
     state.results.forEach { result ->
         val title = if (result.status == FaceIdentityStatus.IDENTIFIED) {
             "${result.displayName} / ${result.personId?.value}"
@@ -344,18 +386,10 @@ private fun IdentificationPanel(
             "Unknown"
         }
         Text(title, style = MaterialTheme.typography.titleSmall)
-        Text(
-            "Best ${result.score.asScore()} / Second ${result.secondScore.asScore()} / " +
-                "Margin ${result.margin.asScore()} (min ${result.minimumMargin.asScore()}) / " +
-                "threshold ${result.threshold.asScore()} / ${result.processingTimeMillis} ms",
-        )
-        if (debugMode && result.status == FaceIdentityStatus.UNKNOWN) {
-            Text("Best candidate: ${result.bestCandidatePersonId?.value ?: "なし"}")
-        }
+        Text("trackId: ${result.trackId} / 類似度: ${result.score.asScore()}")
         state.anonymousResults.firstOrNull { it.trackId == result.trackId }?.let { anonymous ->
             Text(
-                "${anonymous.anonymousId} / re-id ${anonymous.score.asScore()} / " +
-                    "samples ${anonymous.clusterSampleCount}",
+                "${anonymous.anonymousId} / samples ${anonymous.clusterSampleCount}/${anonymous.maximumSampleCount}",
                 color = MaterialTheme.colorScheme.secondary,
             )
         }
@@ -368,7 +402,6 @@ private fun FaceDetectionOverlay(
     detectionSnapshot: FaceDetectionSnapshot,
     identityState: FaceIdentityUiState,
     settings: PocSettings,
-    debugMode: Boolean,
 ) {
     val identityByTrackId = identityState.results.associateBy { it.trackId }
     val anonymousByTrackId = identityState.anonymousResults.associateBy { it.trackId }
@@ -388,24 +421,12 @@ private fun FaceDetectionOverlay(
                 val width = face.boundingBox.width * size.width
                 val height = face.boundingBox.height * size.height
                 drawRect(color, Offset(left, top), Size(width, height), style = Stroke(width = 4.dp.toPx()))
-                face.landmarks.forEachIndexed { index, landmark ->
+                face.landmarks.forEach { landmark ->
                     val point = Offset((1f - landmark.x) * size.width, landmark.y * size.height)
                     drawCircle(
                         color = Color.Cyan,
                         radius = 5.dp.toPx(),
                         center = point,
-                    )
-                    val landmarkPaint = android.graphics.Paint().apply {
-                        this.color = android.graphics.Color.CYAN
-                        textSize = 12.dp.toPx()
-                        isAntiAlias = true
-                        setShadowLayer(3.dp.toPx(), 1.dp.toPx(), 1.dp.toPx(), android.graphics.Color.BLACK)
-                    }
-                    drawContext.canvas.nativeCanvas.drawText(
-                        "${index + 1}:${landmark.type.displayName}",
-                        point.x + 7.dp.toPx(),
-                        point.y - 7.dp.toPx(),
-                        landmarkPaint,
                     )
                 }
                 val identityLabel = when {
@@ -414,15 +435,9 @@ private fun FaceDetectionOverlay(
                     identity != null -> "Unknown"
                     else -> "Face"
                 }
-                val debugLabel = if (debugMode && identity?.bestCandidatePersonId != null) {
-                    " / best=${identity.bestCandidatePersonId.value}"
-                } else ""
                 val lines = listOf(
                     identityLabel,
-                    face.trackId,
-                    "Detection ${face.detectionScore.asScore()}",
-                    "Landmarks ${face.landmarks.size}/5",
-                    "Identity ${identity?.score.asScore()} / margin ${identity?.margin.asScore()}$debugLabel",
+                    "trackId: ${face.trackId}",
                 )
                 val paint = android.graphics.Paint().apply {
                     this.color = if (identified) android.graphics.Color.GREEN else android.graphics.Color.YELLOW

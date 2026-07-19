@@ -122,15 +122,18 @@ class FaceIdentityCoordinatorTest {
             ),
         )
         assertThat(realTimeCoordinator.state.value.results).hasSize(2)
+        assertThat(realTimeCoordinator.state.value.lastEmbeddingAverageTimeMillis).isEqualTo(1L)
+        assertThat(realTimeCoordinator.state.value.lastEmbeddingMaximumTimeMillis).isEqualTo(1L)
+        assertThat(realTimeCoordinator.state.value.lastEmbeddingFaceCount).isEqualTo(2)
         assertThat(realTimeCoordinator.state.value.results.first { it.trackId == "face-001" }.personId?.value)
             .isEqualTo("person1")
         assertThat(realTimeCoordinator.state.value.results.first { it.trackId == "face-002" }.personId).isNull()
+        assertThat(realTimeCoordinator.state.value.anonymousResults).isEmpty()
+        assertThat(realTimeCoordinator.state.value.anonymousClusterCount).isEqualTo(0)
 
-        assertThat(realTimeCoordinator.onPoseObservations(listOf(pose(0f)))).containsExactly("face-001")
-        realTimeCoordinator.onFeatureObservations(
-            listOf(FaceFeatureObservation("face-001", floatArrayOf(0f, 1f), 1L)),
-        )
-        assertThat(realTimeCoordinator.state.value.results.single().personId).isNull()
+        assertThat(realTimeCoordinator.onPoseObservations(listOf(pose(0f)))).isEmpty()
+        assertThat(realTimeCoordinator.state.value.results.single().personId?.value).isEqualTo("person1")
+        assertThat(realTimeCoordinator.state.value.identificationMessage).contains("再サンプルなし")
 
         assertThat(realTimeCoordinator.onFaceAnalysis(0, emptyList())).isEmpty()
         assertThat(realTimeCoordinator.state.value.results).isEmpty()
@@ -144,6 +147,7 @@ class FaceIdentityCoordinatorTest {
             settings = PocSettings(faceSmoothingSampleCount = 1, faceThreshold = 0.8f),
             faceModelName = "SFace 2021dec",
             realTimeIdentificationEnabled = true,
+            anonymousLearningEnabled = true,
             clockMillis = { nowMillis },
         )
 
@@ -161,6 +165,89 @@ class FaceIdentityCoordinatorTest {
 
         assertThat(realTimeCoordinator.state.value.anonymousResults.single().anonymousId).isEqualTo(firstId)
         assertThat(realTimeCoordinator.state.value.anonymousClusterCount).isEqualTo(1)
+    }
+
+    @Test
+    fun learningIdentification_assignsDifferentAnonymousIdsToSimultaneousFaces() {
+        val realTimeCoordinator = FaceIdentityCoordinator(
+            personRepository = repository,
+            faceIdentifier = FaceIdentifier(),
+            settings = PocSettings(faceSmoothingSampleCount = 1, faceThreshold = 0.8f),
+            faceModelName = "SFace 2021dec",
+            realTimeIdentificationEnabled = true,
+            anonymousLearningEnabled = true,
+            clockMillis = { nowMillis },
+        )
+        val faces = listOf(pose(0f), FacePoseObservation("face-002", HeadPose(0f, 0f, 0f)))
+
+        assertThat(realTimeCoordinator.onFaceAnalysis(2, faces)).containsExactly("face-001", "face-002")
+        realTimeCoordinator.onFeatureObservations(
+            listOf(
+                FaceFeatureObservation("face-001", floatArrayOf(1f, 0f), 1L),
+                FaceFeatureObservation("face-002", floatArrayOf(0.99f, 0.01f), 1L),
+            ),
+        )
+
+        assertThat(realTimeCoordinator.state.value.anonymousResults).hasSize(2)
+        assertThat(realTimeCoordinator.state.value.anonymousResults.map { it.anonymousId }.toSet()).hasSize(2)
+    }
+
+    @Test
+    fun simultaneousFaces_cannotReceiveSameRegisteredPersonId() {
+        repository.addFaceEmbedding(
+            com.example.pepper_person_id_poc.domain.person.PersonId("person1"),
+            "人物A",
+            floatArrayOf(1f, 0f),
+            "SFace 2021dec",
+            1L,
+        )
+        val realTimeCoordinator = FaceIdentityCoordinator(
+            personRepository = repository,
+            faceIdentifier = FaceIdentifier(),
+            settings = PocSettings(faceSmoothingSampleCount = 1),
+            faceModelName = "SFace 2021dec",
+            realTimeIdentificationEnabled = true,
+            clockMillis = { nowMillis },
+        )
+        val faces = listOf(pose(0f), FacePoseObservation("face-002", HeadPose(0f, 0f, 0f)))
+
+        realTimeCoordinator.onFaceAnalysis(2, faces)
+        realTimeCoordinator.onFeatureObservations(
+            listOf(
+                FaceFeatureObservation("face-001", floatArrayOf(1f, 0f), 1L),
+                FaceFeatureObservation("face-002", floatArrayOf(1f, 0f), 1L),
+            ),
+        )
+
+        assertThat(realTimeCoordinator.state.value.results.count { it.personId?.value == "person1" }).isEqualTo(1)
+        assertThat(realTimeCoordinator.state.value.results.count { it.status.name == "UNKNOWN" }).isEqualTo(1)
+    }
+
+    @Test
+    fun learningIdentification_keepsAnonymousIdVisibleAfterTwentySamples() {
+        val realTimeCoordinator = FaceIdentityCoordinator(
+            personRepository = repository,
+            faceIdentifier = FaceIdentifier(),
+            settings = PocSettings(faceSmoothingSampleCount = 1, faceThreshold = 0.8f),
+            faceModelName = "SFace 2021dec",
+            realTimeIdentificationEnabled = true,
+            anonymousLearningEnabled = true,
+            clockMillis = { nowMillis },
+        )
+
+        repeat(20) {
+            assertThat(realTimeCoordinator.onPoseObservations(listOf(pose(0f))))
+                .containsExactly("face-001")
+            realTimeCoordinator.onFeatureObservations(
+                listOf(FaceFeatureObservation("face-001", floatArrayOf(1f, 0f), 1L)),
+            )
+        }
+        val learnedId = realTimeCoordinator.state.value.anonymousResults.single().anonymousId
+
+        assertThat(realTimeCoordinator.onPoseObservations(listOf(pose(0f)))).isEmpty()
+        assertThat(realTimeCoordinator.state.value.anonymousResults.single().anonymousId).isEqualTo(learnedId)
+        assertThat(realTimeCoordinator.state.value.anonymousResults.single().clusterSampleCount).isEqualTo(20)
+        assertThat(realTimeCoordinator.state.value.identificationMessage).contains("学習上限20サンプル到達")
     }
 
     @Test

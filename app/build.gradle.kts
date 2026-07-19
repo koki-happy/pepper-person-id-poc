@@ -33,6 +33,14 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        if (file("src/main/cpp/third_party/ready.marker").isFile) {
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-std=c++17"
+                }
+            }
+        }
+
     }
 
     buildTypes {
@@ -50,6 +58,14 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    if (file("src/main/cpp/third_party/ready.marker").isFile) {
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+                version = "3.31.6"
+            }
+        }
     }
 }
 
@@ -217,6 +233,11 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
     implementation(libs.opencv)
+    implementation(libs.mlkit.face.detection)
+    val customOnnxRuntimeAar = file("libs/onnxruntime-mobile-1.27.0.aar")
+    if (customOnnxRuntimeAar.isFile) {
+        implementation(files(customOnnxRuntimeAar))
+    }
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     androidTestImplementation(platform(libs.androidx.compose.bom))

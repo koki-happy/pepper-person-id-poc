@@ -6,11 +6,11 @@ enum class AppScreen(
 ) {
     Settings(
         title = "設定",
-        description = "PoC機能と判定閾値を設定します",
+        description = "モデル選択、機能起動、識別パラメータを管理します",
     ),
     DeviceDiagnostics(
         title = "端末診断",
-        description = "Pepperのカメラ、マイク、メモリ、ネットワークを確認します",
+        description = "端末のカメラ、マイク、メモリ、ネットワーク構成を表示します",
     ),
     ModelSelection(
         title = "モデル選択",
@@ -18,11 +18,15 @@ enum class AppScreen(
     ),
     PersonRegistration(
         title = "人物登録",
-        description = "人物ごとの顔特徴量と声特徴量を登録します（人数上限なし）",
+        description = "personIdに顔特徴量と声特徴量を紐付けて登録します",
     ),
     FaceIdentification(
-        title = "顔識別",
-        description = "顔検出、追跡、1対N識別を個別に確認します",
+        title = "リアルタイム顔検出+登録人物識別",
+        description = "追跡中の各顔を登録人物一覧と1対N照合し、複数顔を並列識別します",
+    ),
+    FaceIdentificationLearning(
+        title = "リアルタイム顔検出+特徴量抽出",
+        description = "未登録顔ごとに最大20特徴量を取得し、一時人物IDの重心を更新します",
     ),
     SpeakerRegistration(
         title = "声登録",
@@ -34,7 +38,7 @@ enum class AppScreen(
     ),
     AnonymousSpeakerIdentification(
         title = "未登録リアルタイム話者識別",
-        description = "登録せずに同じ話者らしさを一時IDで識別します",
+        description = "発話特徴量をセッション内の一時話者IDと1対N照合します",
     ),
     Transcription(
         title = "音声認識",

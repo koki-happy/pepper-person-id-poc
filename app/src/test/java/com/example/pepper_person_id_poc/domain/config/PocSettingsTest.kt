@@ -53,6 +53,12 @@ class PocSettingsTest {
     @Test
     fun modelOptions_haveDistinctAssetNames() {
         assertEquals(FaceModelOption.entries.size, FaceModelOption.entries.map { it.modelFileName }.toSet().size)
+        assertEquals(3, FaceModelOption.entries.size)
+        assertEquals(3, FaceDetectorOption.entries.size)
+        assertEquals(128, FaceModelOption.SFACE_2021DEC_INT8.embeddingSize)
+        assertEquals("face_detection_yunet_2023mar_int8.onnx", FaceDetectorOption.YUNET_2023MAR_INT8_OPEN_CV.modelFileName)
+        assertTrue(FaceModelOption.SFACE_2021DEC_INT8.supports(FaceInferenceBackend.OPEN_CV))
+        assertFalse(FaceModelOption.SFACE_2021DEC_INT8.supports(FaceInferenceBackend.NCNN))
         assertEquals(SpeakerModelOption.entries.size, SpeakerModelOption.entries.map { it.modelFileName }.toSet().size)
         assertEquals(SpeakerModelOption.entries.size, SpeakerModelOption.entries.map { it.configModelId }.toSet().size)
         assertEquals("campplus-en", SpeakerModelOption.CAM_PLUS_PLUS.configModelId)

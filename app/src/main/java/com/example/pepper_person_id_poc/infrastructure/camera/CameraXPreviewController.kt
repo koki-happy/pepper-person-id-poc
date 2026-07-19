@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleOwner
 import java.io.Closeable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import com.example.pepper_person_id_poc.domain.benchmark.RateMeter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -117,11 +118,28 @@ class CameraXPreviewController(
         }
     }
 
+    fun closeAndAwaitAnalysis(): Boolean {
+        if (!closed) {
+            unbind()
+            closed = true
+            cameraExecutor.shutdown()
+        }
+        return try {
+            if (cameraExecutor.awaitTermination(ANALYSIS_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                true
+            } else {
+                cameraExecutor.shutdownNow()
+                cameraExecutor.awaitTermination(ANALYSIS_FORCE_SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            }
+        } catch (_: InterruptedException) {
+            cameraExecutor.shutdownNow()
+            Thread.currentThread().interrupt()
+            false
+        }
+    }
+
     override fun close() {
-        if (closed) return
-        unbind()
-        closed = true
-        cameraExecutor.shutdown()
+        closeAndAwaitAnalysis()
     }
 
     private fun reportError(throwable: Throwable) {
@@ -134,5 +152,7 @@ class CameraXPreviewController(
     private companion object {
         val TARGET_RESOLUTION = Size(640, 480)
         const val STATE_UPDATE_FRAME_INTERVAL = 15L
+        const val ANALYSIS_SHUTDOWN_TIMEOUT_SECONDS = 3L
+        const val ANALYSIS_FORCE_SHUTDOWN_TIMEOUT_SECONDS = 2L
     }
 }

@@ -2,6 +2,8 @@ package com.example.pepper_person_id_poc.domain.config
 
 data class PocSettings(
     val faceModel: FaceModelOption = FaceModelOption.SFACE_2021DEC,
+    val faceDetector: FaceDetectorOption = FaceDetectorOption.ML_KIT_BUNDLED,
+    val faceInferenceBackend: FaceInferenceBackend = FaceInferenceBackend.OPEN_CV,
     val speakerModel: SpeakerModelOption = SpeakerModelOption.ERES2NET,
     val faceThreshold: Float = DEFAULT_FACE_THRESHOLD,
     val faceMargin: Float = DEFAULT_FACE_MARGIN,
@@ -84,10 +86,77 @@ enum class FaceModelOption(
         modelFileName = "face_recognition_sface_2021dec.onnx",
         implementationStatus = ModelImplementationStatus.AVAILABLE,
     ),
+    SFACE_2021DEC_INT8(
+        displayName = "SFace 2021dec INT8",
+        modelFileName = "face_recognition_sface_2021dec_int8.onnx",
+        implementationStatus = ModelImplementationStatus.AVAILABLE,
+    ),
     FACE_REIDENTIFICATION_RETAIL_0095(
         displayName = "face-reidentification-retail-0095",
         modelFileName = "face-reidentification-retail-0095.onnx",
         implementationStatus = ModelImplementationStatus.AVAILABLE,
+    ),
+    ;
+
+    val isSFace: Boolean
+        get() = this == SFACE_2021DEC || this == SFACE_2021DEC_INT8
+
+    val inputSize: Int
+        get() = if (isSFace) 112 else 128
+
+    val embeddingSize: Int
+        get() = if (isSFace) 128 else 256
+
+    fun supports(backend: FaceInferenceBackend): Boolean =
+        this != SFACE_2021DEC_INT8 || backend == FaceInferenceBackend.OPEN_CV
+}
+
+enum class FaceDetectorOption(
+    val displayName: String,
+    val description: String,
+    val modelFileName: String?,
+) {
+    ML_KIT_BUNDLED(
+        displayName = "ML Kit Face Detection 16.1.7 (Bundled)",
+        description = "APK同梱モデル / 追跡ID・顔向き・5点変換",
+        modelFileName = null,
+    ),
+    YUNET_OPEN_CV(
+        displayName = "YuNet 2026may (OpenCV)",
+        description = "従来比較用 / OpenCV FaceDetectorYN",
+        modelFileName = "face_detection_yunet_2026may.onnx",
+    ),
+    YUNET_2023MAR_INT8_OPEN_CV(
+        displayName = "YuNet 2023mar INT8 (OpenCV)",
+        description = "INT8量子化モデル / OpenCV FaceDetectorYN",
+        modelFileName = "face_detection_yunet_2023mar_int8.onnx",
+    ),
+}
+
+enum class FaceInferenceBackend(
+    val displayName: String,
+    val description: String,
+    val runtimeArtifact: String?,
+) {
+    OPEN_CV(
+        displayName = "OpenCV 5.0.0 DNN",
+        description = "基準実装 / Android CPU推論",
+        runtimeArtifact = null,
+    ),
+    ONNX_RUNTIME(
+        displayName = "ONNX Runtime 1.27.0",
+        description = "API 23 / armeabi-v7a / 必要演算子のみの自前AAR",
+        runtimeArtifact = "onnxruntime-mobile-1.27.0.aar",
+    ),
+    NCNN(
+        displayName = "ncnn 20260526",
+        description = "armeabi-v7a CPU版 / Vulkan・OpenMP無効",
+        runtimeArtifact = "libncnn.so + ncnn model",
+    ),
+    MNN(
+        displayName = "MNN 3.5.0",
+        description = "Android ARMv7a CPU版 / CPUバックエンド",
+        runtimeArtifact = "libMNN.so + MNN model",
     ),
 }
 

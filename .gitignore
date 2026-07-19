@@ -40,5 +40,7 @@ __pycache__/
 # Model binaries are obtained separately after license and device validation.
 /app/src/main/assets/models/
 /app/libs/*.aar
+/app/src/main/cpp/third_party/
+/app/src/main/jniLibs/
 /app/src/androidTest/assets/speaker-test/
 /app/src/androidTest/assets/face-test/

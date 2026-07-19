@@ -224,7 +224,7 @@ fun AudioRecordingScreen(
                 "16 kHz録音ではSilero VADを使用します。発話終了後、選択した話者モデルをバックグラウンドで実行します。",
                 color = MaterialTheme.colorScheme.primary,
             )
-            Text("PCM・WAV本体は保存せず、処理時間とメタデータだけを測定ログへ記録します。")
+            Text("PCM/WAV永続化: 無効 / 測定ログ: 処理時間・メタデータ")
         }
     }
 }
@@ -298,7 +298,7 @@ private fun AnonymousSpeakerResultPanel(
 ) {
     Text("セッション内の一時話者", style = MaterialTheme.typography.titleMedium)
     Text("識別済みクラスタ: ${state.anonymousClusterCount}人")
-    Text("登録・永続保存は行わず、画面終了またはリセットで破棄します。")
+    Text("保存先: セッションメモリ / 破棄: 画面終了またはリセット")
     if (state.processing) Text("話者特徴量を計算中…")
     state.anonymousResult?.let { result ->
         Text(result.anonymousSpeakerId, style = MaterialTheme.typography.titleSmall)

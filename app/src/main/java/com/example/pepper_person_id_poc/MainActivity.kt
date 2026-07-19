@@ -102,6 +102,8 @@ class MainActivity : ComponentActivity() {
                         settings = uiState.settings,
                         settingsSaved = uiState.settingsSaved,
                         onFaceModelChanged = viewModel::updateFaceModel,
+                        onFaceDetectorChanged = viewModel::updateFaceDetector,
+                        onFaceInferenceBackendChanged = viewModel::updateFaceInferenceBackend,
                         onSpeakerModelChanged = viewModel::updateSpeakerModel,
                         onSave = viewModel::saveSettings,
                         onBackToSettings = viewModel::returnToSettings,
@@ -117,6 +119,14 @@ class MainActivity : ComponentActivity() {
                 } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
                     CameraPreviewScreen(
                         mode = FaceCameraMode.Identification,
+                        settings = uiState.settings,
+                        personRepository = appContainer.personRepository,
+                        benchmarkLogger = appContainer.benchmarkLogger,
+                        onBackToSettings = viewModel::returnToSettings,
+                    )
+                } else if (uiState.activeScreen == AppScreen.FaceIdentificationLearning) {
+                    CameraPreviewScreen(
+                        mode = FaceCameraMode.LearningIdentification,
                         settings = uiState.settings,
                         personRepository = appContainer.personRepository,
                         benchmarkLogger = appContainer.benchmarkLogger,

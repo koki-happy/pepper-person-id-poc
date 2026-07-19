@@ -14,6 +14,7 @@ import com.example.pepper_person_id_poc.domain.face.FaceLandmarkType
 import com.example.pepper_person_id_poc.domain.face.FaceTracker
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraFrameProcessor
 import java.io.Closeable
 import java.io.File
@@ -30,6 +31,7 @@ import org.opencv.objdetect.FaceDetectorYN
 
 class YuNetFaceDetector(
     context: Context,
+    private val detectorOption: FaceDetectorOption = FaceDetectorOption.YUNET_OPEN_CV,
     private val embeddingEngine: FaceEmbeddingEngine? = null,
     private val analysisIntervalMillis: Long = DEFAULT_ANALYSIS_INTERVAL_MILLIS,
     private val estimateHeadPose: Boolean = true,
@@ -38,14 +40,15 @@ class YuNetFaceDetector(
     private val onEmbeddingReady: () -> Unit = {},
     private val onEmbeddingError: (Throwable) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
-) : CameraFrameProcessor, Closeable {
+) : FaceDetectorPipeline {
     init {
         require(analysisIntervalMillis > 0L)
+        requireNotNull(detectorOption.modelFileName) { "YuNet requires an ONNX model asset" }
     }
     private val appContext = context.applicationContext
     private val tracker = FaceTracker()
     private val headPoseEstimator = HeadPoseEstimator()
-    private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot())
+    private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = detectorOption.displayName))
     private var detector: FaceDetectorYN? = null
     private var detectorInputSize: Size? = null
     private var nextAnalysisAtMillis = 0L
@@ -58,7 +61,7 @@ class YuNetFaceDetector(
     private var throttleSkippedFrameCount = 0L
     private val analysisRateMeter = RateMeter(minimumWindowMillis = 1_500L)
 
-    val snapshot: StateFlow<FaceDetectionSnapshot> = mutableSnapshot.asStateFlow()
+    override val snapshot: StateFlow<FaceDetectionSnapshot> = mutableSnapshot.asStateFlow()
 
     override fun process(image: ImageProxy) {
         if (closed) return
@@ -211,6 +214,7 @@ class YuNetFaceDetector(
                     faces = detectedFaces,
                     processingTimeMillis = processingMillis,
                     analysisFramesPerSecond = analysisFps,
+                    modelName = detectorOption.displayName,
                 )
                 onFeatureObservations(featureObservations)
                 val pipelineFinishedAtNanos = SystemClock.elapsedRealtimeNanos()
@@ -223,7 +227,7 @@ class YuNetFaceDetector(
                         durationMillis = processingMillis,
                         status = status.name,
                         attributes = mapOf(
-                            "model" to MODEL_NAME,
+                            "model" to detectorOption.displayName,
                             "faceCount" to detectedFaces.size.toString(),
                             "frameWidth" to image.width.toString(),
                             "frameHeight" to image.height.toString(),
@@ -293,6 +297,7 @@ class YuNetFaceDetector(
     }
 
     override fun close() {
+        if (closed) return
         closed = true
         detector = null
         embeddingEngine?.close()
@@ -321,10 +326,11 @@ class YuNetFaceDetector(
     }
 
     private fun copyModelToInternalStorage(): File {
-        val output = File(appContext.filesDir, "models/$MODEL_FILE_NAME")
+        val modelFileName = checkNotNull(detectorOption.modelFileName)
+        val output = File(appContext.filesDir, "models/$modelFileName")
         if (output.exists() && output.length() > 0) return output
         output.parentFile?.mkdirs()
-        appContext.assets.open(MODEL_ASSET_PATH).use { input ->
+        appContext.assets.open("models/$modelFileName").use { input ->
             output.outputStream().use(input::copyTo)
         }
         return output
@@ -333,6 +339,7 @@ class YuNetFaceDetector(
     private fun reportModelUnavailable(message: String) {
         mutableSnapshot.value = FaceDetectionSnapshot(
             status = FaceDetectionStatus.MODEL_UNAVAILABLE,
+            modelName = detectorOption.displayName,
             error = message,
         )
     }
@@ -345,6 +352,7 @@ class YuNetFaceDetector(
             } else {
                 FaceDetectionStatus.ERROR
             },
+            modelName = detectorOption.displayName,
             error = message,
         )
         onBenchmarkEvent(
@@ -417,9 +425,6 @@ class YuNetFaceDetector(
     private companion object {
         const val MAX_REASONABLE_CAPTURE_TO_STATE_READY_NANOS = 60_000_000_000L
         const val PIPELINE_COUNTER_INTERVAL = 30L
-        const val MODEL_NAME = "YuNet 2026may"
-        const val MODEL_FILE_NAME = "face_detection_yunet_2026may.onnx"
-        const val MODEL_ASSET_PATH = "models/$MODEL_FILE_NAME"
         const val SCORE_THRESHOLD = 0.80f
         const val NMS_THRESHOLD = 0.30f
         const val TOP_K = 5000

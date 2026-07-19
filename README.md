@@ -57,3 +57,19 @@ API 28 x86ではinstrumentation 2テストが成功し、3モデル×2データ�
 RyuseiNetは追加学習と別の検証経路が必要なため、今回の5モデル本比較には含めず、未実装・未比較です。
 
 詳細は[`docs/poc/`](docs/poc/)と[`docs/pepper-multimodal-identity-poc.md`](docs/pepper-multimodal-identity-poc.md)を参照してください。
+
+## 顔検出・顔推論基盤の比較
+
+モデル選択画面で、顔検出はML Kit Face Detection 16.1.7 Bundled（既定）または従来YuNet、顔特徴量の推論基盤はOpenCV 5.0.0、ONNX Runtime 1.27.0、ncnn 20260526、MNN 3.5.0を選べます。ML KitはAPK同梱モデルを使い、追跡ID、Euler角、SFace／0095向け5点座標を出力します。検出confidenceはAPIから公開されないため、画面では`N/A`と表示します。
+
+ローカル成果物の準備:
+
+```powershell
+# ncnn/MNN公式ARMv7ライブラリとSFace/0095変換モデル
+.\scripts\windows\setup-native-face-runtimes.ps1
+
+# API 23 / armeabi-v7a / 使用演算子限定のONNX Runtime Java AAR
+.\scripts\windows\build-onnxruntime-android-aar.ps1
+```
+
+未登録人物もリアルタイム処理の対象です。ML KitまたはFaceTrackerの`trackId`で画面内を追跡し、登録人物との1:N照合でUnknownになった顔は、特徴量をセッション内だけでクラスタリングして`anonymous-001`形式の一時IDを付けます。一時特徴量は画面終了またはリセットで破棄し、永続保存しません。

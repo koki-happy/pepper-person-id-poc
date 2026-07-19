@@ -29,6 +29,7 @@ class FaceIdentityCoordinator(
     private val settings: PocSettings,
     private val faceModelName: String,
     private val realTimeIdentificationEnabled: Boolean = false,
+    private val anonymousLearningEnabled: Boolean = false,
     private val clockMillis: () -> Long = System::currentTimeMillis,
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
     private val onDeleteAllBenchmarkEvents: () -> Unit = {},
@@ -45,6 +46,9 @@ class FaceIdentityCoordinator(
     private val registration = AtomicReference<RegistrationSession?>(null)
     private val pendingCapture = AtomicReference<CaptureRequest?>(null)
     private val pendingIdentificationTrackIds = AtomicReference<Set<String>>(emptySet())
+    private val activeIdentificationTrackIds = AtomicReference<Set<String>>(emptySet())
+    private val sampledTrackIds = linkedSetOf<String>()
+    private val saturatedLearningTrackIds = linkedSetOf<String>()
     private val identificationRequestedAtMillis = AtomicLong(0L)
     private val mutableState = MutableStateFlow(
         FaceIdentityUiState(profiles = personRepository.getAllForFaceModel(faceModelName)),
@@ -79,7 +83,10 @@ class FaceIdentityCoordinator(
         if (!realTimeIdentificationEnabled) return emptySet()
         val trackIds = observations.mapTo(linkedSetOf()) { it.trackId }
         if (trackIds.isEmpty()) {
+            sampledTrackIds.clear()
+            saturatedLearningTrackIds.clear()
             pendingIdentificationTrackIds.set(emptySet())
+            activeIdentificationTrackIds.set(emptySet())
             mutableState.value = mutableState.value.copy(
                 results = emptyList(),
                 anonymousResults = emptyList(),
@@ -88,17 +95,45 @@ class FaceIdentityCoordinator(
             )
             return emptySet()
         }
+        activeIdentificationTrackIds.set(trackIds)
+        sampledTrackIds.retainAll(trackIds)
+        saturatedLearningTrackIds.retainAll(trackIds)
+        val embeddingTrackIds = if (anonymousLearningEnabled) {
+            trackIds.filterTo(linkedSetOf()) { it !in saturatedLearningTrackIds }
+        } else {
+            trackIds.filterTo(linkedSetOf()) { it !in sampledTrackIds }
+        }
+        if (embeddingTrackIds.isEmpty()) {
+            mutableState.value = mutableState.value.copy(
+                results = mutableState.value.results.filter { it.trackId in trackIds },
+                anonymousResults = mutableState.value.anonymousResults.filter { it.trackId in trackIds },
+                identificationMessage = if (anonymousLearningEnabled) {
+                    "${trackIds.size}人をtrackIdで追跡中（学習上限20サンプル到達）"
+                } else {
+                    "${trackIds.size}人をtrackIdで追跡中（再サンプルなし）"
+                },
+                identificationPending = false,
+            )
+            return emptySet()
+        }
         identificationRequestedAtMillis.set(clockMillis())
-        pendingIdentificationTrackIds.set(trackIds)
+        pendingIdentificationTrackIds.set(embeddingTrackIds)
         mutableState.value = mutableState.value.copy(
-            identificationMessage = "${trackIds.size}人をリアルタイム識別中",
+            identificationMessage = "${embeddingTrackIds.size}人をリアルタイム識別中",
             identificationPending = true,
         )
-        return trackIds
+        return embeddingTrackIds
     }
 
     @Synchronized
     fun onFeatureObservations(observations: List<FaceFeatureObservation>) {
+        if (observations.isNotEmpty()) {
+            mutableState.value = mutableState.value.copy(
+                lastEmbeddingAverageTimeMillis = observations.sumOf { it.embeddingTimeMillis } / observations.size,
+                lastEmbeddingMaximumTimeMillis = observations.maxOf { it.embeddingTimeMillis },
+                lastEmbeddingFaceCount = observations.size,
+            )
+        }
         val capture = pendingCapture.getAndSet(null)
         if (capture != null) {
             val observation = observations.firstOrNull { it.trackId == capture.trackId }
@@ -123,8 +158,11 @@ class FaceIdentityCoordinator(
             )
             return
         }
+        if (!anonymousLearningEnabled) {
+            sampledTrackIds.addAll(requestedObservations.map { it.trackId })
+        }
         val profiles = mutableState.value.profiles
-        val results = requestedObservations.map { observation ->
+        val rawResultsWithComparisonMillis = requestedObservations.map { observation ->
             val startedAtNanos = System.nanoTime()
             val result = faceIdentifier.identify(
                 trackId = observation.trackId,
@@ -135,14 +173,35 @@ class FaceIdentityCoordinator(
                 processingTimeMillis = observation.embeddingTimeMillis +
                     (System.nanoTime() - startedAtNanos) / 1_000_000L,
             )
-            val comparisonMillis = (System.nanoTime() - startedAtNanos) / 1_000_000L
-            logIdentification(result, comparisonMillis)
-            result
+            result to ((System.nanoTime() - startedAtNanos) / 1_000_000L)
+        }
+        val comparisonMillisByTrackId = rawResultsWithComparisonMillis.associate { (result, millis) ->
+            result.trackId to millis
+        }
+        val activeTrackIds = activeIdentificationTrackIds.get()
+        val retainedResults = mutableState.value.results.filter {
+            it.trackId in activeTrackIds && it.trackId !in identificationTrackIds
+        }
+        val mergedResults = enforceUniqueRegisteredPersonIds(
+            retainedResults + rawResultsWithComparisonMillis.map { it.first },
+        )
+        val results = mergedResults.filter { it.trackId in identificationTrackIds }
+        results.forEach { result ->
+            logIdentification(result, comparisonMillisByTrackId[result.trackId] ?: 0L)
         }
         val resultByTrackId = results.associateBy { it.trackId }
-        val anonymousResults = requestedObservations.mapNotNull { observation ->
+        val reservedAnonymousIds = mutableState.value.anonymousResults
+            .filter { it.trackId in activeTrackIds && it.trackId !in identificationTrackIds }
+            .mapTo(linkedSetOf()) { it.anonymousId }
+        val updatedAnonymousResults = if (!anonymousLearningEnabled) emptyList() else requestedObservations.mapNotNull { observation ->
             if (resultByTrackId[observation.trackId]?.status != FaceIdentityStatus.UNKNOWN) return@mapNotNull null
-            anonymousClusterer.identify(observation.trackId, observation.embedding).also { result ->
+            anonymousClusterer.identify(
+                observation.trackId,
+                observation.embedding,
+                reservedAnonymousIds,
+            ).also { result ->
+                reservedAnonymousIds += result.anonymousId
+                if (result.isAtSampleLimit) saturatedLearningTrackIds += result.trackId
                 onBenchmarkEvent(
                     BenchmarkEvent(
                         event = "anonymous_face_identification",
@@ -161,15 +220,38 @@ class FaceIdentityCoordinator(
                 )
             }
         }
+        val retainedAnonymousResults = mutableState.value.anonymousResults.filter {
+            it.trackId in activeTrackIds && it.trackId !in identificationTrackIds
+        }
+        val anonymousResults = retainedAnonymousResults + updatedAnonymousResults
         mutableState.value = mutableState.value.copy(
-            results = results,
+            results = mergedResults,
             anonymousResults = anonymousResults,
             anonymousClusterCount = anonymousClusterer.clusterCount,
             profiles = profiles,
-            identificationMessage = "${results.size}人を識別しました（リアルタイム更新）",
+            identificationMessage = "${mergedResults.size}人を識別しました（リアルタイム更新）",
             identificationPending = false,
             error = null,
         )
+    }
+
+    private fun enforceUniqueRegisteredPersonIds(results: List<FaceIdentityResult>): List<FaceIdentityResult> {
+        val winningTrackByPersonId = results
+            .filter { it.status == FaceIdentityStatus.IDENTIFIED && it.personId != null }
+            .groupBy { checkNotNull(it.personId) }
+            .mapValues { (_, matches) -> matches.maxBy { it.score ?: Float.NEGATIVE_INFINITY }.trackId }
+        return results.map { result ->
+            val personId = result.personId
+            if (personId != null && winningTrackByPersonId[personId] != result.trackId) {
+                result.copy(
+                    status = FaceIdentityStatus.UNKNOWN,
+                    personId = null,
+                    displayName = null,
+                )
+            } else {
+                result
+            }
+        }
     }
 
     private fun logIdentification(result: FaceIdentityResult, comparisonMillis: Long) {
@@ -447,5 +529,8 @@ data class FaceIdentityUiState(
     val identificationMessage: String? = null,
     val identificationPending: Boolean = false,
     val embeddingModelReady: Boolean = false,
+    val lastEmbeddingAverageTimeMillis: Long? = null,
+    val lastEmbeddingMaximumTimeMillis: Long? = null,
+    val lastEmbeddingFaceCount: Int = 0,
     val error: String? = null,
 )

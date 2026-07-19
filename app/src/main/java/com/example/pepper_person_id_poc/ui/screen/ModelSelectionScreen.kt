@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
+import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
 import com.example.pepper_person_id_poc.domain.config.ModelImplementationStatus
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
@@ -32,6 +34,8 @@ fun ModelSelectionScreen(
     settings: PocSettings,
     settingsSaved: Boolean,
     onFaceModelChanged: (FaceModelOption) -> Unit,
+    onFaceDetectorChanged: (FaceDetectorOption) -> Unit,
+    onFaceInferenceBackendChanged: (FaceInferenceBackend) -> Unit,
     onSpeakerModelChanged: (SpeakerModelOption) -> Unit,
     onSave: () -> Unit,
     onBackToSettings: () -> Unit,
@@ -56,20 +60,51 @@ fun ModelSelectionScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
         ) {
+            ModelCard(title = "顔検出・追跡") {
+                FaceDetectorOption.entries.forEach { option ->
+                    ModelChoice(
+                        title = option.displayName,
+                        subtitle = option.description,
+                        selected = settings.faceDetector == option,
+                        onClick = { onFaceDetectorChanged(option) },
+                    )
+                }
+            }
+
             ModelCard(title = "顔識別モデル") {
                 FaceModelOption.entries.forEach { option ->
                     ModelChoice(
                         title = option.displayName,
                         subtitle = buildString {
                             append(option.modelFileName)
+                            if (option == FaceModelOption.SFACE_2021DEC_INT8) {
+                                append("\n対応推論基盤: OpenCV 5.0.0 DNN")
+                            }
                             if (option.implementationStatus == ModelImplementationStatus.PENDING) {
-                                append("\n実装準備中: 選択時は推論を開始しません")
+                                append("\n実装状態: 未実装 / 推論起動: 無効")
                             } else if (option.implementationStatus == ModelImplementationStatus.UNAVAILABLE) {
-                                append("\nPepper実機非対応: OpenVINO IRプラグインを利用できません")
+                                append("\nPepper互換性: 非対応 / 欠落要素: OpenVINO IRランタイム")
                             }
                         },
                         selected = settings.faceModel == option,
                         onClick = { onFaceModelChanged(option) },
+                    )
+                }
+            }
+
+            ModelCard(title = "顔特徴量の推論基盤") {
+                FaceInferenceBackend.entries.forEach { option ->
+                    val supported = settings.faceModel.supports(option)
+                    ModelChoice(
+                        title = option.displayName,
+                        subtitle = buildString {
+                            append(option.description)
+                            option.runtimeArtifact?.let { append("\nローカル成果物: $it") }
+                            if (!supported) append("\n選択中の顔識別モデルでは未対応")
+                        },
+                        selected = settings.faceInferenceBackend == option,
+                        enabled = supported,
+                        onClick = { onFaceInferenceBackendChanged(option) },
                     )
                 }
             }
@@ -98,8 +133,8 @@ fun ModelSelectionScreen(
             }
 
             Text(
-                "候補値はJVS studio由来・Pepper実機で再調整必須です。モデル本体はGitへ含めません。" +
-                    "選択したモデルファイルが端末にない場合はエラーを表示し、別モデルへ自動変更しません。",
+                "閾値プリセット: JVS studio評価値 / 調整入力: Pepperマイク収録音声\n" +
+                    "モデル配布: Git管理外のローカルアセット / モデル欠落時: エラー / フォールバック: 無効",
                 color = MaterialTheme.colorScheme.primary,
             )
             Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
@@ -130,16 +165,17 @@ private fun ModelChoice(
     title: String,
     subtitle: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 8.dp),
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        RadioButton(selected = selected, enabled = enabled, onClick = onClick)
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(subtitle, style = MaterialTheme.typography.bodySmall)

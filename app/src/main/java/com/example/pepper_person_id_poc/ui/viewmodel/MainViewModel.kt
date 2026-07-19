@@ -8,6 +8,8 @@ import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
+import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.state.MainUiState
@@ -80,7 +82,19 @@ class MainViewModel(
     }
 
     fun updateFaceModel(value: FaceModelOption) = updateSettings {
-        copy(faceModel = value)
+        copy(
+            faceModel = value,
+            faceInferenceBackend = faceInferenceBackend.takeIf(value::supports)
+                ?: FaceInferenceBackend.OPEN_CV,
+        )
+    }
+
+    fun updateFaceDetector(value: FaceDetectorOption) = updateSettings {
+        copy(faceDetector = value)
+    }
+
+    fun updateFaceInferenceBackend(value: FaceInferenceBackend) = updateSettings {
+        if (faceModel.supports(value)) copy(faceInferenceBackend = value) else this
     }
 
     fun updateSpeakerModel(value: SpeakerModelOption) = updateSettings {

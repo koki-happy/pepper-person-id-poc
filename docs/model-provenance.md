@@ -22,6 +22,16 @@ Invoke-WebRequest -UseBasicParsing `
 Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_detection_yunet_2026may.onnx
 ```
 
+### YuNet 2023mar INT8
+
+- Model: `face_detection_yunet_2023mar_int8.onnx`
+- Official distribution: https://huggingface.co/opencv/face_detection_yunet/blob/main/face_detection_yunet_2023mar_int8.onnx
+- License: MIT
+- Size: 100,416 bytes
+- SHA-256: `321AA5A6AFABF7ECC46A3D06BFAB2B579DC96EB5C3BE7EDD365FA04502AD9294`
+- Local path: `app/src/main/assets/models/face_detection_yunet_2023mar_int8.onnx`
+- Runtime: OpenCV `FaceDetectorYN`
+
 ## OpenCV Android runtime
 
 - Artifact: `org.opencv:opencv:5.0.0`
@@ -52,6 +62,18 @@ Invoke-WebRequest -UseBasicParsing `
   -OutFile app/src/main/assets/models/face_recognition_sface_2021dec.onnx
 Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface_2021dec.onnx
 ```
+
+### SFace 2021dec INT8
+
+- Model: `face_recognition_sface_2021dec_int8.onnx`
+- Official distribution: https://huggingface.co/opencv/face_recognition_sface/blob/main/face_recognition_sface_2021dec_int8.onnx
+- License: Apache License 2.0
+- Architecture: INT8 quantized MobileFaceNet trained with SFace loss
+- Input: float `1x3x112x112`; quantization is contained in the graph
+- Output: float 128 dimensions
+- Size: 9,896,933 bytes
+- SHA-256: `2B0E941E6F16CC048C20AEE0C8E31F569118F65D702914540F7BFDC14048D78A`
+- Local path: `app/src/main/assets/models/face_recognition_sface_2021dec_int8.onnx`
 
 登録時に保存するのはSFace特徴量、モデル名、personId、表示名、登録日時、サンプル数だけとし、生の顔画像や切り出し画像は保存しない。
 

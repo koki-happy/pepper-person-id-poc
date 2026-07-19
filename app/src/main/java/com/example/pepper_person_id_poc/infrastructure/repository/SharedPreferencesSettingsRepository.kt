@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
+import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 
 class SharedPreferencesSettingsRepository(
@@ -22,6 +24,12 @@ class SharedPreferencesSettingsRepository(
             faceModel = preferences.getString(KEY_FACE_MODEL, null)
                 ?.let { saved -> FaceModelOption.entries.firstOrNull { it.name == saved } }
                 ?: FaceModelOption.SFACE_2021DEC,
+            faceDetector = preferences.getString(KEY_FACE_DETECTOR, null)
+                ?.let { saved -> FaceDetectorOption.entries.firstOrNull { it.name == saved } }
+                ?: FaceDetectorOption.ML_KIT_BUNDLED,
+            faceInferenceBackend = preferences.getString(KEY_FACE_INFERENCE_BACKEND, null)
+                ?.let { saved -> FaceInferenceBackend.entries.firstOrNull { it.name == saved } }
+                ?: FaceInferenceBackend.OPEN_CV,
             speakerModel = speakerModel,
             faceThreshold = preferences.getFloat(KEY_FACE_THRESHOLD, PocSettings.DEFAULT_FACE_THRESHOLD),
             faceMargin = preferences.getFloat(KEY_FACE_MARGIN, PocSettings.DEFAULT_FACE_MARGIN),
@@ -72,6 +80,8 @@ class SharedPreferencesSettingsRepository(
         require(settings.isValid()) { "Invalid PoC settings" }
         preferences.edit()
             .putString(KEY_FACE_MODEL, settings.faceModel.name)
+            .putString(KEY_FACE_DETECTOR, settings.faceDetector.name)
+            .putString(KEY_FACE_INFERENCE_BACKEND, settings.faceInferenceBackend.name)
             .putString(KEY_SPEAKER_MODEL, settings.speakerModel.name)
             .putFloat(KEY_FACE_THRESHOLD, settings.faceThreshold)
             .putFloat(KEY_FACE_MARGIN, settings.faceMargin)
@@ -94,6 +104,8 @@ class SharedPreferencesSettingsRepository(
     private companion object {
         const val PREFERENCES_NAME = "poc_settings"
         const val KEY_FACE_MODEL = "face_model"
+        const val KEY_FACE_DETECTOR = "face_detector"
+        const val KEY_FACE_INFERENCE_BACKEND = "face_inference_backend"
         const val KEY_SPEAKER_MODEL = "speaker_model"
         const val KEY_FACE_THRESHOLD = "face_threshold"
         const val KEY_FACE_MARGIN = "face_margin"

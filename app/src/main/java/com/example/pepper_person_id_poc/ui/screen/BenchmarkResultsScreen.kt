@@ -52,13 +52,13 @@ fun BenchmarkResultsScreen(
             Text("JSON Lines出力", style = MaterialTheme.typography.headlineSmall)
             Text(outputPath, style = MaterialTheme.typography.bodySmall)
             Text(
-                "顔画像、PCM、WAV、顔特徴量、声特徴量は出力しません。",
+                "JSONL出力対象: 処理時間・状態・メタデータ / 除外: 画像・音声・特徴量",
                 color = MaterialTheme.colorScheme.primary,
             )
             Button(onClick = onRefresh) { Text("直近イベントを更新") }
             error?.let { Text("読込エラー: $it", color = MaterialTheme.colorScheme.error) }
             if (recentEvents.isEmpty()) {
-                Text("測定イベントはまだありません。端末診断などを実行してください。")
+                Text("測定イベント件数: 0")
             }
             recentEvents.asReversed().forEach { event ->
                 Card(modifier = Modifier.fillMaxWidth()) {

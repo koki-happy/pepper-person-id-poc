@@ -61,13 +61,13 @@ fun SettingsScreen(
                 .padding(20.dp),
         ) {
             Text("設定", style = MaterialTheme.typography.headlineMedium)
-            Text("起動時はこの画面を表示します。各機能画面の戻る操作でもここへ戻ります。")
+            Text("モデル選択、機能起動、識別パラメータを管理します。")
 
             SettingsCard(title = "使用モデル") {
                 Text("顔: ${settings.faceModel.displayName}")
                 Text("話者: ${settings.speakerModel.displayName}")
                 Text(
-                    "話者の閾値・margin候補はJVS studio由来・Pepper実機で再調整必須です。",
+                    "話者閾値プリセット: JVS studio評価値 / 調整入力: 端末マイク収録音声",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -76,48 +76,14 @@ fun SettingsScreen(
                 }
             }
 
-            SettingsCard(title = "識別閾値") {
-                ThresholdSlider("Face Identification", settings.faceThreshold, onFaceThresholdChanged)
-                ThresholdSlider("Speaker Identification", settings.speakerThreshold, onSpeakerThresholdChanged)
-                ThresholdSlider(
-                    "Speaker Top-2 Margin",
-                    settings.speakerMargin,
-                    onSpeakerMarginChanged,
-                    PocSettings.MARGIN_RANGE,
-                )
-                ThresholdSlider("Combined", settings.combinedThreshold, onCombinedThresholdChanged)
-                Text("顔観測時間: ${settings.observationWindowMillis} ms")
-                Slider(
-                    value = settings.observationWindowMillis.toFloat(),
-                    onValueChange = { onObservationWindowChanged(it.toLong()) },
-                    valueRange = PocSettings.OBSERVATION_WINDOW_RANGE.first.toFloat()..
-                        PocSettings.OBSERVATION_WINDOW_RANGE.last.toFloat(),
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("デバッグ表示")
-                        Text(
-                            "Unknown時の最上位候補とスコアを表示します",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Switch(
-                        checked = settings.debugMode,
-                        onCheckedChange = onDebugModeChanged,
-                    )
-                }
-                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (settingsSaved) "保存しました" else "設定を保存")
-                }
-            }
-
             Text("PoC機能", style = MaterialTheme.typography.titleLarge)
             AppScreen.entries
-                .filterNot { it == AppScreen.Settings || it == AppScreen.ModelSelection }
+                .filterNot {
+                    it == AppScreen.Settings ||
+                        it == AppScreen.ModelSelection ||
+                        it == AppScreen.ConversationHistory ||
+                        it == AppScreen.BenchmarkResults
+                }
                 .forEach { screen ->
                     Card(onClick = { onOpenScreen(screen) }, modifier = Modifier.fillMaxWidth()) {
                         Column(
@@ -131,7 +97,7 @@ fun SettingsScreen(
                 }
 
             SettingsCard(title = "顔パラメータ") {
-                Text("顔識別閾値と候補差、3姿勢登録の実機調整値です。")
+                Text("対象: 1対N顔照合、3姿勢登録、追跡中の特徴量平滑化")
                 ThresholdSlider("顔識別閾値", settings.faceThreshold, onFaceThresholdChanged)
                 ThresholdSlider(
                     "顔 Top-2 最小候補差",
@@ -195,12 +161,69 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsCard(title = "話者パラメータ") {
+                Text("対象: 1対N話者照合の類似度閾値とTop-2候補差")
+                ThresholdSlider(
+                    "話者識別閾値",
+                    settings.speakerThreshold,
+                    onSpeakerThresholdChanged,
+                )
+                ThresholdSlider(
+                    "話者 Top-2 最小候補差",
+                    settings.speakerMargin,
+                    onSpeakerMarginChanged,
+                    PocSettings.MARGIN_RANGE,
+                )
+                Text(
+                    "閾値初期値: JVS studio評価値 / 調整入力: 16 kHz mono PCM",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (settingsSaved) "保存しました" else "話者パラメータを保存")
+                }
+            }
+
+            SettingsCard(title = "共通パラメータ") {
+                Text("対象: 顔スコアと話者スコアを統合する人物識別判定")
+                ThresholdSlider(
+                    "複合識別閾値",
+                    settings.combinedThreshold,
+                    onCombinedThresholdChanged,
+                )
+                LongSlider(
+                    "顔観測時間",
+                    settings.observationWindowMillis,
+                    PocSettings.OBSERVATION_WINDOW_RANGE,
+                    onObservationWindowChanged,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("デバッグ表示")
+                        Text(
+                            "Unknown時の最上位候補とスコアを表示します",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(
+                        checked = settings.debugMode,
+                        onCheckedChange = onDebugModeChanged,
+                    )
+                }
+                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (settingsSaved) "保存しました" else "共通パラメータを保存")
+                }
+            }
+
             SettingsCard(title = "保存データとプライバシー") {
-                Text("保存: personId、表示名、モデル名、登録日時、顔・声特徴量、設定、評価ログ")
-                Text("保存しない: 顔画像、動画、PCM、WAV")
-                Text("保存先: この端末のアプリ専用内部ストレージ。外部送信は行いません。")
-                Text("用途: 登録人物との端末内照合とPoC評価。人物登録画面で人物単位または全件を削除できます。")
-                Text("保持期間はPoC運用者と決定し、PoC終了・本人依頼・端末返却時には全削除してください。")
+                Text("永続化データ: personId、表示名、モデル名、登録日時、顔・声特徴量、設定、評価ログ")
+                Text("非永続化データ: 顔画像、動画、PCM、WAV")
+                Text("ストレージ: 端末内アプリ専用領域 / 外部送信: 無効")
+                Text("照合範囲: 端末内の登録人物 / 削除単位: 人物単位または全件")
+                Text("全件削除トリガー: PoC終了、本人依頼、端末返却")
             }
         }
     }

@@ -13,12 +13,18 @@ class AnonymousFaceClusterer(
     val clusterCount: Int get() = clusters.size
 
     @Synchronized
-    fun identify(trackId: String, embedding: FloatArray): AnonymousFaceResult {
+    fun identify(
+        trackId: String,
+        embedding: FloatArray,
+        reservedAnonymousIds: Set<String> = emptySet(),
+    ): AnonymousFaceResult {
         require(embedding.isNotEmpty())
         val mappedCluster = anonymousIdByTrackId[trackId]
             ?.let { mappedId -> clusters.firstOrNull { it.anonymousId == mappedId } }
+            ?.takeUnless { it.anonymousId in reservedAnonymousIds }
         val best = mappedCluster?.let { it to cosineSimilarity(embedding, it.centroid) }
             ?: clusters.asSequence()
+                .filterNot { it.anonymousId in reservedAnonymousIds }
                 .filter { it.centroid.size == embedding.size }
                 .map { it to cosineSimilarity(embedding, it.centroid) }
                 .maxByOrNull { it.second }
@@ -42,6 +48,7 @@ class AnonymousFaceClusterer(
             threshold = threshold,
             isNewCluster = isNewCluster,
             clusterSampleCount = cluster.sampleCount,
+            maximumSampleCount = MAX_SAMPLES_PER_CLUSTER,
         )
     }
 
@@ -59,12 +66,17 @@ class AnonymousFaceClusterer(
     ) {
         fun add(embedding: FloatArray) {
             require(centroid.size == embedding.size)
+            if (sampleCount >= MAX_SAMPLES_PER_CLUSTER) return
             val nextCount = sampleCount + 1
             centroid.indices.forEach { index ->
                 centroid[index] += (embedding[index] - centroid[index]) / nextCount
             }
             sampleCount = nextCount
         }
+    }
+
+    companion object {
+        const val MAX_SAMPLES_PER_CLUSTER = 20
     }
 }
 
@@ -75,7 +87,10 @@ data class AnonymousFaceResult(
     val threshold: Float,
     val isNewCluster: Boolean,
     val clusterSampleCount: Int,
-)
+    val maximumSampleCount: Int,
+) {
+    val isAtSampleLimit: Boolean get() = clusterSampleCount >= maximumSampleCount
+}
 
 private fun cosineSimilarity(left: FloatArray, right: FloatArray): Float {
     if (left.size != right.size || left.isEmpty()) return -1f

@@ -96,11 +96,11 @@ private fun DiagnosticContent(diagnostics: DeviceDiagnostics) {
         DiagnosticRow("SpeechRecognizer", diagnostics.speechRecognitionAvailable.asStatus())
     }
     DiagnosticCard("前面カメラ") {
-        if (diagnostics.frontCameras.isEmpty()) Text("前面カメラを取得できません")
+        if (diagnostics.frontCameras.isEmpty()) Text("前面カメラ件数: 0")
         diagnostics.frontCameras.forEach { camera ->
             DiagnosticRow("Camera ${camera.cameraId}", "Orientation ${camera.orientationDegrees ?: "不明"}°")
             Text(
-                camera.previewSizes.joinToString().ifBlank { "プレビュー解像度を取得できません" },
+                camera.previewSizes.joinToString().ifBlank { "プレビュー解像度: 未取得" },
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -113,7 +113,7 @@ private fun DiagnosticContent(diagnostics: DeviceDiagnostics) {
             )
         }
         Text(
-            "ここではgetMinBufferSizeのみ確認します。実際の初期化・録音はPCM録音機能で検証します。",
+            "診断API: AudioRecord.getMinBufferSize / 録音初期化テスト: PCM録音画面",
             style = MaterialTheme.typography.bodySmall,
         )
     }

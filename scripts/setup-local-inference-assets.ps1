@@ -18,6 +18,16 @@ $artifacts = @(
         Sha256 = "0BA9FBFA01B5270C96627C4EF784DA859931E02F04419C829E83484087C34E79"
     },
     @{
+        RelativePath = "app/src/main/assets/models/face_recognition_sface_2021dec_int8.onnx"
+        Url = "https://huggingface.co/opencv/face_recognition_sface/resolve/main/face_recognition_sface_2021dec_int8.onnx"
+        Sha256 = "2B0E941E6F16CC048C20AEE0C8E31F569118F65D702914540F7BFDC14048D78A"
+    },
+    @{
+        RelativePath = "app/src/main/assets/models/face_detection_yunet_2023mar_int8.onnx"
+        Url = "https://huggingface.co/opencv/face_detection_yunet/resolve/main/face_detection_yunet_2023mar_int8.onnx"
+        Sha256 = "321AA5A6AFABF7ECC46A3D06BFAB2B579DC96EB5C3BE7EDD365FA04502AD9294"
+    },
+    @{
         RelativePath = "app/src/main/assets/models/face-reidentification-retail-0095.xml"
         Url = "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-reidentification-retail-0095/FP32/face-reidentification-retail-0095.xml"
         Sha256 = "6CF60C341452155E35C467510C6C50A96ADE5B2BD8F88C5A90902E905D8A80C3"

@@ -1,18 +1,23 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
+import com.example.pepper_person_id_poc.domain.config.FaceModelOption
 import java.io.File
 import org.opencv.core.Mat
 import org.opencv.objdetect.FaceRecognizerSF
 
 class SFaceEmbeddingEngine(
     context: Context,
+    private val model: FaceModelOption = FaceModelOption.SFACE_2021DEC,
 ) : FaceEmbeddingEngine {
+    init {
+        require(model.isSFace)
+    }
     private val appContext = context.applicationContext
     private var recognizer: FaceRecognizerSF? = null
     private var initializationFailure: Throwable? = null
 
-    override val modelName: String = MODEL_NAME
+    override val modelName: String = model.displayName
 
     override fun prepare() {
         getOrCreateRecognizer()
@@ -51,18 +56,12 @@ class SFaceEmbeddingEngine(
     }
 
     private fun copyModelToInternalStorage(): File {
-        val output = File(appContext.filesDir, "models/$MODEL_FILE_NAME")
+        val output = File(appContext.filesDir, "models/${model.modelFileName}")
         if (output.exists() && output.length() > 0) return output
         output.parentFile?.mkdirs()
-        appContext.assets.open(MODEL_ASSET_PATH).use { input ->
+        appContext.assets.open("models/${model.modelFileName}").use { input ->
             output.outputStream().use(input::copyTo)
         }
         return output
-    }
-
-    private companion object {
-        const val MODEL_NAME = "SFace 2021dec"
-        const val MODEL_FILE_NAME = "face_recognition_sface_2021dec.onnx"
-        const val MODEL_ASSET_PATH = "models/$MODEL_FILE_NAME"
     }
 }

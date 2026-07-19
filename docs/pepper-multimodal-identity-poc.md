@@ -518,3 +518,30 @@ CAM++英語版とERes2Netのスコアは、同じWAVをsherpa-onnx 1.13.4で処�
 AndroidはAPI 28 x86でinstrumentation 2テストに成功し、3モデル×2データセット×2クエリの12個のJSONを回収した。API 23 x86はAARが`__write_chk`を要求してロードに失敗する。API 28 x86実測はPepper API 23 / ARMv7のparityや性能を代替しない。RyuseiNetは今回の5モデル比較の外とし、追加学習なし、未実装・未比較である。
 
 5モデルのONNX重みは適用ライセンス、商用条件、根拠URLが未確認のため、releaseゲートを維持する。ゲートでは目録とAndroid列挙モデル、同梱assetのサイズ・SHA-256も照合する。
+
+## 顔検出と推論基盤の切替（2026-07-19）
+
+顔検出は`ML Kit Face Detection 16.1.7 Bundled`を既定とし、比較のため従来`YuNet 2026may / OpenCV`も残す。ML Kit経路はPlay Servicesからの動的ダウンロードを使わず、モデルをAPKへ同梱する。`PERFORMANCE_MODE_FAST`、landmark、trackingを有効化し、次を1フレームの観測へまとめる。
+
+- ML Kit `trackingId`（取得できない場合だけIoU FaceTrackerへフォールバック）
+- bounding box
+- Euler X/Y/Zから登録用yaw/pitch/roll
+- 右目、左目、鼻、右口角、左口角の5点。欠損点はbounding box比率で補完
+- SFaceまたは0095の特徴量
+
+ML Kitは顔検出confidenceを公開しない。このためYuNetと同じ`1.0`として表示せず、UIでは`Detection confidence N/A`と明示する。
+
+顔特徴量の推論基盤は次を選択できる。登録特徴量の混在を避けるため、OpenCV以外は保存時のmodel nameへ基盤名を含める。
+
+| 基盤 | バージョン | Pepper向け接続 |
+|---|---|---|
+| OpenCV DNN | 5.0.0 | 既存基準。SFaceはFaceRecognizerSF、0095はONNX変換版 |
+| ONNX Runtime | 1.27.0 | `--android_api 23 --android_abi armeabi-v7a --build_java`。SFace/0095から生成したrequired-operators configでkernelを限定 |
+| ncnn | 20260526 | 公式android-shared armeabi-v7aと薄いJNI adapter。ONNXをparam/binへ事前変換 |
+| MNN | 3.5.0 | 公式Android armeabi-v7a CPUライブラリと薄いJNI adapter。ONNXをMNNへ事前変換 |
+
+ncnn/MNNのJNIは顔推論比較だけに限定し、アプリケーション、前処理、判定、追跡、永続化はKotlinのままとする。生成AAR、`.so`、変換モデル、SDK/NDKはGitへ含めない。
+
+### 登録済み識別と未登録人物の同時処理
+
+識別画面は登録人数が0人でも特徴量生成を止めない。各解析フレームで`trackId`ごとに登録人物との1:N照合を行い、IDENTIFIEDなら表示名、Unknownならセッション内`AnonymousFaceClusterer`へ渡す。したがって画面には短期の`trackId`と、退場・再登場を特徴量でつなぐ`anonymousId`の両方が表示される。匿名centroidは画面終了または明示リセットで破棄し、人物Repositoryへ保存しない。

@@ -44,7 +44,7 @@ fun FeaturePlaceholderScreen(
         ) {
             Text(screen.title, style = MaterialTheme.typography.headlineMedium)
             Text(screen.description, modifier = Modifier.padding(top = 12.dp))
-            Text("この機能は次の実装単位で追加します。", modifier = Modifier.padding(top = 24.dp))
+            Text("実装状態: 未実装", modifier = Modifier.padding(top = 24.dp))
         }
     }
 }
