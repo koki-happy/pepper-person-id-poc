@@ -84,11 +84,15 @@ class MainViewModel(
     }
 
     fun updateSpeakerModel(value: SpeakerModelOption) = updateSettings {
-        copy(speakerModel = value)
+        withSpeakerModel(value)
     }
 
     fun updateSpeakerThreshold(value: Float) = updateSettings {
         copy(speakerThreshold = value.coerceIn(PocSettings.SCORE_RANGE))
+    }
+
+    fun updateSpeakerMargin(value: Float) = updateSettings {
+        copy(speakerMargin = value.coerceIn(PocSettings.MARGIN_RANGE))
     }
 
     fun updateCombinedThreshold(value: Float) = updateSettings {

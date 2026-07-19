@@ -7,9 +7,16 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.example.pepper_person_id_poc.infrastructure.speaker.SherpaOnnxSpeakerEmbeddingEngine
+import com.example.pepper_person_id_poc.speakercore.EmbeddingMath
+import com.example.pepper_person_id_poc.speakercore.SpeakerCentroid
+import com.example.pepper_person_id_poc.speakercore.SpeakerScorer
 import kotlin.math.sqrt
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.io.File
+import java.security.MessageDigest
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,6 +28,7 @@ class SpeakerModelBenchmarkTest {
     fun bothModels_benchmarkLombardGridEnglishSamples() {
         benchmarkDataset(
             dataset = "LombardGRID-English",
+            enrollmentSpeakerId = "s22",
             enrollmentAsset = "lombard-s22-plain.wav",
             sameSpeakerAsset = "lombard-s22-lombard.wav",
             differentSpeakerAsset = "lombard-s16-plain.wav",
@@ -31,6 +39,7 @@ class SpeakerModelBenchmarkTest {
     fun bothModels_benchmarkSherpaChineseSamples() {
         benchmarkDataset(
             dataset = "sherpa-Chinese",
+            enrollmentSpeakerId = "fangjun",
             enrollmentAsset = "fangjun-sr-1.wav",
             sameSpeakerAsset = "fangjun-test-sr-1.wav",
             differentSpeakerAsset = "leijun-test-sr-1.wav",
@@ -39,6 +48,7 @@ class SpeakerModelBenchmarkTest {
 
     private fun benchmarkDataset(
         dataset: String,
+        enrollmentSpeakerId: String,
         enrollmentAsset: String,
         sameSpeakerAsset: String,
         differentSpeakerAsset: String,
@@ -62,8 +72,15 @@ class SpeakerModelBenchmarkTest {
                 val enrollmentResult = timed { engine.extract(enrollment.samples, enrollment.sampleRate) }
                 val sameResult = timed { engine.extract(sameSpeaker.samples, sameSpeaker.sampleRate) }
                 val differentResult = timed { engine.extract(differentSpeaker.samples, differentSpeaker.sampleRate) }
-                val sameScore = cosine(enrollmentResult.value, sameResult.value)
-                val differentScore = cosine(enrollmentResult.value, differentResult.value)
+                val enrollmentCentroid = SpeakerCentroid(
+                    speakerId = enrollmentSpeakerId,
+                    embedding = EmbeddingMath.centroid(listOf(enrollmentResult.value)),
+                )
+                val scorer = SpeakerScorer(SPEAKER_THRESHOLD, SPEAKER_MARGIN)
+                val sameDecision = scorer.score(sameResult.value, listOf(enrollmentCentroid))
+                val differentDecision = scorer.score(differentResult.value, listOf(enrollmentCentroid))
+                val sameScore = requireNotNull(sameDecision.top1).score
+                val differentScore = requireNotNull(differentDecision.top1).score
                 val nativeHeapBytes = Debug.getNativeHeapAllocatedSize()
 
                 Log.i(
@@ -72,6 +89,29 @@ class SpeakerModelBenchmarkTest {
                         "initMillis=$initMillis enrollmentMillis=${enrollmentResult.millis} " +
                         "sameMillis=${sameResult.millis} differentMillis=${differentResult.millis} " +
                         "sameScore=$sameScore differentScore=$differentScore nativeHeapBytes=$nativeHeapBytes",
+                )
+                val modelSha256 = targetContext.assets
+                    .open("models/${model.modelFileName}")
+                    .use(::sha256)
+                writeParityRecord(
+                    outputDirectory = File(targetContext.filesDir, "benchmark-parity"),
+                    dataset = dataset,
+                    queryName = sameSpeakerAsset,
+                    model = model,
+                    modelSha256 = modelSha256,
+                    query = sameSpeaker,
+                    queryEmbedding = sameResult.value,
+                    scoringResult = sameDecision,
+                )
+                writeParityRecord(
+                    outputDirectory = File(targetContext.filesDir, "benchmark-parity"),
+                    dataset = dataset,
+                    queryName = differentSpeakerAsset,
+                    model = model,
+                    modelSha256 = modelSha256,
+                    query = differentSpeaker,
+                    queryEmbedding = differentResult.value,
+                    scoringResult = differentDecision,
                 )
                 assertTrue(enrollmentResult.value.isNotEmpty())
                 assertTrue(enrollmentResult.value.all(Float::isFinite))
@@ -128,26 +168,85 @@ class SpeakerModelBenchmarkTest {
             }
             offset += 8 + size + (size and 1)
         }
-        return TestPcm(requireNotNull(samples), sampleRate)
+        return TestPcm(
+            samples = requireNotNull(samples),
+            sampleRate = sampleRate,
+            wavSha256 = sha256(bytes.inputStream()),
+        )
     }
 
-    private fun cosine(left: FloatArray, right: FloatArray): Float {
-        var dot = 0.0
-        var leftNorm = 0.0
-        var rightNorm = 0.0
-        left.indices.forEach { index ->
-            dot += left[index] * right[index]
-            leftNorm += left[index] * left[index]
-            rightNorm += right[index] * right[index]
+    private fun writeParityRecord(
+        outputDirectory: File,
+        dataset: String,
+        queryName: String,
+        model: SpeakerModelOption,
+        modelSha256: String,
+        query: TestPcm,
+        queryEmbedding: FloatArray,
+        scoringResult: com.example.pepper_person_id_poc.speakercore.SpeakerScoringResult,
+    ) {
+        outputDirectory.mkdirs()
+        val score = requireNotNull(scoringResult.top1).score
+        val record = JSONObject()
+            .put("modelId", model.configModelId)
+            .put("modelName", model.displayName)
+            .put("modelSha256", modelSha256)
+            .put("queryWavSha256", query.wavSha256)
+            .put("sampleRate", query.sampleRate)
+            .put("numSamples", query.samples.size)
+            .put("durationSec", query.samples.size.toDouble() / query.sampleRate)
+            .put("embeddingDim", queryEmbedding.size)
+            .put("embeddingNorm", l2Norm(queryEmbedding))
+            .put("embeddingSha256", embeddingSha256(queryEmbedding))
+            .put("embedding", JSONArray(queryEmbedding.map(Float::toDouble)))
+            .put("speakerScores", JSONObject().put("enrollment", score.toDouble()))
+            .put("threshold", SPEAKER_THRESHOLD.toDouble())
+            .put("margin", SPEAKER_MARGIN.toDouble())
+            .put("score", score.toDouble())
+            .put("decision", scoringResult.decision.name)
+            .put("predictedSpeakerId", scoringResult.identifiedSpeakerId ?: JSONObject.NULL)
+            .put("isUnknown", scoringResult.identifiedSpeakerId == null)
+            .put("dataset", dataset)
+            .put("query", queryName)
+        val safeName = "$dataset-${model.name}-$queryName"
+            .replace(Regex("[^A-Za-z0-9._-]"), "-")
+        val output = File(outputDirectory, "$safeName.json")
+        output.writeText(record.toString(2), Charsets.UTF_8)
+        Log.i(TAG, "parityRecord=${output.absolutePath}")
+    }
+
+    private fun l2Norm(values: FloatArray): Double = sqrt(
+        values.sumOf { value -> value.toDouble() * value.toDouble() },
+    )
+
+    private fun embeddingSha256(values: FloatArray): String {
+        val bytes = ByteBuffer.allocate(values.size * Float.SIZE_BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN)
+        values.forEach(bytes::putFloat)
+        return sha256(bytes.array().inputStream())
+    }
+
+    private fun sha256(input: java.io.InputStream): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (count > 0) digest.update(buffer, 0, count)
         }
-        return (dot / (sqrt(leftNorm) * sqrt(rightNorm))).toFloat()
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private data class Timed<T>(val value: T, val millis: Long)
-    private data class TestPcm(val samples: ShortArray, val sampleRate: Int)
+    private data class TestPcm(
+        val samples: ShortArray,
+        val sampleRate: Int,
+        val wavSha256: String,
+    )
 
     private companion object {
         const val TAG = "SpeakerBenchmark"
         const val SPEAKER_THRESHOLD = 0.60f
+        const val SPEAKER_MARGIN = 0.0f
     }
 }

@@ -38,6 +38,7 @@ class SpeakerIdentityCoordinator(
     private val speakerIdentifier: SpeakerIdentifier,
     speakerThreshold: Float,
     private val benchmarkLogger: BenchmarkLogger,
+    private val speakerMargin: Float = 0f,
 ) : Closeable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val inferenceMutex = Mutex()
@@ -197,6 +198,7 @@ class SpeakerIdentityCoordinator(
             profiles = personRepository.getAllForSpeakerModel(embeddingEngine.modelName),
             threshold = threshold,
             processingTimeMillis = processingMillis,
+            minimumMargin = speakerMargin,
         )
         mutableState.value = mutableState.value.copy(result = result, anonymousResult = null)
         log(
@@ -205,8 +207,16 @@ class SpeakerIdentityCoordinator(
             status = result.status.name,
             attributes = buildMap {
                 result.personId?.let { put("personId", it.value) }
+                result.bestCandidatePersonId?.let { put("bestCandidatePersonId", it.value) }
                 result.score?.let { put("score", it.toString()) }
-                put("threshold", threshold.toString())
+                result.secondBestCandidatePersonId?.let { put("secondBestCandidatePersonId", it.value) }
+                result.secondBestScore?.let { put("secondBestScore", it.toString()) }
+                result.margin?.let { put("margin", it.toString()) }
+                if (result.unknownReasons.isNotEmpty()) {
+                    put("unknownReasons", result.unknownReasons.joinToString(",") { it.name })
+                }
+                put("threshold", result.threshold.toString())
+                put("minimumMargin", result.minimumMargin.toString())
             },
         )
     }
@@ -240,6 +250,7 @@ class SpeakerIdentityCoordinator(
         bestCandidatePersonId = null,
         threshold = threshold,
         processingTimeMillis = 0L,
+        minimumMargin = speakerMargin,
     )
 
     private fun log(

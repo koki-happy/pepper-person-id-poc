@@ -61,13 +61,20 @@ fun AudioRecordingScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val coordinator = remember(mode, settings.speakerModel, settings.speakerThreshold, personRepository) {
+    val coordinator = remember(
+        mode,
+        settings.speakerModel,
+        settings.speakerThreshold,
+        settings.speakerMargin,
+        personRepository,
+    ) {
         SpeakerIdentityCoordinator(
             mode = mode,
             personRepository = personRepository,
             embeddingEngine = SherpaOnnxSpeakerEmbeddingEngine(context, settings.speakerModel),
             speakerIdentifier = SpeakerIdentifier(),
             speakerThreshold = settings.speakerThreshold,
+            speakerMargin = settings.speakerMargin,
             benchmarkLogger = benchmarkLogger,
         )
     }

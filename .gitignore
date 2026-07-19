@@ -11,6 +11,8 @@
 .DS_Store
 /build
 /app/build/
+/speaker-core/build/
+/speaker-benchmark/build/
 /captures
 .externalNativeBuild
 .cxx
@@ -20,11 +22,23 @@ local.properties
 /evaluation-results/
 __pycache__/
 *.py[cod]
-.venv/
 *.hprof
+
+# Speaker benchmark inputs and generated biometric artifacts.
+/models/
+/data/audio/
+/data/downloads/
+/results/
+/speaker-benchmark/results/
+*.wav
+*.onnx
+*.nemo
+*.dll
+*.so
+.venv/
 
 # Model binaries are obtained separately after license and device validation.
 /app/src/main/assets/models/
-/app/libs/sherpa-onnx-*.aar
+/app/libs/*.aar
 /app/src/androidTest/assets/speaker-test/
 /app/src/androidTest/assets/face-test/

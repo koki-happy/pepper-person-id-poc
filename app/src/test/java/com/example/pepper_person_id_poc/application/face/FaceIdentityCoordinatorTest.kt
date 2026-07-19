@@ -137,6 +137,33 @@ class FaceIdentityCoordinatorTest {
     }
 
     @Test
+    fun realTimeIdentification_withoutEnrollment_tracksAndReidentifiesAnonymousFace() {
+        val realTimeCoordinator = FaceIdentityCoordinator(
+            personRepository = repository,
+            faceIdentifier = FaceIdentifier(),
+            settings = PocSettings(faceSmoothingSampleCount = 1, faceThreshold = 0.8f),
+            faceModelName = "SFace 2021dec",
+            realTimeIdentificationEnabled = true,
+            clockMillis = { nowMillis },
+        )
+
+        assertThat(realTimeCoordinator.onPoseObservations(listOf(pose(0f)))).containsExactly("face-001")
+        realTimeCoordinator.onFeatureObservations(
+            listOf(FaceFeatureObservation("face-001", floatArrayOf(1f, 0f), 1L)),
+        )
+        val firstId = realTimeCoordinator.state.value.anonymousResults.single().anonymousId
+
+        val reappeared = FacePoseObservation("face-010", HeadPose(0f, 0f, 0f))
+        assertThat(realTimeCoordinator.onPoseObservations(listOf(reappeared))).containsExactly("face-010")
+        realTimeCoordinator.onFeatureObservations(
+            listOf(FaceFeatureObservation("face-010", floatArrayOf(0.99f, 0.01f), 1L)),
+        )
+
+        assertThat(realTimeCoordinator.state.value.anonymousResults.single().anonymousId).isEqualTo(firstId)
+        assertThat(realTimeCoordinator.state.value.anonymousClusterCount).isEqualTo(1)
+    }
+
+    @Test
     fun deleteAll_removesFaceAndSpeakerProfiles() {
         repository.addFaceEmbedding(
             com.example.pepper_person_id_poc.domain.person.PersonId("person1"),

@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                         onFaceSideMaximumYawChanged = viewModel::updateFaceSideMaximumYawDegrees,
                         onFaceSmoothingSampleCountChanged = viewModel::updateFaceSmoothingSampleCount,
                         onSpeakerThresholdChanged = viewModel::updateSpeakerThreshold,
+                        onSpeakerMarginChanged = viewModel::updateSpeakerMargin,
                         onCombinedThresholdChanged = viewModel::updateCombinedThreshold,
                         onObservationWindowChanged = viewModel::updateObservationWindowMillis,
                         onDebugModeChanged = viewModel::updateDebugMode,

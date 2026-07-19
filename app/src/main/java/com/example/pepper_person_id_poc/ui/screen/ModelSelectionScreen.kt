@@ -80,8 +80,15 @@ fun ModelSelectionScreen(
                         title = option.displayName,
                         subtitle = buildString {
                             append("${option.modelFileName}\n16 kHz mono PCM / sherpa-onnx")
-                            if (option == SpeakerModelOption.ERES2NET) {
-                                append("\nPepper実測の暫定推奨（閾値0.60）")
+                            append("\nJVS候補: 閾値 %.3f / Top-2 margin %.3f".format(
+                                java.util.Locale.US,
+                                option.jvsCandidateThreshold,
+                                option.jvsCandidateMargin,
+                            ))
+                            if (option == SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN) {
+                                append("\nJVS評価 第1候補")
+                            } else if (option == SpeakerModelOption.ERES2NET) {
+                                append("\nJVS評価 第2候補 / Pepper既存スモークの既定")
                             }
                         },
                         selected = settings.speakerModel == option,
@@ -91,7 +98,8 @@ fun ModelSelectionScreen(
             }
 
             Text(
-                "モデル本体はGitへ含めません。選択したモデルファイルが端末にない場合はエラーを表示し、別モデルへ自動変更しません。",
+                "候補値はJVS studio由来・Pepper実機で再調整必須です。モデル本体はGitへ含めません。" +
+                    "選択したモデルファイルが端末にない場合はエラーを表示し、別モデルへ自動変更しません。",
                 color = MaterialTheme.colorScheme.primary,
             )
             Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {

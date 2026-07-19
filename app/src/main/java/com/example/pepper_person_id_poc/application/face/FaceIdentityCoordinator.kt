@@ -4,6 +4,9 @@ import com.example.pepper_person_id_poc.application.contract.PersonRepository
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.face.FaceIdentifier
+import com.example.pepper_person_id_poc.domain.face.AnonymousFaceClusterer
+import com.example.pepper_person_id_poc.domain.face.AnonymousFaceResult
+import com.example.pepper_person_id_poc.domain.face.FaceIdentityStatus
 import com.example.pepper_person_id_poc.domain.face.FaceIdentityResult
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
 import com.example.pepper_person_id_poc.domain.face.FacePoseRanges
@@ -30,6 +33,7 @@ class FaceIdentityCoordinator(
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
     private val onDeleteAllBenchmarkEvents: () -> Unit = {},
 ) {
+    private val anonymousClusterer = AnonymousFaceClusterer(settings.faceThreshold)
     private val poseRanges = FacePoseRanges(
         frontYawDegrees = settings.faceFrontYawDegrees,
         frontPitchDegrees = settings.faceFrontPitchDegrees,
@@ -73,21 +77,12 @@ class FaceIdentityCoordinator(
         )
 
         if (!realTimeIdentificationEnabled) return emptySet()
-        val profiles = mutableState.value.profiles
-        if (profiles.isEmpty()) {
-            pendingIdentificationTrackIds.set(emptySet())
-            mutableState.value = mutableState.value.copy(
-                results = emptyList(),
-                identificationPending = false,
-                identificationMessage = "登録人物がいません",
-            )
-            return emptySet()
-        }
         val trackIds = observations.mapTo(linkedSetOf()) { it.trackId }
         if (trackIds.isEmpty()) {
             pendingIdentificationTrackIds.set(emptySet())
             mutableState.value = mutableState.value.copy(
                 results = emptyList(),
+                anonymousResults = emptyList(),
                 identificationPending = false,
                 identificationMessage = "顔をカメラに映してください",
             )
@@ -144,8 +139,32 @@ class FaceIdentityCoordinator(
             logIdentification(result, comparisonMillis)
             result
         }
+        val resultByTrackId = results.associateBy { it.trackId }
+        val anonymousResults = requestedObservations.mapNotNull { observation ->
+            if (resultByTrackId[observation.trackId]?.status != FaceIdentityStatus.UNKNOWN) return@mapNotNull null
+            anonymousClusterer.identify(observation.trackId, observation.embedding).also { result ->
+                onBenchmarkEvent(
+                    BenchmarkEvent(
+                        event = "anonymous_face_identification",
+                        timestampMillis = clockMillis(),
+                        durationMillis = observation.embeddingTimeMillis,
+                        status = if (result.isNewCluster) "NEW_CLUSTER" else "MATCHED",
+                        attributes = mapOf(
+                            "model" to faceModelName,
+                            "trackId" to result.trackId,
+                            "anonymousId" to result.anonymousId,
+                            "score" to result.score.toString(),
+                            "threshold" to result.threshold.toString(),
+                            "clusterCount" to anonymousClusterer.clusterCount.toString(),
+                        ),
+                    ),
+                )
+            }
+        }
         mutableState.value = mutableState.value.copy(
             results = results,
+            anonymousResults = anonymousResults,
+            anonymousClusterCount = anonymousClusterer.clusterCount,
             profiles = profiles,
             identificationMessage = "${results.size}人を識別しました（リアルタイム更新）",
             identificationPending = false,
@@ -238,6 +257,7 @@ class FaceIdentityCoordinator(
             .onSuccess {
                 onDeleteAllBenchmarkEvents()
                 cancelPendingWork()
+                anonymousClusterer.reset()
                 mutableState.value = FaceIdentityUiState(
                     profiles = emptyList(),
                     registrationMessage = "顔・声の登録データと評価ログをすべて削除しました",
@@ -257,6 +277,16 @@ class FaceIdentityCoordinator(
 
     fun reportEmbeddingReady() {
         mutableState.value = mutableState.value.copy(embeddingModelReady = true, error = null)
+    }
+
+    @Synchronized
+    fun resetAnonymousSession() {
+        anonymousClusterer.reset()
+        mutableState.value = mutableState.value.copy(
+            anonymousResults = emptyList(),
+            anonymousClusterCount = 0,
+            identificationMessage = "未登録人物の一時IDをリセットしました",
+        )
     }
 
     private fun handleRegistrationPoses(
@@ -406,6 +436,8 @@ class FaceIdentityCoordinator(
 data class FaceIdentityUiState(
     val results: List<FaceIdentityResult> = emptyList(),
     val profiles: List<PersonProfile> = emptyList(),
+    val anonymousResults: List<AnonymousFaceResult> = emptyList(),
+    val anonymousClusterCount: Int = 0,
     val registrationTarget: RegistrationPose? = null,
     val completedRegistrationPoses: Set<RegistrationPose> = emptySet(),
     val poseProgressMillis: Long = 0L,

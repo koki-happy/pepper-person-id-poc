@@ -1,5 +1,7 @@
 package com.example.pepper_person_id_poc.domain.person
 
+import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
+
 @JvmInline
 value class PersonId(
     val value: String,
@@ -42,8 +44,11 @@ data class PersonProfile(
     )
 
     /** Returns a view containing only samples produced by [modelName]. */
-    fun forSpeakerModel(modelName: String): PersonProfile = copy(
-        speakerEmbeddings = speakerEmbeddingsByModel[modelName].orEmpty(),
-        speakerModelName = modelName,
-    )
+    fun forSpeakerModel(modelName: String): PersonProfile {
+        val compatibleKeys = setOf(modelName) + SpeakerModelOption.legacyPersistenceKeys(modelName)
+        return copy(
+            speakerEmbeddings = compatibleKeys.flatMap { speakerEmbeddingsByModel[it].orEmpty() },
+            speakerModelName = modelName,
+        )
+    }
 }

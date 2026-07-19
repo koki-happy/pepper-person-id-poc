@@ -11,11 +11,14 @@ class PocSettingsTest {
         assertTrue(PocSettings().isValid())
         assertEquals(FaceModelOption.SFACE_2021DEC, PocSettings().faceModel)
         assertEquals(SpeakerModelOption.ERES2NET, PocSettings().speakerModel)
+        assertEquals(0.70323396f, PocSettings().speakerThreshold)
+        assertEquals(0.0f, PocSettings().speakerMargin)
     }
 
     @Test
     fun scoreOutsideRange_isInvalid() {
         assertFalse(PocSettings(faceThreshold = 1.01f).isValid())
+        assertFalse(PocSettings(speakerMargin = 2.01f).isValid())
     }
 
     @Test
@@ -51,5 +54,18 @@ class PocSettingsTest {
     fun modelOptions_haveDistinctAssetNames() {
         assertEquals(FaceModelOption.entries.size, FaceModelOption.entries.map { it.modelFileName }.toSet().size)
         assertEquals(SpeakerModelOption.entries.size, SpeakerModelOption.entries.map { it.modelFileName }.toSet().size)
+        assertEquals(SpeakerModelOption.entries.size, SpeakerModelOption.entries.map { it.configModelId }.toSet().size)
+        assertEquals("campplus-en", SpeakerModelOption.CAM_PLUS_PLUS.configModelId)
+        assertEquals("campplus-zh-en", SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.configModelId)
+        assertEquals("eres2net-en", SpeakerModelOption.ERES2NET.configModelId)
+    }
+
+    @Test
+    fun withSpeakerModel_appliesItsJvsCandidateOperatingPoint() {
+        val updated = PocSettings().withSpeakerModel(SpeakerModelOption.CAM_PLUS_PLUS)
+
+        assertEquals(SpeakerModelOption.CAM_PLUS_PLUS, updated.speakerModel)
+        assertEquals(0.3625838f, updated.speakerThreshold)
+        assertEquals(0.1168099f, updated.speakerMargin)
     }
 }

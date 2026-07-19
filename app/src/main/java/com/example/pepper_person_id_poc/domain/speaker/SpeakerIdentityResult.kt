@@ -1,6 +1,7 @@
 package com.example.pepper_person_id_poc.domain.speaker
 
 import com.example.pepper_person_id_poc.domain.person.PersonId
+import com.example.pepper_person_id_poc.speakercore.UnknownReason
 
 data class SpeakerIdentityResult(
     val utteranceId: String,
@@ -11,6 +12,11 @@ data class SpeakerIdentityResult(
     val bestCandidatePersonId: PersonId?,
     val threshold: Float,
     val processingTimeMillis: Long,
+    val secondBestCandidatePersonId: PersonId? = null,
+    val secondBestScore: Float? = null,
+    val margin: Float? = null,
+    val minimumMargin: Float = 0f,
+    val unknownReasons: List<UnknownReason> = emptyList(),
 )
 
 enum class SpeakerIdentityStatus {

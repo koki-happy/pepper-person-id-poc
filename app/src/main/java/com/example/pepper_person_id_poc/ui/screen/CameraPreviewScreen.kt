@@ -203,7 +203,7 @@ fun CameraPreviewScreen(
                     if (mode == FaceCameraMode.Registration) {
                         RegistrationPanel(coordinator, identityState, settings)
                     } else {
-                        IdentificationPanel(identityState, settings.debugMode)
+                        IdentificationPanel(coordinator, identityState, settings.debugMode)
                     }
                 }
             }
@@ -322,12 +322,19 @@ private fun RegistrationPanel(
 
 @Composable
 private fun IdentificationPanel(
+    coordinator: FaceIdentityCoordinator,
     state: FaceIdentityUiState,
     debugMode: Boolean,
 ) {
     Text("リアルタイム複数人顔識別", style = MaterialTheme.typography.titleMedium)
     Text("登録人物: ${state.profiles.size}人 / 検出顔数: ${state.visibleFaceCount}")
-    Text("登録済み人物とのみ照合し、匿名IDや匿名クラスタは作成しません")
+    Text("短期trackIdで顔を追跡し、登録人物は名前、未登録人物はセッション内anonymousIdで再識別します")
+    Text("未登録人物クラスタ: ${state.anonymousClusterCount}人（画面を閉じると破棄）")
+    Button(
+        onClick = coordinator::resetAnonymousSession,
+        enabled = state.anonymousClusterCount > 0,
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("未登録人物の一時IDをリセット") }
     state.identificationMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
     if (state.results.isEmpty()) Text("顔を検出すると自動で識別します")
     state.results.forEach { result ->
@@ -345,6 +352,13 @@ private fun IdentificationPanel(
         if (debugMode && result.status == FaceIdentityStatus.UNKNOWN) {
             Text("Best candidate: ${result.bestCandidatePersonId?.value ?: "なし"}")
         }
+        state.anonymousResults.firstOrNull { it.trackId == result.trackId }?.let { anonymous ->
+            Text(
+                "${anonymous.anonymousId} / re-id ${anonymous.score.asScore()} / " +
+                    "samples ${anonymous.clusterSampleCount}",
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
     }
     state.error?.let { Text("顔特徴量エラー: $it", color = MaterialTheme.colorScheme.error) }
 }
@@ -357,12 +371,18 @@ private fun FaceDetectionOverlay(
     debugMode: Boolean,
 ) {
     val identityByTrackId = identityState.results.associateBy { it.trackId }
+    val anonymousByTrackId = identityState.anonymousResults.associateBy { it.trackId }
     Box(modifier = Modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             detectionSnapshot.faces.forEach { face ->
                 val identity = identityByTrackId[face.trackId]
+                val anonymous = anonymousByTrackId[face.trackId]
                 val identified = identity?.status == FaceIdentityStatus.IDENTIFIED
-                val color = if (identified) Color.Green else Color.Yellow
+                val color = when {
+                    identified -> Color.Green
+                    anonymous != null -> Color.Cyan
+                    else -> Color.Yellow
+                }
                 val left = (1f - face.boundingBox.right) * size.width
                 val top = face.boundingBox.top * size.height
                 val width = face.boundingBox.width * size.width
@@ -390,6 +410,7 @@ private fun FaceDetectionOverlay(
                 }
                 val identityLabel = when {
                     identified -> "${identity?.displayName}  ${identity?.personId?.value}"
+                    anonymous != null -> "Unknown / ${anonymous.anonymousId}"
                     identity != null -> "Unknown"
                     else -> "Face"
                 }

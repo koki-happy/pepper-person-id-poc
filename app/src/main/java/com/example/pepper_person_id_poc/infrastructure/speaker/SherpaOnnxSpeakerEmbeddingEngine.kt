@@ -14,7 +14,8 @@ class SherpaOnnxSpeakerEmbeddingEngine(
     private val assets = context.applicationContext.assets
     private var extractor: SpeakerEmbeddingExtractor? = null
 
-    override val modelName: String = model.displayName
+    // This value is persisted with enrolled embeddings. Keep it independent from UI wording.
+    override val modelName: String = model.configModelId
     override val embeddingDimension: Int? get() = extractor?.dim()
 
     @Synchronized

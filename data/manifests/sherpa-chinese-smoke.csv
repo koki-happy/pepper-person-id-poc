@@ -1,0 +1,4 @@
+speaker_id,utterance_id,source_group_id,split,path,language,sample_rate,duration_sec,recording_device,recording_type
+fangjun,fangjun-enrollment,fangjun-sr-1,enrollment,../audio/smoke/fangjun-sr-1.wav,zh,16000,2.298813,official_sherpa_sample,public_dataset
+fangjun,fangjun-test,fangjun-test-sr-1,test,../audio/smoke/fangjun-test-sr-1.wav,zh,16000,5.572813,official_sherpa_sample,public_dataset
+leijun,leijun-unknown,leijun-test-sr-1,unknown,../audio/smoke/leijun-test-sr-1.wav,zh,16000,8.244813,official_sherpa_sample,public_dataset

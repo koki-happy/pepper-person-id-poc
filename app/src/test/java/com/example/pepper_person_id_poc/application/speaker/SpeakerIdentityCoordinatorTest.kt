@@ -8,9 +8,11 @@ import com.example.pepper_person_id_poc.domain.person.PersonId
 import com.example.pepper_person_id_poc.domain.person.PersonProfile
 import com.example.pepper_person_id_poc.domain.speaker.SpeakerIdentifier
 import com.example.pepper_person_id_poc.domain.speaker.SpeakerIdentityStatus
+import com.example.pepper_person_id_poc.infrastructure.benchmark.BenchmarkJsonSerializer
 import com.example.pepper_person_id_poc.testsupport.FakePersonRepository
 import com.google.common.truth.Truth.assertThat
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -64,6 +66,56 @@ class SpeakerIdentityCoordinatorTest {
     }
 
     @Test
+    fun identificationLog_serializesRankedScoresAndUnknownReason() {
+        val profiles = listOf(
+            PersonProfile(
+                personId = PersonId("person1"),
+                displayName = "人物A",
+                faceEmbeddings = emptyList(),
+                speakerEmbeddings = listOf(floatArrayOf(0.5f, 0.8660254f)),
+                faceModelName = null,
+                speakerModelName = "Fake speaker model",
+                registeredAtMillis = 1L,
+            ),
+            PersonProfile(
+                personId = PersonId("person2"),
+                displayName = "人物B",
+                faceEmbeddings = emptyList(),
+                speakerEmbeddings = listOf(floatArrayOf(0f, 1f)),
+                faceModelName = null,
+                speakerModelName = "Fake speaker model",
+                registeredAtMillis = 1L,
+            ),
+        )
+        val logger = FakeBenchmarkLogger()
+        val coordinator = coordinator(
+            SpeakerScreenMode.IDENTIFICATION,
+            FakePersonRepository(profiles),
+            floatArrayOf(1f, 0f),
+            benchmarkLogger = logger,
+        )
+        try {
+            coordinator.onUtterance(sufficientUtterance(2_500L))
+            await { logger.events.any { it.event == "speaker_identification" } }
+
+            val event = logger.events.single { it.event == "speaker_identification" }
+            assertThat(event.status).isEqualTo(SpeakerIdentityStatus.UNKNOWN.name)
+            assertThat(event.attributes["bestCandidatePersonId"]).isEqualTo("person1")
+            assertThat(event.attributes["secondBestCandidatePersonId"]).isEqualTo("person2")
+            assertThat(event.attributes["secondBestScore"]?.toFloat()).isWithin(1e-6f).of(0f)
+            assertThat(event.attributes["margin"]?.toFloat()).isWithin(1e-6f).of(0.5f)
+            assertThat(event.attributes["minimumMargin"]).isEqualTo("0.0")
+            assertThat(event.attributes["unknownReasons"]).isEqualTo("BELOW_THRESHOLD")
+
+            val json = BenchmarkJsonSerializer.serialize(event)
+            assertThat(json).contains("\"secondBestScore\":\"0.0\"")
+            assertThat(json).contains("\"unknownReasons\":\"BELOW_THRESHOLD\"")
+        } finally {
+            coordinator.close()
+        }
+    }
+
+    @Test
     fun anonymousIdentification_reusesSessionSpeakerId() {
         val coordinator = coordinator(
             SpeakerScreenMode.ANONYMOUS_IDENTIFICATION,
@@ -89,13 +141,14 @@ class SpeakerIdentityCoordinatorTest {
         mode: SpeakerScreenMode,
         repository: FakePersonRepository,
         embedding: FloatArray,
+        benchmarkLogger: BenchmarkLogger = FakeBenchmarkLogger(),
     ) = SpeakerIdentityCoordinator(
         mode = mode,
         personRepository = repository,
         embeddingEngine = FakeSpeakerEmbeddingEngine(embedding),
         speakerIdentifier = SpeakerIdentifier(),
         speakerThreshold = 0.6f,
-        benchmarkLogger = FakeBenchmarkLogger(),
+        benchmarkLogger = benchmarkLogger,
     )
 
     private fun sufficientUtterance(startedAtMillis: Long) = PcmUtterance(
@@ -125,9 +178,13 @@ class SpeakerIdentityCoordinatorTest {
     }
 
     private class FakeBenchmarkLogger : BenchmarkLogger {
-        override fun append(event: BenchmarkEvent) = Unit
+        val events = CopyOnWriteArrayList<BenchmarkEvent>()
+
+        override fun append(event: BenchmarkEvent) {
+            events += event
+        }
         override fun outputFile() = File("unused")
         override fun readRecent(limit: Int) = emptyList<String>()
-        override fun deleteAll() = Unit
+        override fun deleteAll() = events.clear()
     }
 }

@@ -41,6 +41,7 @@ fun SettingsScreen(
     onFaceSideMaximumYawChanged: (Float) -> Unit,
     onFaceSmoothingSampleCountChanged: (Int) -> Unit,
     onSpeakerThresholdChanged: (Float) -> Unit,
+    onSpeakerMarginChanged: (Float) -> Unit,
     onCombinedThresholdChanged: (Float) -> Unit,
     onObservationWindowChanged: (Long) -> Unit,
     onDebugModeChanged: (Boolean) -> Unit,
@@ -65,6 +66,11 @@ fun SettingsScreen(
             SettingsCard(title = "使用モデル") {
                 Text("顔: ${settings.faceModel.displayName}")
                 Text("話者: ${settings.speakerModel.displayName}")
+                Text(
+                    "話者の閾値・margin候補はJVS studio由来・Pepper実機で再調整必須です。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
                 Button(onClick = onOpenModelSelection, modifier = Modifier.fillMaxWidth()) {
                     Text("顔・話者モデルを選択")
                 }
@@ -73,6 +79,12 @@ fun SettingsScreen(
             SettingsCard(title = "識別閾値") {
                 ThresholdSlider("Face Identification", settings.faceThreshold, onFaceThresholdChanged)
                 ThresholdSlider("Speaker Identification", settings.speakerThreshold, onSpeakerThresholdChanged)
+                ThresholdSlider(
+                    "Speaker Top-2 Margin",
+                    settings.speakerMargin,
+                    onSpeakerMarginChanged,
+                    PocSettings.MARGIN_RANGE,
+                )
                 ThresholdSlider("Combined", settings.combinedThreshold, onCombinedThresholdChanged)
                 Text("顔観測時間: ${settings.observationWindowMillis} ms")
                 Slider(

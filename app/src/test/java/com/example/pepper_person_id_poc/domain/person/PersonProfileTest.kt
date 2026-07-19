@@ -37,4 +37,28 @@ class PersonProfileTest {
         assertThat(repository.getAllForSpeakerModel("ERes2Net").single().speakerEmbeddings.single().toList())
             .containsExactly(0f, 1f).inOrder()
     }
+
+    @Test
+    fun repository_readsLegacyCampPlusDisplayNameUnderStableModelId() {
+        val repository = FakePersonRepository()
+        val id = PersonId("person1")
+
+        repository.addSpeakerEmbedding(
+            id,
+            "人物A",
+            floatArrayOf(1f, 0f),
+            "3D-Speaker CAM++",
+            1L,
+        )
+        repository.addSpeakerEmbedding(
+            id,
+            "人物A",
+            floatArrayOf(0f, 1f),
+            "campplus-en",
+            2L,
+        )
+
+        assertThat(repository.getAllForSpeakerModel("campplus-en").single().speakerEmbeddings.map { it.toList() })
+            .containsExactly(listOf(0f, 1f), listOf(1f, 0f))
+    }
 }

@@ -1,6 +1,6 @@
 # Pepper向け 顔識別・話者識別PoC 実装・性能検証結果
 
-更新日: 2026-07-12
+更新日: 2026-07-13
 
 ## 対象リポジトリの構成
 
@@ -13,7 +13,7 @@
 - パッケージ: `com.example.pepper_person_id_poc`
 - `minSdk`: 23
 - `targetSdk`: 36
-- 現状: 顔登録・1対N顔識別・匿名顔識別、声登録・1対N話者識別・匿名話者識別を実装済み
+- 現状: 登録済み人物のリアルタイム顔識別と、未登録人物のセッション内一時ID再識別を実装済み。話者識別はWindowsで5モデルのJVS日本語本比較を実施済み。Pepperマイクの反復評価とモデル重みの利用許諾確認は未完了
 
 本PoCの完了範囲はローカルの顔識別と話者識別である。当初候補に含めた音声認識、顔と声の統合、会話履歴、QiSDK連携は今回の実装範囲外で、画面もプレースホルダーのままとする。
 
@@ -164,7 +164,7 @@ MainActivity
 
 ## 話者識別モデル候補
 
-発話区間検出はSilero VADへ固定し、話者特徴量モデルだけを比較する。
+Androidのライブ録音経路では発話区間検出をSilero VADへ固定する。Windows上の最初のモデル比較ではVADを通さず、同じ保存済みWAVと発話区間を各モデルへ入力する。
 
 ### 第一候補: 3D-Speaker CAM++
 
@@ -323,7 +323,7 @@ app/src/main/java/com/example/pepper_person_id_poc/
 - Gradleラッパーは修正済みで、JVMテスト、debug APK、androidTest APKのビルドに成功している
 - AGP 9.2.1、Kotlin 2.2.10とQiSDK 1.8.5の互換性は未確認
 - OpenCV 5.0.0とsherpa-onnx 1.13.4のAPI 23・`armeabi-v7a`動作は実機確認済み
-- 利用する公式配布物のURL、ライセンス、SHA-256は`model-provenance.md`へ記録済み
+- 利用する公式配布物のURL、SHA-256、コード／ランタイムのライセンスは`model-provenance.md`へ記録済み。話者モデル重みの個別ライセンスと商用利用可否は未確認
 - カメラ、OpenCV、VAD、話者モデル、QiSDKの同時利用でRAMとCPUが不足する可能性がある
 - `SpeechRecognizer`と`AudioRecord`がマイクを競合する可能性がある
 - Swapによりクラッシュせずに性能目標だけを大幅に超過する可能性がある
@@ -399,7 +399,7 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 
 ## 未登録リアルタイム識別
 
-事前登録を行わない場合、表示名や永続`personId`は確定できない。このため登録済み1対N識別とは別に、SFace特徴量をセッション内でクラスタリングし、`anonymous-001`形式の一時IDを付与するモードを用意する。
+事前登録を行わない場合、表示名や永続`personId`は確定できない。このためリアルタイム顔識別画面では、登録済み1対N照合で`Unknown`となった顔特徴量をセッション内でクラスタリングし、`anonymous-001`形式の一時IDを同じ画面に表示する。
 
 - `trackId`: 連続するカメラフレーム内の短期追跡ID
 - `anonymousId`: 顔が画面から消えて再登場した場合も特徴量が閾値以上なら再利用するセッション内ID
@@ -407,7 +407,7 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 - 一時特徴量は永続保存せず、リセット、画面終了、アプリ終了で破棄する
 - 一時IDを実名や永続的な本人情報として扱わない
 
-クラスタリング、再識別、新規クラスタ、25人分の上限なし生成、リセットはJVM単体テスト済み。エミュレータではカメラ、YuNet、SFace初期化、顔なし状態、画面離脱後のカメラ解放を確認した。Lombard GRIDの同一人物・別人物フレーム分離は確認したが、カメラに立った人物の退場後再登場を含む匿名追跡精度は未測定である。
+クラスタリング、別trackIdでの再識別、新規クラスタ、リセット、および登録人物が0人でもリアルタイム処理を継続する経路はJVM単体テスト済み。エミュレータではカメラ、YuNet、SFace初期化、顔なし状態、画面離脱後のカメラ解放を確認した。Lombard GRIDの同一人物・別人物フレーム分離は確認したが、カメラに立った人物の退場後再登場を含む匿名追跡精度は未測定である。
 
 ## 話者識別のPepper実測
 
@@ -454,3 +454,67 @@ YuNetの顔検出処理は2秒以内の更新目標を満たす見込みがあ�
 - ERes2NetはCAM++より推論時間が長く、発話終了後5秒目標を超えるケースがある。
 - 日本語話者、Pepperマイク、複数登録サンプルによる追加評価なしに本番閾値を確定しない。
 - 匿名話者IDは同じ特徴量比較を使うため、モデルの誤分離・誤結合特性をそのまま受ける。
+
+## Kotlin/JVM Windows話者ベンチマーク
+
+2026-07-13に、`speaker-core`と`speaker-benchmark`を追加した。新規の保守対象コードはKotlinへ統一し、依存管理はGradle Wrapper、Gradle Kotlin DSL、Version Catalogだけを使用する。Windows推論はONNX Runtime Java 1.20.0 CPU、Android推論は既存のsherpa-onnx 1.13.4 Kotlin/JNI APIを使用する。1.21.0以降のONNX Runtime Java DLLはこのWindows端末で初期化に失敗したため、実動確認できた1.20.0へ固定した。
+
+共有する後処理は次のとおりである。
+
+```text
+各登録EmbeddingをL2正規化
+→ 人物ごとに平均
+→ セントロイドを再L2正規化
+→ 全人物とのcosine
+→ Top-1 thresholdとTop-1/Top-2 margin
+→ 人物IDまたはUnknown
+```
+
+Android側も、登録サンプルの最大スコア方式から上記の共有`SpeakerScorer`へ移行した。thresholdとmarginは設定へ保存できる。既定marginは、複数人物の日本語developmentデータで決定していないため`0.0`とする。
+
+実行コマンド:
+
+```powershell
+.\scripts\windows\bootstrap.ps1
+.\gradlew.bat :speaker-benchmark:run --args="--config config/speaker-benchmark.json"
+.\scripts\windows\verify-speaker-parity.ps1 -SkipBenchmarkRun
+```
+
+### Windows 5モデル配線スモーク結果
+
+sherpa-onnx公式の中国語3ファイルを、登録1話者、同一話者テスト1本、Unknown 1話者としてVADなしで入力した。以下は1回計測の配線スモーク値であり、日本語精度評価ではない。
+
+| モデル | 次元 | 同一話者スコア | Unknownスコア | p50 | p95 | 閾値0.60での結果 |
+|---|---:|---:|---:|---:|---:|---|
+| CAM++英語 | 512 | 0.576 | 0.886 | 103.5 ms | 110.8 ms | 同一拒否・Unknown誤受入 |
+| CAM++中国語・英語 | 192 | 0.809 | 0.161 | 90.0 ms | 108.7 ms | 分離 |
+| ERes2Net英語 | 192 | 0.794 | 0.284 | 225.7 ms | 334.8 ms | 分離 |
+| SpeakerNet-M | 256 | 0.723 | 0.403 | 63.7 ms | 72.3 ms | 分離 |
+| TitaNet-S | 192 | 0.785 | 0.177 | 67.0 ms | 98.4 ms | 分離 |
+
+CAM++英語版とERes2Netのスコアは、同じWAVをsherpa-onnx 1.13.4で処理したAndroid既知値との差が`0.002`以内であることを自動検証した。したがって、Kotlinで再現したモデル別FbankとONNX Runtime JavaのWindows経路は、既存Android経路の原因切り分けに利用できる。
+
+ただし、この中国語配線スモークは登録1名・Unknown 1名で、日本語音声、4名以上の登録話者、4名以上のUnknown話者、development分割、2秒／3秒／5秒の固定比較を満たさない。このスモーク単体をFAR、FRR、EER、Top-1、threshold／marginの確定根拠にはしない。ここで確定できるのは次だけである。
+
+- CAM++英語版の失敗はWindowsでも再現し、Android統合だけが原因ではない。
+- 他4モデルはこの限定入力で配線と分離を確認した。
+- JVSで候補は絞るが、Pepper実機収録とライセンス監査前に本採用モデルは決定しない。
+- 詳細手順、監査、来歴、parity形式は`docs/poc/`を正本とする。
+
+### JVS日本語5モデル本比較
+
+上記の中国語3ファイルは配線スモークである。その後、JVS `parallel100`から計12話者・168 WAVの日本語本比較を実施した。enrollment 24本（4話者）、development 48本（登録4話者 24本＋別のUnknown 4話者 24本）、test 48本、final unknown 48本（別の4話者）である。2秒・3秒・5秒は各56本、splitを跨ぐ同一原音は0件、VADは無効である。threshold/marginはdevelopment 48本だけで選択し、test/unknownには固定した。
+
+| モデル | Top-1 | FAR | FRR | EER | 2秒 | 3秒 | 5秒 | 暫定評価 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| CAM++英語 | 0.9375 | 0.0833 | 0.3750 | 0.3333 | 0.9063 | 0.6250 | 0.7813 | FAR基準外 |
+| CAM++中国語・英語 | 1.0000 | 0 | 0.1458 | 0.0179 | 0.7813 | 1.0000 | 1.0000 | 上位候補 |
+| ERes2Net英語 | 1.0000 | 0 | 0.1458 | 0.0208 | 0.7813 | 1.0000 | 1.0000 | 上位候補 |
+| SpeakerNet-M | 1.0000 | 0.3125 | 0.0417 | 0.0417 | 0.8438 | 0.8750 | 0.7500 | FAR基準外 |
+| TitaNet-S | 1.0000 | 0.0625 | 0.0417 | 0.0417 | 0.9375 | 0.9688 | 0.9375 | FAR 5%をわずかに超過 |
+
+暫定受入基準FAR `<= 5%`を満たす上位候補はCAM++ Chinese-EnglishとERes2Netである。JVSはstudio収録でPepperマイクではなく、WindowsのレイテンシもPepper ARMv7性能に読み替えない。数値の正本は[`results/jvs-speaker-benchmark/summary.md`](../results/jvs-speaker-benchmark/summary.md)である。
+
+AndroidはAPI 28 x86でinstrumentation 2テストに成功し、3モデル×2データセット×2クエリの12個のJSONを回収した。API 23 x86はAARが`__write_chk`を要求してロードに失敗する。API 28 x86実測はPepper API 23 / ARMv7のparityや性能を代替しない。RyuseiNetは今回の5モデル比較の外とし、追加学習なし、未実装・未比較である。
+
+5モデルのONNX重みは適用ライセンス、商用条件、根拠URLが未確認のため、releaseゲートを維持する。ゲートでは目録とAndroid列挙モデル、同梱assetのサイズ・SHA-256も照合する。
