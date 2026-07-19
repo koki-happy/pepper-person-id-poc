@@ -80,9 +80,7 @@ fun SettingsScreen(
             AppScreen.entries
                 .filterNot {
                     it == AppScreen.Settings ||
-                        it == AppScreen.ModelSelection ||
-                        it == AppScreen.ConversationHistory ||
-                        it == AppScreen.BenchmarkResults
+                        it == AppScreen.ModelSelection
                 }
                 .forEach { screen ->
                     Card(onClick = { onOpenScreen(screen) }, modifier = Modifier.fillMaxWidth()) {

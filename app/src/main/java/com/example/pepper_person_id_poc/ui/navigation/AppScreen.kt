@@ -48,12 +48,4 @@ enum class AppScreen(
         title = "統合テスト",
         description = "顔識別と話者識別を統合します",
     ),
-    ConversationHistory(
-        title = "会話履歴",
-        description = "誰が、いつ、何を話したかを確認します",
-    ),
-    BenchmarkResults(
-        title = "測定結果",
-        description = "処理時間、メモリ、エラーを確認します",
-    ),
 }

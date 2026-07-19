@@ -10,6 +10,34 @@
 
 自分たちが保守する話者コードと依存管理はKotlin、Gradle Wrapper、Gradle Kotlin DSL、Version Catalogへ統一しています。`uv`、Python、pip、vcpkg、自作C++、自作JNI、Docker、Nixは話者経路で使用しません。既存の顔モデル変換スクリプトだけは別のレガシー保守経路です。
 
+## 画面で選択できる項目
+
+| 項目 | 説明 |
+|---|---|
+| 端末診断 | PepperのAPIレベル、ABI、カメラ、マイク、メモリ、ネットワークを確認します。 |
+| モデル選択 | 顔検出モデル、顔特徴量モデル、顔特徴量の推論基盤、話者モデルを選択します。 |
+| 人物登録 | `personId`に正面・左右の顔特徴量を登録します。 |
+| リアルタイム顔検出+登録人物識別 | 複数の顔を検出・追跡し、Track IDごとの顔特徴量を登録人物と1対N照合します。 |
+| リアルタイム顔検出+特徴量抽出 | 未登録顔を追跡し、人物ごとに最大20特徴量を取得してセッション内の一時人物IDを表示します。 |
+| 声登録 | `personId`に声特徴量を登録します。 |
+| 話者識別 | 録音した発話を登録話者と1対N照合します。 |
+| 未登録リアルタイム話者識別 | 未登録話者をセッション内の一時話者IDとして識別します。 |
+| 音声認識 | 日本語の短い発話を文字起こしします。 |
+| 統合テスト | 顔識別結果と話者識別結果を統合します。 |
+
+会話履歴画面と測定結果画面は設けていません。顔画面にはTrack ID、人物ID、顔検出時間・FPS、顔特徴量抽出時間、使用モデル、推論基盤を直接表示します。
+
+## 選択可能なモデルと推論基盤
+
+| 分類 | 選択肢 | 初期選択 |
+|---|---|---|
+| 顔検出 | ML Kit Face Detection 16.1.7 Bundled、YuNet 2026may、YuNet 2023mar INT8 | ML Kit Face Detection 16.1.7 Bundled |
+| 顔特徴量 | SFace 2021dec、SFace 2021dec INT8、face-reidentification-retail-0095 | SFace 2021dec |
+| 顔特徴量の推論基盤 | OpenCV 5.0.0 DNN、ONNX Runtime 1.27.0、ncnn 20260526、MNN 3.5.0 | OpenCV 5.0.0 DNN |
+| 話者特徴量 | 3D-Speaker CAM++ English、3D-Speaker CAM++ Chinese-English、3D-Speaker ERes2Net | 3D-Speaker ERes2Net |
+
+SFace 2021dec INT8は現在OpenCVだけを選択できます。顔検出のYuNetはOpenCV `FaceDetectorYN`経路です。ONNX Runtime、ncnn、MNNの選択は顔特徴量モデルの推論基盤に適用されます。
+
 ## Windowsセットアップと実行
 
 ```powershell

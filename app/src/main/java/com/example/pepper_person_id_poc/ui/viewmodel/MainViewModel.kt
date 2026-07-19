@@ -34,7 +34,6 @@ class MainViewModel(
     fun showScreen(screen: AppScreen) {
         mutableUiState.update { it.copy(activeScreen = screen, settingsSaved = false) }
         if (screen == AppScreen.DeviceDiagnostics) refreshDiagnostics()
-        if (screen == AppScreen.BenchmarkResults) refreshBenchmarkEvents()
     }
 
     fun returnToSettings() {
@@ -176,28 +175,6 @@ class MainViewModel(
         }
     }
 
-    fun refreshBenchmarkEvents() {
-        viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    benchmarkLogger.outputFile().absolutePath to benchmarkLogger.readRecent(RECENT_EVENT_LIMIT)
-                }
-            }.onSuccess { (path, events) ->
-                mutableUiState.update {
-                    it.copy(
-                        benchmarkOutputPath = path,
-                        recentBenchmarkEvents = events,
-                        benchmarkError = null,
-                    )
-                }
-            }.onFailure { throwable ->
-                mutableUiState.update {
-                    it.copy(benchmarkError = throwable.message ?: throwable::class.java.simpleName)
-                }
-            }
-        }
-    }
-
     private fun appendBenchmarkEvent(event: BenchmarkEvent) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { benchmarkLogger.append(event) }
@@ -208,9 +185,5 @@ class MainViewModel(
         mutableUiState.update { state ->
             state.copy(settings = state.settings.block(), settingsSaved = false)
         }
-    }
-
-    private companion object {
-        const val RECENT_EVENT_LIMIT = 20
     }
 }

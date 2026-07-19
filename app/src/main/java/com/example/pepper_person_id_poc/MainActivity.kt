@@ -15,7 +15,6 @@ import com.example.pepper_person_id_poc.infrastructure.AppContainer
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.FeaturePlaceholderScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
-import com.example.pepper_person_id_poc.ui.screen.BenchmarkResultsScreen
 import com.example.pepper_person_id_poc.ui.screen.AudioRecordingScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
 import com.example.pepper_person_id_poc.ui.screen.FaceCameraMode
@@ -107,14 +106,6 @@ class MainActivity : ComponentActivity() {
                         onSpeakerModelChanged = viewModel::updateSpeakerModel,
                         onSave = viewModel::saveSettings,
                         onBackToSettings = viewModel::returnToSettings,
-                    )
-                } else if (uiState.activeScreen == AppScreen.BenchmarkResults) {
-                    BenchmarkResultsScreen(
-                        outputPath = uiState.benchmarkOutputPath,
-                        recentEvents = uiState.recentBenchmarkEvents,
-                        error = uiState.benchmarkError,
-                        onBackToSettings = viewModel::returnToSettings,
-                        onRefresh = viewModel::refreshBenchmarkEvents,
                     )
                 } else if (uiState.activeScreen == AppScreen.FaceIdentification) {
                     CameraPreviewScreen(
