@@ -17,8 +17,6 @@ Pepper（Android 6.0 / API 23 / armeabi-v7a）向けの、顔識別と話者識�
 | 音声認識 | 日本語の短い発話を文字起こしします。 |
 | 統合テスト | 顔識別と話者識別の結果を統合します。 |
 
-顔画面には、人物ID、Track ID、顔検出時間・FPS、顔特徴量抽出時間、使用モデル、推論基盤を表示します。
-
 ## 選択モデル
 
 | 分類 | 選択肢 | 初期選択 |
@@ -28,18 +26,6 @@ Pepper（Android 6.0 / API 23 / armeabi-v7a）向けの、顔識別と話者識�
 | 顔特徴量の推論基盤 | OpenCV 5.0.0 DNN / ONNX Runtime 1.27.0 / ncnn 20260526 / MNN 3.5.0 | OpenCV 5.0.0 DNN |
 | 話者特徴量 | CAM++ English / CAM++ Chinese-English / ERes2Net | ERes2Net |
 
-SFace INT8はOpenCVのみ対応しています。YuNetはOpenCV `FaceDetectorYN`で実行します。ONNX Runtime、ncnn、MNNは顔特徴量モデルの推論基盤です。
-
-## ローカル資材
-
-モデル、AAR、ネイティブライブラリはローカルで準備します。初回または更新時に次を実行します。
-
-```powershell
-.\scripts\setup-local-inference-assets.ps1
-.\scripts\windows\setup-native-face-runtimes.ps1
-.\scripts\windows\build-onnxruntime-android-aar.ps1
-```
-
 ## ビルドとPepperへの導入
 
 ```powershell
@@ -48,5 +34,3 @@ java -jar gradle/wrapper/gradle-wrapper.jar --no-daemon `
 
 adb -s <Pepperの接続先> install -r app/build/outputs/apk/debug/app-debug.apk
 ```
-
-設計、モデル出典、評価条件の詳細は[`docs/`](docs/)と[`specs/`](specs/)を参照してください。
