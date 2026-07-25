@@ -1,44 +1,71 @@
-# Pepper Person Identification PoC Constitution
+<!--
+Sync Impact Report
+- Version change: 1.0.0 -> 2.0.0
+- Modified principle: Unknown-first now permits continuous multi-face comparison only against
+  explicitly enrolled profiles while continuing to prohibit anonymous identity clusters
+- Added sections: none
+- Removed sections: none
+- Templates: plan-template.md compatible; spec-template.md compatible; tasks-template.md compatible
+- Runtime guidance: specs/001-face-identification synchronized; legacy history in
+  docs/pepper-multimodal-identity-poc.md remains historical evidence
+- Deferred items: none
+-->
+# pepper-person-id-poc Constitution
 
-**Version**: 1.0.0
+## Core Principles
 
-## I. Unknown-first identification
+### I. Anonymous-only Identification
 
-- Face and speaker identification MUST return `Unknown` when the best candidate does not meet the configured acceptance threshold.
-- Identification MUST also return `Unknown` when the best candidate is not sufficiently separated from the second candidate, where a top-two margin is part of the applicable feature specification.
-- Unenrolled people and speakers MUST NOT receive persistent or session-scoped anonymous identity IDs or anonymous clusters.
-- Real-time preprocessing required for identification, including face detection, pose estimation, UI guidance, audio capture, and speech-segment detection, is allowed. This principle prohibits anonymous identity tracking, not real-time analysis.
-- Registered-person identification MAY run continuously while its feature screen is active. Triggering and update cadence belong to the feature specification, not this constitution.
+The application MUST identify only unregistered faces and speakers with modality-specific anonymous
+IDs. It MUST NOT register named people, expose person IDs, or link face and voice identities.
+Anonymous clusters MUST use model-separated L2-normalized mean centroids and MUST be retained only
+for the current application session.
 
-## II. Privacy by design
+### II. Privacy by Design
 
-- Captured face images, video, PCM, and WAV data MUST NOT be persisted by the PoC.
-- Face and speaker embeddings and person metadata MUST be treated as personal data used only for local enrolled-person comparison.
-- The application MUST be able to explain what is stored, where it is stored, why it is stored, how long it is retained, how it is deleted, and whether it is transmitted externally.
-- Production use requires separately reviewed encryption at rest, access control, and deletion confirmation. These controls MUST NOT be represented as complete solely because the PoC runs locally.
+Face images, video, PCM, and WAV MUST NOT be persisted. Face and speaker embeddings MUST be treated
+as personal data. The application MUST make the stored fields, storage location, purpose, retention,
+deletion method, and external transmission status explainable. Encryption at rest, access control,
+and verified deletion are release gates for production use, but not for this local PoC phase.
 
-## III. Pepper-first execution
+### III. Pepper-first
 
-- Acceptance target is the legacy Pepper tablet running Android 6.0 / API 23 / ARMv7 with approximately 1 GB RAM.
-- Inference MUST run on-device CPU and MUST remain operable without network access unless a later specification explicitly changes that boundary.
-- A feature is not complete for Pepper acceptance until the ARMv7 build installs, opens, and its primary operator flow is exercised on Pepper.
-- Performance decisions MUST be based on measured evidence. Unavailable metrics MUST be labelled unavailable and MUST NOT be reported as zero.
-- Optimization follows measurement; speculative optimization MUST NOT replace functional and performance evidence.
+The acceptance target is the legacy Pepper tablet running Android 6.0, API 23, ARMv7, with about
+1 GB RAM. Inference MUST run on-device CPU and MUST remain usable offline. A change is not complete
+for Pepper acceptance until processing time, P95, throughput, CPU, memory, dropped work, and stalls
+can be measured. Optimization MUST follow measurement.
 
-## IV. Evidence and traceability
+### IV. Evidence and Traceability
 
-- OpenWiki-style As-Is documentation MUST be grounded in current branch code. When prose and code disagree, record the discrepancy and treat code as the source of truth for current behavior.
-- GitHub Spec Kit artifacts MUST separate constitution, feature specification, implementation plan, tasks, and validation evidence.
-- Each user story MUST be independently testable.
-- Functional requirements MUST be traceable to acceptance scenarios, tests, implementation tasks, primary files, and device or dataset evidence where applicable.
-- Embedding model and template/query aggregation or matching method MUST be recorded as separate evaluation dimensions.
-- Model comparisons MUST hold the matching method constant. Method comparisons MUST hold the embedding model constant.
-- Completed tasks MUST remain in GitHub history but MUST NOT be shown as remaining work in the canonical Notion task summary.
-- Changes MUST be developed on a work branch and reviewed before merging to `main`.
+Important claims MUST trace to code, a model publisher, evaluation data, or device measurements.
+Every user story MUST be independently testable. Functional requirements MUST map to acceptance
+criteria, tests, tasks, and affected files. Implementation MUST occur on a work branch and pass the
+defined tests before review; direct implementation on `main` is prohibited.
+
+## Platform and Data Constraints
+
+- Application code MUST remain Kotlin-first and reuse existing OpenCV and sherpa-onnx runtimes.
+- The production ABI is `armeabi-v7a`; arm64 phones are development/reference devices.
+- Model and dataset licenses and provenance MUST be documented before release use.
+- Dataset bodies MUST NOT be bundled in the APK.
+- Persisted PoC data is limited to person metadata, model identifiers, embeddings, settings, and
+  structured evaluation events in app-private storage.
+
+## Development Workflow
+
+Work MUST follow constitution -> specification -> plan -> tasks -> implementation. Current code and
+target behavior MUST be described separately. Unknown or device-tuned values MUST be labelled as
+unverified, provisional, or device-adjusted. Unit tests MUST cover domain rules; Android integration
+tests and direct device evidence MUST cover model/runtime integration. Nothing Phone (3a) evidence
+is development evidence; Pepper API 23/ARMv7 evidence is required for Pepper acceptance.
 
 ## Governance
 
-- This constitution contains durable project principles only. Replaceable models, libraries, thresholds, timing values, VAD settings, aggregation methods, matching methods, and UI mechanics belong in feature specifications or plans.
-- Amendments require a documented reason, an updated version, and review of affected specifications and tasks.
-- Feature specifications and plans MUST include a constitution check. Any exception MUST be explicit, justified, and bounded by a follow-up task or acceptance condition.
-- The canonical Notion page may summarize this constitution in Japanese, but the GitHub file and Notion summary MUST remain semantically consistent.
+This constitution governs the specification, plan, tasks, implementation, and review artifacts.
+Amendments require a documented reason, impact review, and semantic version change. MAJOR changes
+remove or redefine a governing rule, MINOR changes add a principle or material obligation, and PATCH
+changes clarify wording without changing obligations. Every review MUST check constitution gates and
+record any temporary exception in the implementation plan; no exception may weaken privacy or
+Unknown-first behavior silently.
+
+**Version**: 3.0.0 | **Ratified**: 2026-07-18 | **Last Amended**: 2026-07-25

@@ -18,8 +18,6 @@
 .cxx
 local.properties
 /screenshots/
-/datasets/
-/evaluation-results/
 __pycache__/
 *.py[cod]
 *.hprof

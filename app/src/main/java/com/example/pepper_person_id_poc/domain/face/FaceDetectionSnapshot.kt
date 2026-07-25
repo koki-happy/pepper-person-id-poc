@@ -6,6 +6,8 @@ data class FaceDetectionSnapshot(
     val processingTimeMillis: Long? = null,
     val analysisFramesPerSecond: Float = 0f,
     val modelName: String = "YuNet 2026may",
+    val orientedFrameWidth: Int = 0,
+    val orientedFrameHeight: Int = 0,
     val error: String? = null,
 )
 

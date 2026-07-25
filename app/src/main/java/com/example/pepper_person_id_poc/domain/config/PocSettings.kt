@@ -5,38 +5,16 @@ data class PocSettings(
     val faceDetector: FaceDetectorOption = FaceDetectorOption.ML_KIT_BUNDLED,
     val faceInferenceBackend: FaceInferenceBackend = FaceInferenceBackend.OPEN_CV,
     val speakerModel: SpeakerModelOption = SpeakerModelOption.ERES2NET,
-    val faceThreshold: Float = DEFAULT_FACE_THRESHOLD,
-    val faceMargin: Float = DEFAULT_FACE_MARGIN,
-    val faceRegistrationAnalysisIntervalMillis: Long = DEFAULT_FACE_REGISTRATION_INTERVAL_MILLIS,
-    val faceIdentificationAnalysisIntervalMillis: Long = DEFAULT_FACE_IDENTIFICATION_INTERVAL_MILLIS,
-    val facePoseStableDurationMillis: Long = DEFAULT_FACE_POSE_STABLE_DURATION_MILLIS,
-    val faceFrontYawDegrees: Float = DEFAULT_FACE_FRONT_YAW_DEGREES,
-    val faceFrontPitchDegrees: Float = DEFAULT_FACE_FRONT_PITCH_DEGREES,
-    val faceSideMinimumYawDegrees: Float = DEFAULT_FACE_SIDE_MINIMUM_YAW_DEGREES,
-    val faceSideMaximumYawDegrees: Float = DEFAULT_FACE_SIDE_MAXIMUM_YAW_DEGREES,
-    val faceSmoothingSampleCount: Int = DEFAULT_FACE_SMOOTHING_SAMPLE_COUNT,
-    val speakerThreshold: Float = speakerModel.jvsCandidateThreshold,
-    val speakerMargin: Float = speakerModel.jvsCandidateMargin,
-    val combinedThreshold: Float = DEFAULT_COMBINED_THRESHOLD,
-    val observationWindowMillis: Long = DEFAULT_OBSERVATION_WINDOW_MILLIS,
-    val debugMode: Boolean = true,
+    val faceClusterJoinThreshold: Float = DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD,
+    val faceClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
+    val speakerClusterJoinThreshold: Float = speakerModel.jvsCandidateThreshold,
+    val speakerClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
 ) {
     fun isValid(): Boolean =
-        faceThreshold in SCORE_RANGE &&
-            faceMargin in MARGIN_RANGE &&
-            faceRegistrationAnalysisIntervalMillis in FACE_REGISTRATION_INTERVAL_RANGE &&
-            faceIdentificationAnalysisIntervalMillis in FACE_IDENTIFICATION_INTERVAL_RANGE &&
-            facePoseStableDurationMillis in FACE_POSE_STABLE_DURATION_RANGE &&
-            faceFrontYawDegrees in FACE_FRONT_ANGLE_RANGE &&
-            faceFrontPitchDegrees in FACE_FRONT_ANGLE_RANGE &&
-            faceSideMinimumYawDegrees in FACE_SIDE_ANGLE_RANGE &&
-            faceSideMaximumYawDegrees in FACE_SIDE_ANGLE_RANGE &&
-            faceSideMinimumYawDegrees < faceSideMaximumYawDegrees &&
-            faceSmoothingSampleCount in FACE_SMOOTHING_SAMPLE_COUNT_RANGE &&
-            speakerThreshold in SCORE_RANGE &&
-            speakerMargin in MARGIN_RANGE &&
-            combinedThreshold in SCORE_RANGE &&
-            observationWindowMillis in OBSERVATION_WINDOW_RANGE
+        faceClusterJoinThreshold in SCORE_RANGE &&
+            speakerClusterJoinThreshold in SCORE_RANGE &&
+            faceClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE &&
+            speakerClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE
 
     /**
      * Selects a model together with its JVS-studio operating-point candidate.
@@ -44,35 +22,14 @@ data class PocSettings(
      */
     fun withSpeakerModel(model: SpeakerModelOption): PocSettings = copy(
         speakerModel = model,
-        speakerThreshold = model.jvsCandidateThreshold,
-        speakerMargin = model.jvsCandidateMargin,
+        speakerClusterJoinThreshold = model.jvsCandidateThreshold,
     )
 
     companion object {
-        const val DEFAULT_FACE_THRESHOLD = 0.60f
-        const val DEFAULT_FACE_MARGIN = 0.0f
-        const val DEFAULT_FACE_REGISTRATION_INTERVAL_MILLIS = 200L
-        const val DEFAULT_FACE_IDENTIFICATION_INTERVAL_MILLIS = 1_000L
-        const val DEFAULT_FACE_POSE_STABLE_DURATION_MILLIS = 1_000L
-        const val DEFAULT_FACE_FRONT_YAW_DEGREES = 8f
-        const val DEFAULT_FACE_FRONT_PITCH_DEGREES = 8f
-        const val DEFAULT_FACE_SIDE_MINIMUM_YAW_DEGREES = 18f
-        const val DEFAULT_FACE_SIDE_MAXIMUM_YAW_DEGREES = 32f
-        const val DEFAULT_FACE_SMOOTHING_SAMPLE_COUNT = 5
-        const val DEFAULT_SPEAKER_THRESHOLD = 0.70323396f
-        const val DEFAULT_SPEAKER_MARGIN = 0.0f
-        const val DEFAULT_COMBINED_THRESHOLD = 0.70f
-        const val DEFAULT_OBSERVATION_WINDOW_MILLIS = 3_000L
-
+        const val DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD = 0.60f
+        const val DEFAULT_CLUSTER_MAX_UPDATE_COUNT = 20
         val SCORE_RANGE = 0f..1f
-        val MARGIN_RANGE = 0f..2f
-        val FACE_REGISTRATION_INTERVAL_RANGE = 100L..2_000L
-        val FACE_IDENTIFICATION_INTERVAL_RANGE = 200L..5_000L
-        val FACE_POSE_STABLE_DURATION_RANGE = 250L..5_000L
-        val FACE_FRONT_ANGLE_RANGE = 1f..30f
-        val FACE_SIDE_ANGLE_RANGE = 5f..60f
-        val FACE_SMOOTHING_SAMPLE_COUNT_RANGE = 1..15
-        val OBSERVATION_WINDOW_RANGE = 500L..10_000L
+        val CLUSTER_MAX_UPDATE_COUNT_RANGE = 1..100
     }
 }
 

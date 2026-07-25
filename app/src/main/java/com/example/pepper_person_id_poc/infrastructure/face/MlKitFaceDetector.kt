@@ -194,6 +194,8 @@ class MlKitFaceDetector(
             processingTimeMillis = processingMillis,
             analysisFramesPerSecond = analysisFps,
             modelName = MODEL_NAME,
+            orientedFrameWidth = bgr.cols(),
+            orientedFrameHeight = bgr.rows(),
         )
         onFeatureObservations(features)
         onBenchmarkEvent(

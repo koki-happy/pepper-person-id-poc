@@ -2,125 +2,66 @@ package com.example.pepper_person_id_poc.infrastructure.repository
 
 import android.content.Context
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
-import com.example.pepper_person_id_poc.domain.config.PocSettings
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
 import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
+import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 
-class SharedPreferencesSettingsRepository(
-    context: Context,
-) : SettingsRepository {
-    private val preferences = context.applicationContext.getSharedPreferences(
-        PREFERENCES_NAME,
-        Context.MODE_PRIVATE,
-    )
+class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository {
+    private val preferences = context.applicationContext.getSharedPreferences("poc_settings", Context.MODE_PRIVATE)
 
     override fun load(): PocSettings {
-        val speakerModel = preferences.getString(KEY_SPEAKER_MODEL, null)
-            ?.let { saved -> SpeakerModelOption.entries.firstOrNull { it.name == saved } }
-            ?: SpeakerModelOption.ERES2NET
+        val speakerModel = enumValue(KEY_SPEAKER_MODEL, SpeakerModelOption.ERES2NET)
         return PocSettings(
-            faceModel = preferences.getString(KEY_FACE_MODEL, null)
-                ?.let { saved -> FaceModelOption.entries.firstOrNull { it.name == saved } }
-                ?: FaceModelOption.SFACE_2021DEC,
-            faceDetector = preferences.getString(KEY_FACE_DETECTOR, null)
-                ?.let { saved -> FaceDetectorOption.entries.firstOrNull { it.name == saved } }
-                ?: FaceDetectorOption.ML_KIT_BUNDLED,
-            faceInferenceBackend = preferences.getString(KEY_FACE_INFERENCE_BACKEND, null)
-                ?.let { saved -> FaceInferenceBackend.entries.firstOrNull { it.name == saved } }
-                ?: FaceInferenceBackend.OPEN_CV,
+            faceModel = enumValue(KEY_FACE_MODEL, FaceModelOption.SFACE_2021DEC),
+            faceDetector = enumValue(KEY_FACE_DETECTOR, FaceDetectorOption.ML_KIT_BUNDLED),
+            faceInferenceBackend = enumValue(KEY_FACE_BACKEND, FaceInferenceBackend.OPEN_CV),
             speakerModel = speakerModel,
-            faceThreshold = preferences.getFloat(KEY_FACE_THRESHOLD, PocSettings.DEFAULT_FACE_THRESHOLD),
-            faceMargin = preferences.getFloat(KEY_FACE_MARGIN, PocSettings.DEFAULT_FACE_MARGIN),
-            faceRegistrationAnalysisIntervalMillis = preferences.getLong(
-                KEY_FACE_REGISTRATION_INTERVAL,
-                PocSettings.DEFAULT_FACE_REGISTRATION_INTERVAL_MILLIS,
+            faceClusterJoinThreshold = preferences.getFloat(
+                KEY_FACE_THRESHOLD,
+                PocSettings.DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD,
             ),
-            faceIdentificationAnalysisIntervalMillis = preferences.getLong(
-                KEY_FACE_IDENTIFICATION_INTERVAL,
-                PocSettings.DEFAULT_FACE_IDENTIFICATION_INTERVAL_MILLIS,
+            faceClusterMaxUpdateCount = preferences.getInt(
+                KEY_FACE_MAX_UPDATES,
+                PocSettings.DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
             ),
-            facePoseStableDurationMillis = preferences.getLong(
-                KEY_FACE_POSE_STABLE_DURATION,
-                PocSettings.DEFAULT_FACE_POSE_STABLE_DURATION_MILLIS,
+            speakerClusterJoinThreshold = preferences.getFloat(
+                KEY_SPEAKER_THRESHOLD,
+                speakerModel.jvsCandidateThreshold,
             ),
-            faceFrontYawDegrees = preferences.getFloat(
-                KEY_FACE_FRONT_YAW,
-                PocSettings.DEFAULT_FACE_FRONT_YAW_DEGREES,
+            speakerClusterMaxUpdateCount = preferences.getInt(
+                KEY_SPEAKER_MAX_UPDATES,
+                PocSettings.DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
             ),
-            faceFrontPitchDegrees = preferences.getFloat(
-                KEY_FACE_FRONT_PITCH,
-                PocSettings.DEFAULT_FACE_FRONT_PITCH_DEGREES,
-            ),
-            faceSideMinimumYawDegrees = preferences.getFloat(
-                KEY_FACE_SIDE_MINIMUM_YAW,
-                PocSettings.DEFAULT_FACE_SIDE_MINIMUM_YAW_DEGREES,
-            ),
-            faceSideMaximumYawDegrees = preferences.getFloat(
-                KEY_FACE_SIDE_MAXIMUM_YAW,
-                PocSettings.DEFAULT_FACE_SIDE_MAXIMUM_YAW_DEGREES,
-            ),
-            faceSmoothingSampleCount = preferences.getInt(
-                KEY_FACE_SMOOTHING_SAMPLE_COUNT,
-                PocSettings.DEFAULT_FACE_SMOOTHING_SAMPLE_COUNT,
-            ),
-            speakerThreshold = preferences.getFloat(KEY_SPEAKER_THRESHOLD, speakerModel.jvsCandidateThreshold),
-            speakerMargin = preferences.getFloat(KEY_SPEAKER_MARGIN, speakerModel.jvsCandidateMargin),
-            combinedThreshold = preferences.getFloat(KEY_COMBINED_THRESHOLD, PocSettings.DEFAULT_COMBINED_THRESHOLD),
-            observationWindowMillis = preferences.getLong(
-                KEY_OBSERVATION_WINDOW_MILLIS,
-                PocSettings.DEFAULT_OBSERVATION_WINDOW_MILLIS,
-            ),
-            debugMode = preferences.getBoolean(KEY_DEBUG_MODE, true),
         )
     }
 
     override fun save(settings: PocSettings) {
-        require(settings.isValid()) { "Invalid PoC settings" }
+        require(settings.isValid())
         preferences.edit()
             .putString(KEY_FACE_MODEL, settings.faceModel.name)
             .putString(KEY_FACE_DETECTOR, settings.faceDetector.name)
-            .putString(KEY_FACE_INFERENCE_BACKEND, settings.faceInferenceBackend.name)
+            .putString(KEY_FACE_BACKEND, settings.faceInferenceBackend.name)
             .putString(KEY_SPEAKER_MODEL, settings.speakerModel.name)
-            .putFloat(KEY_FACE_THRESHOLD, settings.faceThreshold)
-            .putFloat(KEY_FACE_MARGIN, settings.faceMargin)
-            .putLong(KEY_FACE_REGISTRATION_INTERVAL, settings.faceRegistrationAnalysisIntervalMillis)
-            .putLong(KEY_FACE_IDENTIFICATION_INTERVAL, settings.faceIdentificationAnalysisIntervalMillis)
-            .putLong(KEY_FACE_POSE_STABLE_DURATION, settings.facePoseStableDurationMillis)
-            .putFloat(KEY_FACE_FRONT_YAW, settings.faceFrontYawDegrees)
-            .putFloat(KEY_FACE_FRONT_PITCH, settings.faceFrontPitchDegrees)
-            .putFloat(KEY_FACE_SIDE_MINIMUM_YAW, settings.faceSideMinimumYawDegrees)
-            .putFloat(KEY_FACE_SIDE_MAXIMUM_YAW, settings.faceSideMaximumYawDegrees)
-            .putInt(KEY_FACE_SMOOTHING_SAMPLE_COUNT, settings.faceSmoothingSampleCount)
-            .putFloat(KEY_SPEAKER_THRESHOLD, settings.speakerThreshold)
-            .putFloat(KEY_SPEAKER_MARGIN, settings.speakerMargin)
-            .putFloat(KEY_COMBINED_THRESHOLD, settings.combinedThreshold)
-            .putLong(KEY_OBSERVATION_WINDOW_MILLIS, settings.observationWindowMillis)
-            .putBoolean(KEY_DEBUG_MODE, settings.debugMode)
+            .putFloat(KEY_FACE_THRESHOLD, settings.faceClusterJoinThreshold)
+            .putInt(KEY_FACE_MAX_UPDATES, settings.faceClusterMaxUpdateCount)
+            .putFloat(KEY_SPEAKER_THRESHOLD, settings.speakerClusterJoinThreshold)
+            .putInt(KEY_SPEAKER_MAX_UPDATES, settings.speakerClusterMaxUpdateCount)
             .apply()
     }
 
+    private inline fun <reified T : Enum<T>> enumValue(key: String, fallback: T): T =
+        preferences.getString(key, null)?.let { saved -> enumValues<T>().firstOrNull { it.name == saved } } ?: fallback
+
     private companion object {
-        const val PREFERENCES_NAME = "poc_settings"
         const val KEY_FACE_MODEL = "face_model"
         const val KEY_FACE_DETECTOR = "face_detector"
-        const val KEY_FACE_INFERENCE_BACKEND = "face_inference_backend"
+        const val KEY_FACE_BACKEND = "face_inference_backend"
         const val KEY_SPEAKER_MODEL = "speaker_model"
-        const val KEY_FACE_THRESHOLD = "face_threshold"
-        const val KEY_FACE_MARGIN = "face_margin"
-        const val KEY_FACE_REGISTRATION_INTERVAL = "face_registration_analysis_interval_millis"
-        const val KEY_FACE_IDENTIFICATION_INTERVAL = "face_identification_analysis_interval_millis"
-        const val KEY_FACE_POSE_STABLE_DURATION = "face_pose_stable_duration_millis"
-        const val KEY_FACE_FRONT_YAW = "face_front_yaw_degrees"
-        const val KEY_FACE_FRONT_PITCH = "face_front_pitch_degrees"
-        const val KEY_FACE_SIDE_MINIMUM_YAW = "face_side_minimum_yaw_degrees"
-        const val KEY_FACE_SIDE_MAXIMUM_YAW = "face_side_maximum_yaw_degrees"
-        const val KEY_FACE_SMOOTHING_SAMPLE_COUNT = "face_smoothing_sample_count"
-        const val KEY_SPEAKER_THRESHOLD = "speaker_threshold"
-        const val KEY_SPEAKER_MARGIN = "speaker_margin"
-        const val KEY_COMBINED_THRESHOLD = "combined_threshold"
-        const val KEY_OBSERVATION_WINDOW_MILLIS = "observation_window_millis"
-        const val KEY_DEBUG_MODE = "debug_mode"
+        const val KEY_FACE_THRESHOLD = "face_cluster_join_threshold"
+        const val KEY_FACE_MAX_UPDATES = "face_cluster_max_update_count"
+        const val KEY_SPEAKER_THRESHOLD = "speaker_cluster_join_threshold"
+        const val KEY_SPEAKER_MAX_UPDATES = "speaker_cluster_max_update_count"
     }
 }

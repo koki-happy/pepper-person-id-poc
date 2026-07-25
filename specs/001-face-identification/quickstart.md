@@ -65,5 +65,4 @@ This is a wiring/separation smoke, not full FAR/FRR or threshold qualification. 
 | Pepper ARMv7 | 0095 | 0.9548413 | 0.29214254 | 492-620 | 396-467 |
 | Pepper ARMv7 | SFace | 0.95423216 | 0.3345171 | 489-516 | 604-737 |
 
-Both model tests passed on both devices: same-person accepted and different-person rejected. Full
-LombardGRID/BIWI/Pointing'04 manifests and FAR/FRR evaluation remain a later phase.
+Both model tests passed on both devices: same-person accepted and different-person rejected.

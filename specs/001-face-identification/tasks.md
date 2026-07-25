@@ -64,6 +64,5 @@
 
 ## Implementation Strategy
 
-Complete the face-only MVP through T021. BIWI/Pointing'04 performance evaluation and all speaker
-implementation remain explicitly deferred; their contracts are fixed in FR-014/FR-015 and the supplied
-canonical specification, but they are not tasks in this implementation pass.
+Complete the face-only MVP through T021. Speaker implementation remains outside this implementation
+pass.

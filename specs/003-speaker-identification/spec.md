@@ -1,5 +1,7 @@
 # Feature Specification: Registered-speaker Identification
 
+> Superseded by [`../004-anonymous-biometric-identification/spec.md`](../004-anonymous-biometric-identification/spec.md).
+
 **Feature Branch**: `codex/face-identification`  
 **Status**: Current implementation documented; constitution alignment, method selection, and evaluation remain incomplete
 

@@ -1,5 +1,7 @@
 # Feature Specification: Guided Face Registration and Real-time Enrolled-person Identification
 
+> Superseded by [`../004-anonymous-biometric-identification/spec.md`](../004-anonymous-biometric-identification/spec.md).
+
 **Feature Branch**: `codex/face-identification`  
 **Status**: Implemented and validated on Nothing Phone (3a) and Pepper API 23 / ARMv7
 
@@ -212,4 +214,3 @@ Current defaults are $\tau_{face}=0.60$, $\delta_{face}=0.0$, registration analy
 - Front/left/right registration stores exactly three current templates and partial registration stores none.
 - Continuous identification, threshold/margin logic, settings, repository behavior, and model alignment are covered by tests.
 - Nothing Phone (3a) and Pepper have exercised the primary face flow with SFace and 0095.
-- Current Pointing'04 evidence uses `Face-Method-1`; method comparisons are tracked in `002-face-evaluation`.

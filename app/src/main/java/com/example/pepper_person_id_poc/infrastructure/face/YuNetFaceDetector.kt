@@ -215,6 +215,8 @@ class YuNetFaceDetector(
                     processingTimeMillis = processingMillis,
                     analysisFramesPerSecond = analysisFps,
                     modelName = detectorOption.displayName,
+                    orientedFrameWidth = bgr.cols(),
+                    orientedFrameHeight = bgr.rows(),
                 )
                 onFeatureObservations(featureObservations)
                 val pipelineFinishedAtNanos = SystemClock.elapsedRealtimeNanos()
