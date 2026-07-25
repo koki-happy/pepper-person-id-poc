@@ -45,9 +45,11 @@ class FaceIdentityCoordinator(
                 results[observation.trackId] = result
             }
         }.onSuccess {
+            val latest = results.values.lastOrNull()
             mutableState.value = mutableState.value.copy(
                 results = results,
-                clusterCount = repository.count(),
+                currentModelClusterCount = latest?.currentModelClusterCount ?: 0,
+                totalClusterCount = latest?.totalClusterCount ?: repository.count(),
                 lastEmbeddingAverageTimeMillis = observations.map { it.embeddingTimeMillis }.average()
                     .takeIf { !it.isNaN() }?.toLong(),
                 lastEmbeddingMaximumTimeMillis = observations.maxOfOrNull { it.embeddingTimeMillis },
@@ -78,7 +80,8 @@ data class FaceIdentityUiState(
     val modelReady: Boolean = false,
     val visibleFaceCount: Int = 0,
     val results: Map<String, AnonymousIdentificationResult> = emptyMap(),
-    val clusterCount: Int = 0,
+    val currentModelClusterCount: Int = 0,
+    val totalClusterCount: Int = 0,
     val lastEmbeddingAverageTimeMillis: Long? = null,
     val lastEmbeddingMaximumTimeMillis: Long? = null,
     val lastEmbeddingFaceCount: Int = 0,

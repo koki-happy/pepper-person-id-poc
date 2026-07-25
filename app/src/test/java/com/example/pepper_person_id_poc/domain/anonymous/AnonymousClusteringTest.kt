@@ -32,8 +32,10 @@ class AnonymousClusteringTest {
     fun differentModelsDoNotMix() {
         val repository = InMemoryAnonymousFaceRepository()
         repository.identify("model-a", floatArrayOf(1f), 0f, 20)
-        repository.identify("model-b", floatArrayOf(1f), 0f, 20)
+        val result = repository.identify("model-b", floatArrayOf(1f), 0f, 20)
         assertThat(repository.count()).isEqualTo(2)
+        assertThat(result.currentModelClusterCount).isEqualTo(1)
+        assertThat(result.totalClusterCount).isEqualTo(2)
     }
 
     @Test
@@ -53,5 +55,19 @@ class AnonymousClusteringTest {
     @Test(expected = IllegalArgumentException::class)
     fun zeroVector_isRejectedWithoutMutation() {
         InMemoryAnonymousFaceRepository().identify("model", floatArrayOf(0f, 0f), 0.6f, 20)
+    }
+
+    @Test
+    fun newCluster_reportsExistingBestScoreWithoutAddingSelfCandidate() {
+        val repository = InMemoryAnonymousFaceRepository()
+        val first = repository.identify("model", floatArrayOf(1f, 0f), 0.9f, 20)
+        val second = repository.identify("model", floatArrayOf(0f, 1f), 0.9f, 20)
+
+        assertThat(first.bestExistingScore).isNull()
+        assertThat(first.candidateScores).isEmpty()
+        assertThat(second.bestExistingScore).isWithin(0.0001f).of(0f)
+        assertThat(second.candidateScores.map { it.anonymousId })
+            .containsExactly("anonymous-face-001")
+        assertThat(second.candidateScores.none { it.selected }).isTrue()
     }
 }

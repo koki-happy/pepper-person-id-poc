@@ -12,7 +12,7 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
     private val preferences = context.applicationContext.getSharedPreferences("poc_settings", Context.MODE_PRIVATE)
 
     override fun load(): PocSettings {
-        val speakerModel = enumValue(KEY_SPEAKER_MODEL, SpeakerModelOption.ERES2NET)
+        val speakerModel = enumValue(KEY_SPEAKER_MODEL, SpeakerModelOption.CAM_PLUS_PLUS)
         return PocSettings(
             faceModel = enumValue(KEY_FACE_MODEL, FaceModelOption.SFACE_2021DEC),
             faceDetector = enumValue(KEY_FACE_DETECTOR, FaceDetectorOption.ML_KIT_BUNDLED),

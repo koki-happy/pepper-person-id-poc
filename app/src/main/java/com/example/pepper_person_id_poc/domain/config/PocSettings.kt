@@ -4,7 +4,7 @@ data class PocSettings(
     val faceModel: FaceModelOption = FaceModelOption.SFACE_2021DEC,
     val faceDetector: FaceDetectorOption = FaceDetectorOption.ML_KIT_BUNDLED,
     val faceInferenceBackend: FaceInferenceBackend = FaceInferenceBackend.OPEN_CV,
-    val speakerModel: SpeakerModelOption = SpeakerModelOption.ERES2NET,
+    val speakerModel: SpeakerModelOption = SpeakerModelOption.CAM_PLUS_PLUS,
     val faceClusterJoinThreshold: Float = DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD,
     val faceClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
     val speakerClusterJoinThreshold: Float = speakerModel.jvsCandidateThreshold,

@@ -4,7 +4,14 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class PocSettingsTest {
-    @Test fun defaultsAreValid() = assertThat(PocSettings().isValid()).isTrue()
+    @Test
+    fun defaultsUseCamPlusPlusAndItsThreshold() {
+        val defaults = PocSettings()
+        assertThat(defaults.isValid()).isTrue()
+        assertThat(defaults.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS)
+        assertThat(defaults.speakerClusterJoinThreshold)
+            .isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS.jvsCandidateThreshold)
+    }
 
     @Test
     fun clusterBoundsAreValidated() {

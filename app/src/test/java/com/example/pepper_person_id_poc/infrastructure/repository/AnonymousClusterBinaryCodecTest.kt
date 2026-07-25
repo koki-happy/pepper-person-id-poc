@@ -34,4 +34,30 @@ class AnonymousClusterBinaryCodecTest {
         }.toByteArray()
         AnonymousClusterBinaryCodec.read(ByteArrayInputStream(bytes))
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun inconsistentCentroid_isRejected() {
+        val cluster = AnonymousCluster(
+            "anonymous-face-001", "face-model", 2,
+            floatArrayOf(1f, 0f), floatArrayOf(0f, 1f),
+            1, 10L, 20L,
+        )
+        val output = ByteArrayOutputStream()
+        AnonymousClusterBinaryCodec.write(output, AnonymousClusterSnapshot(2, listOf(cluster)))
+
+        AnonymousClusterBinaryCodec.read(ByteArrayInputStream(output.toByteArray()))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun duplicateAnonymousIds_areRejected() {
+        val cluster = AnonymousCluster(
+            "anonymous-face-001", "face-model", 1,
+            floatArrayOf(1f), floatArrayOf(1f),
+            1, 10L, 20L,
+        )
+        val output = ByteArrayOutputStream()
+        AnonymousClusterBinaryCodec.write(output, AnonymousClusterSnapshot(2, listOf(cluster, cluster)))
+
+        AnonymousClusterBinaryCodec.read(ByteArrayInputStream(output.toByteArray()))
+    }
 }

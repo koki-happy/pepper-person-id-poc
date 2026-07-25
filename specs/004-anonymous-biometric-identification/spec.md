@@ -39,6 +39,8 @@ While either identification screen is visible, app CPU, app PSS, device memory, 
 - **FR-015**: Final acceptance remains Pepper API 23 / ARMv7 and offline CPU inference.
 - **FR-016**: Each identification screen lists the current query's cosine similarity for every anonymous cluster with the same model and embedding dimension, sorts the list by similarity descending, and marks the selected cluster.
 - **FR-017**: The face bounding box and result list MUST present the temporary face detection ID and persistent anonymous face feature ID as separately labeled values.
+- **FR-018**: The face preview MUST overlay the available left-eye, right-eye, nose, left-mouth-corner, and right-mouth-corner landmark points using the same preview coordinate transform as the face box.
+- **FR-019**: New settings with no persisted speaker-model choice MUST default to CAM++ English and its model-specific candidate threshold; an existing saved choice MUST remain unchanged.
 
 ## Success Criteria
 

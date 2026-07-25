@@ -19,12 +19,13 @@ data class AnonymousCluster(
 data class AnonymousIdentificationResult(
     val anonymousId: String,
     val modelId: String,
-    val score: Float,
+    val bestExistingScore: Float?,
     val threshold: Float,
     val isNewCluster: Boolean,
     val updateCount: Int,
     val maximumUpdateCount: Int,
-    val clusterCount: Int,
+    val currentModelClusterCount: Int,
+    val totalClusterCount: Int,
     val candidateScores: List<AnonymousClusterScore>,
 )
 

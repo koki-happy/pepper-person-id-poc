@@ -8,9 +8,8 @@ import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import java.io.File
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousCluster
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterEngine
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousIdentificationResult
-import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterScore
-import kotlin.math.sqrt
 
 open class InMemoryAnonymousRepository(private val prefix: String) : AnonymousClusterRepository {
     private val clusters = mutableListOf<AnonymousCluster>()
@@ -31,44 +30,38 @@ open class InMemoryAnonymousRepository(private val prefix: String) : AnonymousCl
         nowMillis: Long,
         reservedAnonymousIds: Set<String>,
     ): AnonymousIdentificationResult {
-        val normalized = normalize(embedding)
-        val best = clusters.filter { it.modelId == modelId && it.embeddingDimension == embedding.size && it.anonymousId !in reservedAnonymousIds }
-            .maxByOrNull { cluster -> cluster.centroid.indices.sumOf { cluster.centroid[it].toDouble() * normalized[it] } }
-        val score = best?.centroid?.indices?.sumOf { best.centroid[it].toDouble() * normalized[it] }?.toFloat() ?: 1f
-        val isNew = best == null || score < threshold
+        val normalized = AnonymousClusterEngine.normalize(embedding)
+        val match = AnonymousClusterEngine.findBestMatch(
+            normalized,
+            clusters,
+            modelId,
+            reservedAnonymousIds,
+        )
+        val best = match.bestCluster
+        val isNew = best == null || checkNotNull(match.bestScore) < threshold
         val target = if (isNew) {
             AnonymousCluster("$prefix-${nextId++.toString().padStart(3, '0')}", modelId, embedding.size, FloatArray(embedding.size), normalized, 0, nowMillis, nowMillis)
         } else best!!
-        val sum = target.normalizedEmbeddingSum.copyOf()
-        if (target.updateCount < maximumUpdateCount) sum.indices.forEach { sum[it] += normalized[it] }
-        val updated = if (target.updateCount < maximumUpdateCount) target.copy(
-            normalizedEmbeddingSum = sum,
-            centroid = normalize(sum),
-            updateCount = target.updateCount + 1,
-            updatedAtMillis = nowMillis,
-        ) else target
+        val updated = AnonymousClusterEngine.addEmbedding(target, normalized, maximumUpdateCount, nowMillis)
         clusters.removeAll { it.anonymousId == updated.anonymousId }
         clusters += updated
-        val candidateScores = clusters
-            .filter { it.modelId == modelId && it.embeddingDimension == embedding.size }
-            .map {
-                AnonymousClusterScore(
-                    it.anonymousId,
-                    it.centroid.indices.sumOf { index -> it.centroid[index].toDouble() * normalized[index] }.toFloat(),
-                    it.anonymousId == updated.anonymousId,
-                )
-            }
-            .sortedByDescending(AnonymousClusterScore::score)
+        val currentModelCount = clusters.count {
+            it.modelId == modelId && it.embeddingDimension == embedding.size
+        }
         return AnonymousIdentificationResult(
-            updated.anonymousId, modelId, if (isNew) 1f else score, threshold, isNew,
-            updated.updateCount, maximumUpdateCount, clusters.size, candidateScores,
+            updated.anonymousId,
+            modelId,
+            match.bestScore,
+            threshold,
+            isNew,
+            updated.updateCount,
+            maximumUpdateCount,
+            currentModelCount,
+            clusters.size,
+            match.candidates.map {
+                it.copy(selected = !isNew && it.anonymousId == updated.anonymousId)
+            },
         )
-    }
-
-    private fun normalize(input: FloatArray): FloatArray {
-        val norm = sqrt(input.sumOf { it.toDouble() * it })
-        require(norm > 0)
-        return FloatArray(input.size) { (input[it] / norm).toFloat() }
     }
 }
 

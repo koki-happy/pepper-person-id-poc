@@ -189,6 +189,22 @@ fun CameraPreviewScreen(
                             size = Size(right - left, bottom - top),
                             style = Stroke(3f),
                         )
+                        face.landmarks.forEach { landmark ->
+                            val landmarkCenter = Offset(
+                                x = offsetX + (1f - landmark.x) * sourceWidth * scale,
+                                y = offsetY + landmark.y * sourceHeight * scale,
+                            )
+                            drawCircle(
+                                color = Color.Black,
+                                radius = 6.dp.toPx(),
+                                center = landmarkCenter,
+                            )
+                            drawCircle(
+                                color = Color.Green,
+                                radius = 4.dp.toPx(),
+                                center = landmarkCenter,
+                            )
+                        }
                         drawIntoCanvas { canvas ->
                             canvas.nativeCanvas.drawRect(
                                 labelLeft,
@@ -222,12 +238,16 @@ fun CameraPreviewScreen(
                     DetailRow("検出時間", detection.processingTimeMillis?.let { "$it ms" } ?: "未計測")
                     DetailRow("特徴抽出時間", identity.lastEmbeddingAverageTimeMillis?.let { "$it ms" } ?: "未計測")
                     DetailRow("参加閾値", settings.faceClusterJoinThreshold.score())
-                    DetailRow("クラスタ数", identity.clusterCount.toString())
+                    DetailRow("現在モデル", identity.currentModelClusterCount.toString())
+                    DetailRow("全体クラスタ", identity.totalClusterCount.toString())
                     identity.results.forEach { (trackId, result) ->
                         HorizontalDivider()
                         DetailRow("Detection ID", trackId)
                         DetailRow("Feature ID", result.anonymousId)
-                        DetailRow("類似度", result.score.score())
+                        DetailRow(
+                            if (result.isNewCluster) "最高既存類似度" else "類似度",
+                            result.bestExistingScore?.score() ?: "比較対象なし",
+                        )
                         DetailRow("更新", "${result.updateCount}/${result.maximumUpdateCount}")
                         Text("類似度一覧", style = MaterialTheme.typography.titleSmall)
                         TableHeader("Feature ID", "Similarity", firstColumnWeight = 0.72f)

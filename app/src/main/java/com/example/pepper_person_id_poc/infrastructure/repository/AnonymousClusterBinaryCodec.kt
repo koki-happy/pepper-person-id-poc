@@ -1,6 +1,7 @@
 package com.example.pepper_person_id_poc.infrastructure.repository
 
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousCluster
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterEngine
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.InputStream
@@ -59,6 +60,8 @@ internal object AnonymousClusterBinaryCodec {
                     updatedAtMillis = data.readLong(),
                 )
             }
+            require(clusters.map(AnonymousCluster::anonymousId).distinct().size == clusters.size)
+            clusters.forEach(AnonymousClusterEngine::validate)
             return AnonymousClusterSnapshot(nextId, clusters)
         }
     }

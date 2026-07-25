@@ -118,7 +118,12 @@ fun AudioRecordingScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(12.dp)) {
                     identity.result?.let {
                         Text(it.anonymousId, style = MaterialTheme.typography.titleLarge)
-                        Text("類似度: ${String.format(Locale.US, "%.2f", it.score)}")
+                        Text(
+                            "${if (it.isNewCluster) "最高既存類似度" else "類似度"}: " +
+                                (it.bestExistingScore?.let { score ->
+                                    String.format(Locale.US, "%.2f", score)
+                                } ?: "比較対象なし"),
+                        )
                         Text("参加閾値: ${String.format(Locale.US, "%.2f", it.threshold)}")
                         Text("更新 ${it.updateCount}/${it.maximumUpdateCount}")
                         Text("匿名話者クラスタ類似度一覧", style = MaterialTheme.typography.titleSmall)
@@ -129,7 +134,8 @@ fun AudioRecordingScreen(
                             )
                         }
                     } ?: Text("発話を待っています")
-                    Text("クラスタ数: ${identity.clusterCount}")
+                    Text("現在モデルのクラスタ数: ${identity.currentModelClusterCount}")
+                    Text("Repository全体: ${identity.totalClusterCount}")
                     Text("特徴量抽出時間: ${identity.inferenceTimeMillis?.let { "$it ms" } ?: "未計測"}")
                     recorderState.lastUtterance?.let {
                         Text("発話区間: ${it.durationMillis} ms / 有声時間: ${it.voicedDurationMillis} ms")

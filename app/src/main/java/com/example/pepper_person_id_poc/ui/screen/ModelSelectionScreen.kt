@@ -120,10 +120,12 @@ fun ModelSelectionScreen(
                                 option.jvsCandidateThreshold,
                                 option.jvsCandidateMargin,
                             ))
-                            if (option == SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN) {
+                            if (option == SpeakerModelOption.CAM_PLUS_PLUS) {
+                                append("\n新規設定の既定")
+                            } else if (option == SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN) {
                                 append("\nJVS評価 第1候補")
                             } else if (option == SpeakerModelOption.ERES2NET) {
-                                append("\nJVS評価 第2候補 / Pepper既存スモークの既定")
+                                append("\nJVS評価 第2候補 / Pepper既存スモーク実績")
                             }
                         },
                         selected = settings.speakerModel == option,

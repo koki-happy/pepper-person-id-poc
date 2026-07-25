@@ -14,3 +14,9 @@
 - [x] T012 Record Pepper validation boundary
 - [x] T013 Show ranked current-query similarity lists for anonymous face and speaker clusters
 - [x] T014 Separate face detection IDs from anonymous face feature IDs in bounding boxes and result lists
+- [x] T015 Overlay five face landmark points using the corrected preview transform
+- [x] T016 Centralize matching and normalized-centroid accumulation in the domain engine
+- [x] T017 Cache File Repository snapshots and skip unchanged AtomicFile writes
+- [x] T018 Correct new-cluster score semantics and split current-model/total counts
+- [x] T019 Validate loaded cluster consistency and add production File Repository tests
+- [x] T020 Make CAM++ English the default for new speaker settings while preserving saved choices
