@@ -114,9 +114,9 @@
 - [x] T050 [P] [US2] Add local track linking tests for swaps, disappearance, reappearance, overlap, and ties in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinkerTest.kt`
 - [x] T051 [P] [US2] Add solo-segment extraction and fail-closed overlap tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelectorTest.kt`
 - [x] T052 [P] [US2] Add local-speaker aggregation and all-candidate tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinatorTest.kt`
-- [ ] T053 [P] [US2] Add live 16 kHz recorder/VAD instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/StrictSpeakerAudioPipelineTest.kt`
-- [ ] T054 [P] [US2] Add fixed alternating/partial-overlap/full-overlap instrumentation assets and tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/SpeakerActivityPipelineTest.kt`
-- [ ] T055 [P] [US2] Add speaker UI contract tests for activity, overlap, quality, candidates, RTF, and HOLD in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousSpeakerUiTest.kt`
+- [x] T053 [P] [US2] Add live 16 kHz recorder/VAD instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/StrictSpeakerAudioPipelineTest.kt`
+- [x] T054 [P] [US2] Add fixed alternating/partial-overlap/full-overlap instrumentation assets and tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/SpeakerActivityPipelineTest.kt`
+- [x] T055 [P] [US2] Add speaker UI contract tests for activity, overlap, quality, candidates, RTF, and HOLD in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousSpeakerUiTest.kt`
 
 ### Implementation
 
@@ -125,15 +125,15 @@
 - [x] T058 [P] [US2] Add `SpeakerAudioQualityAssessment` and policy in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityAssessment.kt`
 - [x] T059 [P] [US2] Add activity/window/segment/track entities in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerActivityModels.kt`
 - [x] T060 [US2] Add speaker segmentation runtime interface in `app/src/main/java/com/example/pepper_person_id_poc/application/contract/SpeakerSegmentationEngine.kt`
-- [ ] T061 [US2] Implement pyannote ONNX CPU inference without fallback in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationOnnxEngine.kt`
+- [x] T061 [US2] Implement pyannote ONNX CPU inference without fallback in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationOnnxEngine.kt`
 - [x] T062 [US2] Implement powerset/activity/overlap postprocessing in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessor.kt`
 - [x] T063 [US2] Implement cross-window local speaker tracking in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinker.kt`
 - [x] T064 [US2] Implement solo-segment selection and unsupported-state HOLD in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelector.kt`
 - [x] T065 [US2] Implement segment-level embedding aggregation in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerEmbeddingAggregator.kt`
-- [ ] T066 [US2] Integrate VAD, activity, tracking, quality, aggregation, evaluation, and policy in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`
-- [ ] T067 [US2] Render capture diagnostics, activity, overlap, local tracks, quality, candidates, RTF, and HOLD reasons in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/AudioRecordingScreen.kt`
-- [ ] T068 [US2] Add pyannote asset/provenance/license/compatibility records to `config/models.json`
-- [ ] T069 [US2] Run JVM, fixed-audio, and live-mic Android tests for US2 and record evidence in `specs/005-full-person-identification/quickstart.md`
+- [x] T066 [US2] Integrate VAD, activity, tracking, quality, aggregation, evaluation, and policy in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`
+- [x] T067 [US2] Render capture diagnostics, activity, overlap, local tracks, quality, candidates, RTF, and HOLD reasons in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/AudioRecordingScreen.kt`
+- [x] T068 [US2] Add pyannote asset/provenance/license/compatibility records to `config/models.json`
+- [x] T069 [US2] Run JVM, fixed-audio, and live-mic Android tests for US2 and record evidence in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: 複数話者や重複を1話者として保存せず、単独区間だけが匿名クラスタへ到達する。
 
@@ -147,19 +147,19 @@
 
 ### Tests first
 
-- [ ] T070 [P] [US7] Add acceptance manifest schema tests in `scripts/acceptance/tests/AcceptanceManifest.Tests.ps1`
-- [ ] T071 [P] [US7] Add Android-pass prerequisite and serial/ABI/API guard tests in `scripts/acceptance/tests/Invoke-DeviceAcceptance.Tests.ps1`
-- [ ] T072 [P] [US7] Add privacy file-scan and crash-log parser tests in `scripts/acceptance/tests/DeviceEvidence.Tests.ps1`
+- [x] T070 [P] [US7] Add acceptance manifest schema tests in `scripts/acceptance/tests/AcceptanceManifest.Tests.ps1`
+- [x] T071 [P] [US7] Add Android-pass prerequisite and serial/ABI/API guard tests in `scripts/acceptance/tests/Invoke-DeviceAcceptance.Tests.ps1`
+- [x] T072 [P] [US7] Add privacy file-scan and crash-log parser tests in `scripts/acceptance/tests/DeviceEvidence.Tests.ps1`
 
 ### Implementation
 
-- [ ] T073 [P] [US7] Define scenario IDs and required evidence fields in `scripts/acceptance/scenarios.json`
-- [ ] T074 [US7] Implement read-only device preflight and exact serial classification in `scripts/acceptance/Get-DevicePreflight.ps1`
-- [ ] T075 [US7] Implement guarded build/install/launch/functional evidence runner in `scripts/acceptance/Invoke-DeviceAcceptance.ps1`
-- [ ] T076 [US7] Implement package/activity/permission/crash/privacy evidence capture in `scripts/acceptance/Get-DeviceEvidence.ps1`
-- [ ] T077 [US7] Add 15/30/60-minute bounded soak collection in `scripts/acceptance/Invoke-SoakTest.ps1`
-- [ ] T078 [US7] Add Android-pass manifest verification before Pepper execution in `scripts/acceptance/Assert-AndroidPassBeforePepper.ps1`
-- [ ] T079 [US7] Document human-required face-present and speech-present checkpoints in `specs/005-full-person-identification/quickstart.md`
+- [x] T073 [P] [US7] Define scenario IDs and required evidence fields in `scripts/acceptance/scenarios.json`
+- [x] T074 [US7] Implement read-only device preflight and exact serial classification in `scripts/acceptance/Get-DevicePreflight.ps1`
+- [x] T075 [US7] Implement guarded build/install/launch/functional evidence runner in `scripts/acceptance/Invoke-DeviceAcceptance.ps1`
+- [x] T076 [US7] Implement package/activity/permission/crash/privacy evidence capture in `scripts/acceptance/Get-DeviceEvidence.ps1`
+- [x] T077 [US7] Add 15/30/60-minute bounded soak collection in `scripts/acceptance/Invoke-SoakTest.ps1`
+- [x] T078 [US7] Add Android-pass manifest verification before Pepper execution in `scripts/acceptance/Assert-AndroidPassBeforePepper.ps1`
+- [x] T079 [US7] Document human-required face-present and speech-present checkpoints in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: 自動化はインストール・起動・機能・安定性を混同せず、Pepper開始前にAndroid合格を要求する。
 
@@ -173,21 +173,25 @@
 
 ### Tests first
 
-- [ ] T080 [P] [US3] Add detector-model/runtime and embedding-model/runtime compatibility tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/config/PocSettingsCompatibilityTest.kt`
-- [ ] T081 [P] [US3] Add explicit settings schema migration tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/repository/SharedPreferencesSettingsRepositoryTest.kt`
-- [ ] T082 [P] [US3] Add unsupported/missing artifact UI tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/ModelSelectionCompatibilityTest.kt`
-- [ ] T083 [P] [US3] Add no-runtime-fallback failure tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/InferenceRuntimeFailureTest.kt`
+- [x] T080 [P] [US3] Add detector-model/runtime and embedding-model/runtime compatibility tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/config/PocSettingsCompatibilityTest.kt`
+- [x] T081 [P] [US3] Add explicit settings schema migration tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/repository/SharedPreferencesSettingsRepositoryTest.kt`
+- [x] T082 [P] [US3] Add unsupported/missing artifact UI tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/ModelSelectionCompatibilityTest.kt`
+- [x] T083 [P] [US3] Add no-runtime-fallback failure tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/InferenceRuntimeFailureTest.kt`
 
 ### Implementation
 
-- [ ] T084 [US3] Split detector model/runtime and embedding model/runtime enums in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/PocSettings.kt`
-- [ ] T085 [US3] Set new-install defaults to YuNet FP32/OpenCV, SFace FP32/OpenCV, CAM++ Chinese-English/sherpa, and Silero VAD in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/PocSettings.kt`
-- [ ] T086 [US3] Implement versioned settings migration without changing valid saved choices in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/repository/SharedPreferencesSettingsRepository.kt`
-- [ ] T087 [US3] Resolve selectable combinations from the catalog and build contents in `app/src/main/java/com/example/pepper_person_id_poc/application/config/ModelSelectionCoordinator.kt`
-- [ ] T088 [US3] Disable BLOCKED/UNSUPPORTED combinations and show reasons in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/ModelSelectionScreen.kt`
-- [ ] T089 [US3] Refactor face engine factories to require exact artifact/runtime pairs in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceEmbeddingEngineFactory.kt`
-- [ ] T090 [US3] Refactor detector factories to require exact model/runtime pairs in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceDetectorFactory.kt`
+- [x] T084 [US3] Split detector model/runtime and embedding model/runtime enums in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/PocSettings.kt`
+- [x] T085 [US3] Set new-install defaults to YuNet FP32/OpenCV, SFace FP32/OpenCV, CAM++ Chinese-English/sherpa, and Silero VAD in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/PocSettings.kt`
+- [x] T086 [US3] Implement versioned settings migration without changing valid saved choices in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/repository/SharedPreferencesSettingsRepository.kt`
+- [x] T087 [US3] Resolve selectable combinations from the catalog and build contents in `app/src/main/java/com/example/pepper_person_id_poc/application/config/ModelSelectionCoordinator.kt`
+- [x] T088 [US3] Disable BLOCKED/UNSUPPORTED combinations and show reasons in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/ModelSelectionScreen.kt`
+- [x] T089 [US3] Refactor face engine factories to require exact artifact/runtime pairs in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceEmbeddingEngineFactory.kt`
+- [x] T090 [US3] Refactor detector factories to require exact model/runtime pairs in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceDetectorFactory.kt`
 - [ ] T091 [US3] Run migration, selection, and no-fallback tests and record the supported matrix in `specs/005-full-person-identification/research.md`
+- [x] T155 [P] [US3] Add pure exact-pair ABI policy tests for ONNX Runtime Android 1.20.0 in `app/src/test/java/com/example/pepper_person_id_poc/domain/config/FaceEmbeddingRuntimeCompatibilityTest.kt`
+- [x] T156 [P] [US3] Add ARM64 SFace/0095 ONNX Runtime instrumentation smoke coverage in `app/src/androidTest/java/com/example/pepper_person_id_poc/OnnxRuntimeFaceEmbeddingSmokeTest.kt`
+- [x] T157 [US3] Align face runtime enum and catalog records to packaged ONNX Runtime Android 1.20.0 with ARM64 `BUILDABLE` and ARMv7 `BLOCKED`
+- [x] T158 [US3] Enforce exact ARM64 SFace/0095 ONNX pairs in `FaceEmbeddingEngineFactory` and `OnnxRuntimeFaceEmbeddingEngine` without fallback
 
 **Checkpoint**: 設定と実際のruntimeが一致し、利用不能な組合せを選択できない。
 
@@ -201,27 +205,47 @@
 
 ### Tests first
 
-- [ ] T092 [P] [US4] Add conversion manifest schema/hash tests in `scripts/litert/tests/test_manifest.py`
-- [ ] T093 [P] [US4] Add YuNet output/postprocess golden tests in `scripts/litert/tests/test_yunet_equivalence.py`
-- [ ] T094 [P] [US4] Add SFace preprocessing/output/cosine golden tests in `scripts/litert/tests/test_sface_equivalence.py`
-- [ ] T095 [P] [US4] Add LiteRT asset load/inference/resource-close Android tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/LiteRtModelSmokeTest.kt`
+- [x] T092 [P] [US4] Add conversion manifest schema/hash tests in `scripts/litert/tests/test_manifest.py`
+- [x] T093 [P] [US4] Add YuNet output/postprocess golden tests in `scripts/litert/tests/test_yunet_equivalence.py`
+- [x] T094 [P] [US4] Add SFace preprocessing/output/cosine golden tests in `scripts/litert/tests/test_sface_equivalence.py`
+- [x] T095 [P] [US4] Add LiteRT asset load/inference/resource-close Android tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/LiteRtModelSmokeTest.kt`
 - [ ] T096 [P] [US4] Add cross-runtime SFace/0095 agreement tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/FaceRuntimeEquivalenceTest.kt`
 
 ### Implementation
 
-- [ ] T097 [P] [US4] Pin the conversion environment in `scripts/litert/Dockerfile` and `scripts/litert/requirements.lock`
-- [ ] T098 [P] [US4] Implement immutable-input conversion and manifest generation in `scripts/litert/convert_models.py`
-- [ ] T099 [P] [US4] Implement tensor/operator inspection in `scripts/litert/inspect_model.py`
-- [ ] T100 [US4] Implement YuNet detection/postprocessing equivalence comparison in `scripts/litert/compare_yunet.py`
-- [ ] T101 [US4] Implement SFace preprocessing/embedding/decision equivalence comparison in `scripts/litert/compare_sface.py`
-- [ ] T102 [US4] Add LiteRT dependency/source-set configuration with exact version and ABI gate in `app/build.gradle.kts`
-- [ ] T103 [US4] Implement CPU-only LiteRT tensor/runtime adapter in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/litert/LiteRtRuntime.kt`
-- [ ] T104 [US4] Implement YuNet LiteRT detector and postprocessor in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/LiteRtYuNetFaceDetector.kt`
-- [ ] T105 [US4] Implement SFace LiteRT embedding engine in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/LiteRtSFaceEmbeddingEngine.kt`
-- [ ] T106 [US4] Register converted artifact hashes, tensor metadata, warnings, and provisional compatibility in `config/models.json`
-- [ ] T107 [US4] Run conversion twice and store only public manifest/policy artifacts in `docs/model-provenance.md`
-- [ ] T108 [US4] Run ARM64 LiteRT smoke/equivalence before marking any pair VERIFIED in `config/models.json`
+- [x] T097 [P] [US4] Pin the conversion environment in `scripts/litert/Dockerfile` and `scripts/litert/requirements.lock`
+- [x] T098 [P] [US4] Implement immutable-input conversion and manifest generation in `scripts/litert/convert_models.py`
+- [x] T099 [P] [US4] Implement tensor/operator inspection in `scripts/litert/inspect_model.py`
+- [x] T100 [US4] Implement YuNet detection/postprocessing equivalence comparison in `scripts/litert/compare_yunet.py`
+- [x] T101 [US4] Implement SFace preprocessing/embedding/decision equivalence comparison in `scripts/litert/compare_sface.py`
+- [x] T102 [US4] Add LiteRT dependency/source-set configuration with exact version and ABI gate in `app/build.gradle.kts`
+- [x] T103 [US4] Implement CPU-only LiteRT tensor/runtime adapter in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/litert/LiteRtRuntime.kt`
+- [x] T104 [US4] Implement YuNet LiteRT detector and postprocessor in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/LiteRtYuNetFaceDetector.kt`
+- [x] T105 [US4] Implement SFace LiteRT embedding engine in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/LiteRtSFaceEmbeddingEngine.kt`
+- [x] T106 [US4] Register converted artifact hashes, tensor metadata, warnings, and provisional compatibility in `config/models.json`
+- [x] T107 [US4] Run conversion twice and store only public manifest/policy artifacts in `docs/model-provenance.md`
+- [x] T108 [US4] Run ARM64 LiteRT smoke/equivalence before marking any pair VERIFIED in `config/models.json`
 - [ ] T109 [US4] Run Pepper API23/ARMv7 LiteRT smoke/equivalence before sharing the source modelSpaceId in `config/models.json`
+- [x] T159 [US4] Separate logical face embedding models from runtime-specific artifacts and resolve the exact packaged artifact without fallback in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/FaceEmbeddingArtifactResolver.kt`
+- [x] T160 [P] [US4] Convert face-reidentification-retail-0095 ONNX FP32 to LiteRT in the pinned environment, record a reproducible manifest/hash/tensor contract, and add the artifact to `config/models.json`
+- [x] T161 [US4] Implement the exact face-reidentification-retail-0095 LiteRT preprocessing/output adapter and fixed-image OpenCV/ORT/LiteRT equivalence test in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/`
+- [x] T162 [P] [US4] Convert YuNet 2026may FP32 to ncnn and MNN with pinned tool revisions, manifests, hashes, tensor names, and decoded-output equivalence in `scripts/native-face/`
+- [x] T163 [P] [US4] Implement YuNet 2026may ONNX Runtime detector inference and YuNet decode/NMS equivalence without OpenCV inference fallback in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/`
+- [x] T164 [US4] Implement YuNet ncnn and MNN JNI detector sessions with all output tensors and shared decode/NMS equivalence in `app/src/main/cpp/yunet_native_detector_jni.cpp`
+- [x] T165 [US4] Expose YuNet OpenCV/ONNX Runtime/ncnn/MNN/LiteRT as independent runtime choices through an exact detector-artifact resolver in `app/src/main/java/com/example/pepper_person_id_poc/domain/config/`
+- [ ] T166 [P] [US4] Add fixed-image Android load/infer/release and no-fallback tests for YuNet OpenCV/ONNX Runtime/ncnn/MNN/LiteRT in `app/src/androidTest/java/com/example/pepper_person_id_poc/FaceDetectorRuntimeMatrixTest.kt`
+- [ ] T167 [P] [US4] Decide whether SFace INT8 is a public logical model across ONNX Runtime/ncnn/MNN/LiteRT only after exact converted artifacts and fixed-image decision agreement exist, and encode every accepted pair in `config/models.json`
+- [ ] T168 [US4] Run the complete logical face model by runtime matrix on ARM64 Android and then Pepper ARMv7, recording exact artifact/runtime IDs and forbidding fallback in `specs/005-full-person-identification/quickstart.md`
+
+### Speaker model matrix completion
+
+- [x] T169 [P] [US3] Add exact SpeakerNet-M and TitaNet-S model ID, filename, and embedding-dimension contracts in `app/src/test/java/com/example/pepper_person_id_poc/domain/config/PocSettingsCompatibilityTest.kt`
+- [x] T170 [US3] Package immutable SpeakerNet-M and TitaNet-S ONNX artifacts with pinned revision, SHA-256, tensor/preprocessing metadata, and license evidence through `scripts/setup-local-inference-assets.ps1` and `config/models.json`
+- [x] T171 [US3] Expose SpeakerNet-M and TitaNet-S as explicit settings choices and route them through `SherpaOnnxSpeakerEmbeddingEngine` using their exact model IDs and dimensions without fallback
+- [x] T172 [US3] Record sherpa-onnx 1.13.4 `framework=nemo` ARM64/ARMv7 compatibility for SpeakerNet-M and TitaNet-S in `config/models.json`
+- [x] T173 [P] [US3] Add fixed-PCM Android ONNX load/infer/release coverage for both NeMo models in `app/src/androidTest/java/com/example/pepper_person_id_poc/NemoSpeakerModelsOnnxSmokeTest.kt`
+- [x] T174 [US5] Keep SpeakerNet-M and TitaNet-S in the JVS benchmark and require both in Windows/Android parity synchronization through `config/speaker-benchmark-jvs.json` and `scripts/windows/verify-speaker-parity.ps1`
+- [ ] T175 [US7] Run SpeakerNet-M and TitaNet-S fixed-PCM instrumentation on the ARM64 Android device, collect parity JSON, and only then record Android acceptance in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: LiteRT可否が変換成功ではなく、数値同等性と実機runtime証跡で決まる。
 
@@ -235,25 +259,25 @@
 
 ### Tests first
 
-- [ ] T110 [P] [US5] Add nullable metric and run-metadata serialization tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/metrics/BenchmarkEventTest.kt`
-- [ ] T111 [P] [US5] Add ring-buffer gap/p50/p95/max tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/metrics/MetricSeriesTest.kt`
-- [ ] T112 [P] [US5] Add face stage timing tests in `app/src/test/java/com/example/pepper_person_id_poc/application/face/FacePipelineMetricsTest.kt`
-- [ ] T113 [P] [US5] Add speaker stage timing and RTF tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerPipelineMetricsTest.kt`
-- [ ] T114 [P] [US5] Add JSONL parser/statistics/mixed-condition warning tests in `scripts/reporting/tests/test_report.py`
-- [ ] T115 [P] [US5] Add graph render and missing-gap Compose tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/MetricsGraphTest.kt`
+- [x] T110 [P] [US5] Add nullable metric and run-metadata serialization tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/metrics/BenchmarkEventTest.kt`
+- [x] T111 [P] [US5] Add ring-buffer gap/p50/p95/max tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/metrics/MetricSeriesTest.kt`
+- [x] T112 [P] [US5] Add face stage timing tests in `app/src/test/java/com/example/pepper_person_id_poc/application/face/FacePipelineMetricsTest.kt`
+- [x] T113 [P] [US5] Add speaker stage timing and RTF tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerPipelineMetricsTest.kt`
+- [x] T114 [P] [US5] Add JSONL parser/statistics/mixed-condition warning tests in `scripts/reporting/tests/test_report.py`
+- [x] T115 [P] [US5] Add graph render and missing-gap Compose tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/MetricsGraphTest.kt`
 
 ### Implementation
 
-- [ ] T116 [P] [US5] Expand typed metric/run/scenario models in `app/src/main/java/com/example/pepper_person_id_poc/domain/metrics/BenchmarkEvent.kt`
-- [ ] T117 [P] [US5] Implement bounded metric series and statistics in `app/src/main/java/com/example/pepper_person_id_poc/domain/metrics/MetricSeries.kt`
-- [ ] T118 [US5] Add face preprocessing/alignment/embedding/scoring/policy/repository/UI timings in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
-- [ ] T119 [US5] Add recorder/VAD/activity/tracking/embedding/aggregation/scoring/policy/repository timings and RTF in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`
-- [ ] T120 [US5] Extend device monitor with Java/native heap, threads, and collection timestamps in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/device/AndroidDeviceLoadMonitor.kt`
-- [ ] T121 [US5] Enable complete JSONL only for benchmark and explicit candidate export in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/metrics/JsonLinesBenchmarkLogger.kt`
-- [ ] T122 [P] [US5] Implement 60/300-second Compose Canvas graph in `app/src/main/java/com/example/pepper_person_id_poc/ui/component/MetricHistoryGraph.kt`
-- [ ] T123 [US5] Integrate stage values, statistics, gaps, and overhead toggle in `app/src/main/java/com/example/pepper_person_id_poc/ui/component/DeviceLoadPanel.kt`
-- [ ] T124 [P] [US5] Implement JSONL to CSV/SVG/Markdown reports in `scripts/reporting/generate_report.py`
-- [ ] T125 [US5] Add benchmark scenario/configuration UI in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/BenchmarkScreen.kt`
+- [x] T116 [P] [US5] Expand typed metric/run/scenario models in `app/src/main/java/com/example/pepper_person_id_poc/domain/metrics/BenchmarkEvent.kt`
+- [x] T117 [P] [US5] Implement bounded metric series and statistics in `app/src/main/java/com/example/pepper_person_id_poc/domain/metrics/MetricSeries.kt`
+- [x] T118 [US5] Add face preprocessing/alignment/embedding/scoring/policy/repository/UI timings in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
+- [x] T119 [US5] Add recorder/VAD/activity/tracking/embedding/aggregation/scoring/policy/repository timings and RTF in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`
+- [x] T120 [US5] Extend device monitor with Java/native heap, threads, and collection timestamps in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/device/AndroidDeviceLoadMonitor.kt`
+- [x] T121 [US5] Enable complete JSONL only for benchmark and explicit candidate export in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/metrics/JsonLinesBenchmarkLogger.kt`
+- [x] T122 [P] [US5] Implement 60/300-second Compose Canvas graph in `app/src/main/java/com/example/pepper_person_id_poc/ui/component/MetricHistoryGraph.kt`
+- [x] T123 [US5] Integrate stage values, statistics, gaps, and overhead toggle in `app/src/main/java/com/example/pepper_person_id_poc/ui/component/DeviceLoadPanel.kt`
+- [x] T124 [P] [US5] Implement JSONL to CSV/SVG/Markdown reports in `scripts/reporting/generate_report.py`
+- [x] T125 [US5] Add benchmark scenario/configuration UI in `app/src/main/java/com/example/pepper-person-id-poc/ui/screen/BenchmarkScreen.kt`
 - [ ] T126 [US5] Run fixed comparisons across implemented runtimes and record measured/unmeasured fields in local ignored `results/`
 
 **Checkpoint**: 比較条件と測定欠損が明示され、同じJSONLから全レポートが再生成できる。
@@ -268,22 +292,22 @@
 
 ### Tests first
 
-- [ ] T127 [P] [US6] Add flavor configuration assertions in `app/src/test/java/com/example/pepper_person_id_poc/build/BuildFlavorContractTest.kt`
-- [ ] T128 [P] [US6] Add APK inventory parser and duplicate native hash tests in `scripts/apk-audit/tests/ApkAudit.Tests.ps1`
-- [ ] T129 [P] [US6] Add API23 symbol allowlist and ORT collision tests in `scripts/apk-audit/tests/NativeCompatibility.Tests.ps1`
-- [ ] T130 [P] [US6] Add full catalog license gate tests in `buildSrc/src/test/kotlin/ModelLicenseGateTest.kt`
+- [x] T127 [P] [US6] Add flavor configuration assertions in `app/src/test/java/com/example/pepper_person_id_poc/build/BuildFlavorContractTest.kt`
+- [x] T128 [P] [US6] Add APK inventory parser and duplicate native hash tests in `scripts/apk-audit/tests/ApkAudit.Tests.ps1`
+- [x] T129 [P] [US6] Add API23 symbol allowlist and ORT collision tests in `scripts/apk-audit/tests/NativeCompatibility.Tests.ps1`
+- [x] T130 [P] [US6] Add full catalog license gate tests in `buildSrc/src/test/kotlin/ModelLicenseGateTest.kt`
 
 ### Implementation
 
-- [ ] T131 [US6] Add `benchmark` and `candidate` product flavors and application ID suffixes in `app/build.gradle.kts`
-- [ ] T132 [US6] Move full comparison assets/dependencies to benchmark source sets in `app/src/benchmark/` and selected assets to `app/src/candidate/`
-- [ ] T133 [US6] Generate candidate asset/runtime allowlists from `config/models.json` in `buildSrc/src/main/kotlin/ModelCatalogPlugin.kt`
-- [ ] T134 [US6] Replace hardcoded speaker-only licensing with full included-artifact validation in `buildSrc/src/main/kotlin/ModelLicenseGate.kt`
-- [ ] T135 [US6] Gate every candidate variant, including debug, in `app/build.gradle.kts`
-- [ ] T136 [P] [US6] Implement APK/native/model inventory and size report in `scripts/apk-audit/Invoke-ApkAudit.ps1`
-- [ ] T137 [P] [US6] Implement duplicate `libc++_shared`, ORT collision, ABI, and API23 symbol audit in `scripts/apk-audit/Test-NativeCompatibility.ps1`
-- [ ] T138 [US6] Add `auditBenchmarkDebugApk` and `auditCandidateDebugApk` Gradle tasks in `app/build.gradle.kts`
-- [ ] T139 [US6] Add distribution manifest generation with APK/hash/contents/licenses in `scripts/apk-audit/New-DistributionManifest.ps1`
+- [x] T131 [US6] Add `benchmark` and `candidate` product flavors and application ID suffixes in `app/build.gradle.kts`
+- [x] T132 [US6] Move full comparison assets/dependencies to benchmark source sets in `app/src/benchmark/` and selected assets to `app/src/candidate/`
+- [x] T133 [US6] Generate candidate asset/runtime allowlists from `config/models.json` in `buildSrc/src/main/kotlin/ModelCatalogPlugin.kt`
+- [x] T134 [US6] Replace hardcoded speaker-only licensing with full included-artifact validation in `buildSrc/src/main/kotlin/ModelLicenseGate.kt`
+- [x] T135 [US6] Gate every candidate variant, including debug, in `app/build.gradle.kts`
+- [x] T136 [P] [US6] Implement APK/native/model inventory and size report in `scripts/apk-audit/Invoke-ApkAudit.ps1`
+- [x] T137 [P] [US6] Implement duplicate `libc++_shared`, ORT collision, ABI, and API23 symbol audit in `scripts/apk-audit/Test-NativeCompatibility.ps1`
+- [x] T138 [US6] Add `auditBenchmarkDebugApk` and `auditCandidateDebugApk` Gradle tasks in `app/build.gradle.kts`
+- [x] T139 [US6] Add distribution manifest generation with APK/hash/contents/licenses in `scripts/apk-audit/New-DistributionManifest.ps1`
 - [ ] T140 [US6] Verify candidate excludes nonselected models/AAR/.so and compare sizes in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: candidateは採用候補だけを含み、ライセンス・ARMv7・API23監査を回避できない。
@@ -363,6 +387,13 @@ Phase 1 Source of truth
 
 ## Format validation
 
-- 全154タスクが`- [ ] Tnnn [P?] [US?] Description with file path`形式。
+- 全175タスクが`- [ ] Tnnn [P?] [US?] Description with file path`形式。
 - Setup/Foundational/FinalにはStory labelを付けず、User Story phaseだけ`[USn]`を付与。
 - テストタスクは対応実装より前に配置。
+# Confirmed UI and Logcat simplification
+
+- [x] T194 [US5] Replace synchronous app-private JSONL event writes with structured Logcat output in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/benchmark/JsonLinesBenchmarkLogger.kt` and `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/metrics/JsonLinesBenchmarkLogger.kt`
+- [x] T195 [US1] Reduce the face identification screen to the selected anonymous ID, decision, similarity, quality reason, error, CPU, PSS, total processing time, and analysis FPS in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/CameraPreviewScreen.kt`
+- [x] T196 [US2] Reduce the speaker identification screen to recording controls, selected anonymous ID, decision, similarity, quality reason, error, CPU, PSS, total processing time, and RTF in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/AudioRecordingScreen.kt`
+- [x] T197 [US5] Remove metric histories, graphs, statistics, window selectors, and measurement toggle from `app/src/main/java/com/example/pepper_person_id_poc/ui/component/DeviceLoadPanel.kt`
+- [ ] T198 Validate focused unit tests and the ARMv7 debug build, then record Logcat capture evidence in `specs/005-full-person-identification/quickstart.md`

@@ -12,9 +12,9 @@
 
 **Language/Version**: Kotlin 2.2.10、Java 11、C++17、PowerShell、Python 3（変換・評価ツール）
 
-**Primary Dependencies**: Android Gradle Plugin 9.2.1、Jetpack Compose、CameraX 1.6.1、OpenCV 5.0.0、ML Kit Face Detection 16.1.7、sherpa-onnx 1.13.4、ONNX Runtime mobile 1.27.0 local AAR、ncnn 20260526、MNN 3.5.0、Google LiteRT（固定版は実装時にAPI 23/ARMv7実機ゲートで確定）
+**Primary Dependencies**: Android Gradle Plugin 9.2.1、Jetpack Compose、CameraX 1.6.1、OpenCV 5.0.0、ML Kit Face Detection 16.1.7、sherpa-onnx 1.13.4、ONNX Runtime Android 1.20.0（顔はARM64のみ、Pepper ARMv7はBLOCKED）、ncnn 20260526、MNN 3.5.0、Google LiteRT（固定版は実装時にAPI 23/ARMv7実機ゲートで確定）
 
-**Storage**: SharedPreferencesの非生体設定、benchmark構成でのみ明示有効化する構造化評価ログ。匿名クラスタと特徴量はアプリケーションスコープのメモリのみ。
+**Storage**: SharedPreferencesの非生体設定のみ。匿名クラスタと特徴量はアプリケーションスコープのメモリだけに保持し、性能・診断イベントは端末内ファイルへ保存せずLogcatからADBで取得する。
 
 **Testing**: JUnit 4、Truth、AndroidX Test/Espresso/Compose UI test、固定モデル入力instrumentation、Windows/JVM benchmark、ADB実機シナリオ
 
@@ -81,11 +81,11 @@ AudioRecord 16 kHz mono PCM16 → Silero VAD → 発話窓 → 話者活動・�
 
 ### 7. 配布構成
 
-`benchmark`は全候補、詳細JSONL、ライブグラフ、評価画面、同等性試験を含む。`candidate`は採用候補のみを含み、永続評価ログを既定無効にする。debug/release build typeとproduct flavorを直交させる。
+`benchmark`は全候補の評価処理と同等性試験を含む。`candidate`は採用候補のみを含む。どちらも実行時の詳細イベントを端末内ファイルへ保存せず、必要時にADBでLogcatを取得する。debug/release build typeとproduct flavorを直交させる。
 
 ### 8. 計測とレポート
 
-顔・話者の段階別時間、RTF、候補数、CPU、PSS、Java/native heap、端末空きメモリ、ドロップ、停止、エラーを構造化イベントへ記録する。ライブ表示はリングバッファから更新し、レポートは同じJSONLからCSV、SVG、Markdownを生成する。candidateは画面表示のみを既定とし、ファイル出力には明示操作を要求する。
+顔・話者の段階別時間、RTF、候補数、CPU、PSS、Java/native heap、端末空きメモリ、ドロップ、停止、エラーを構造化Logcatイベントとして出力する。ライブ画面は識別結果とCPU、PSS、総処理時間、解析FPSまたはRTFだけを表示し、履歴グラフや段階別統計を持たない。長時間試験ではADB側でLogcatを回収・集計し、計測対象スレッドでファイルI/Oを行わない。
 
 ## Project Structure
 
@@ -158,7 +158,7 @@ results/                 # local/ignored generated evaluation results only
 3. 共通全候補評価・保存方針・インメモリRepository
 4. 顔／音声品質と設定移行
 5. LiteRT変換、端末runtime、同等性
-6. 話者活動推定、局所話者追跡、重複fail-closed
+6. 話者活動推定、局所話者追跡、重複fail-closed、CAM++／ERes2Net／WeSpeaker／SpeakerNet-M／TitaNet-Sの明示ONNX選択
 7. UI、詳細計測、レポート、比較
 8. candidate収束、ライセンス、Android→Pepper受入
 

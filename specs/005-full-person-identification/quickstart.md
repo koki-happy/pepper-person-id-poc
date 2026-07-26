@@ -27,15 +27,21 @@ Expected:
 
 ```powershell
 $AndroidSerial = "<adb serial for ARM64 phone>"
+$AndroidApi = <exact API level reported for that serial>
 
-java -jar gradle/wrapper/gradle-wrapper.jar --no-daemon `
-  -PtargetAbi=arm64-v8a `
-  :app:assembleBenchmarkDebug `
-  :app:assembleBenchmarkDebugAndroidTest
+.\scripts\acceptance\Get-DevicePreflight.ps1 `
+  -Serial $AndroidSerial `
+  -TargetClass Android `
+  -ExpectedAbi arm64-v8a `
+  -ExpectedApiLevel $AndroidApi `
+  -OutputPath .\device-evidence\android-preflight.json
 
-adb -s $AndroidSerial install -r app\build\outputs\apk\benchmark\debug\app-benchmark-debug.apk
-adb -s $AndroidSerial install -r app\build\outputs\apk\androidTest\benchmark\debug\app-benchmark-debug-androidTest.apk
-adb -s $AndroidSerial shell am start -n com.example.pepper_person_id_poc.benchmark/.MainActivity
+.\scripts\acceptance\Invoke-DeviceAcceptance.ps1 `
+  -Serial $AndroidSerial `
+  -TargetClass Android `
+  -ExpectedAbi arm64-v8a `
+  -ExpectedApiLevel $AndroidApi `
+  -ScenarioResultsPath .\device-evidence\android-scenario-results.json
 ```
 
 Run scenario IDs in order:
@@ -61,16 +67,99 @@ Capture for every scenario:
 - structured metrics/report
 - pass/fail and blocker
 
-Pepper execution is prohibited until all required `A-*` scenarios pass.
+`android-scenario-results.json` must use `schemaVersion: 1`,
+`scenarioSetId: person-identification-acceptance-v1`, `targetClass: Android`,
+and one entry per scenario with `id`, `status`, optional `blocker`, and
+`evidence[]` entries containing `kind` and an existing local `path`. The runner
+computes SHA-256 itself and writes `acceptance-manifest.json`. `PASS` is not
+issued when the build is explicitly skipped, any required evidence is absent,
+privacy storage is not inspectable, or a package crash is present.
+
+### Automated Android evidence (2026-07-26)
+
+Exact target: `192.168.10.111:42047`, CPH2013, API 30,
+`arm64-v8a,armeabi-v7a,armeabi`, benchmark debug.
+
+- Host tests, catalog/hash validation, LiteRT artifact validation, ARM64 APK build,
+  and APK audit passed.
+- Installed application and instrumentation APKs with `adb -s ... install -r -g`.
+- `FaceModelBenchmarkTest`, `OnnxRuntimeFaceEmbeddingSmokeTest`,
+  `LiteRtModelSmokeTest`, and `WeSpeakerResNet34LmOnnxSmokeTest` passed:
+  `OK (12 tests)` in 10.624 seconds.
+- The executed exact runtimes were OpenCV SFace/0095, ONNX Runtime
+  SFace/0095, ncnn SFace, MNN SFace, LiteRT YuNet/SFace, and WeSpeaker
+  ResNet34-LM ONNX through sherpa-onnx, with no fallback.
+- `SpeakerActivityPipelineTest` and `StrictSpeakerAudioPipelineTest` passed:
+  `OK (4 tests)` in 0.978 seconds. This proves fixed alternating/overlap
+  behavior and live 16 kHz mono PCM16 recorder/VAD initialization.
+- These automated results do not satisfy face-present, speech-present, privacy,
+  or soak checkpoints below. The Android acceptance manifest remains pending.
+
+### Human-required checkpoints
+
+The following are operator observations, not results that launch/no-crash,
+no-face telemetry, a prerecorded WAV, or the runner may infer:
+
+- `A-FACE-001` through `A-FACE-004`: place the required one or multiple real
+  faces in view, confirm the UI result and all-candidate/quality/runtime fields,
+  then save `face-present-checkpoint` evidence.
+- `A-SPK-001` through `A-SPK-004`: produce live speech, alternating speakers,
+  partial overlap, and full overlap as named by the scenario; confirm the
+  live-microphone/VAD/segmentation result, then save
+  `speech-present-checkpoint` evidence.
+- A scenario stays `PENDING_HUMAN` or `BLOCKED` until its named condition was
+  physically present. Never mark it `PASS` from app launch alone.
+- The operator must explicitly exit the app before the final `A-PRIV-001`
+  scan so session cleanup is exercised.
+
+Collect bounded soak evidence separately:
+
+```powershell
+foreach ($Minutes in 15, 30, 60) {
+  .\scripts\acceptance\Invoke-SoakTest.ps1 `
+    -Serial $AndroidSerial `
+    -DurationMinutes $Minutes `
+    -OutputDirectory ".\device-evidence\android-soak-$Minutes"
+}
+```
+
+Pepper execution is prohibited until all required `A-*` scenarios pass and
+their evidence hashes validate.
 
 ## 3. Build candidate after benchmark selection
+
+Create `device-evidence/candidate-selection.json` only after reviewing the
+benchmark results. The gate accepts exactly this schema and re-hashes every
+referenced evidence file:
+
+```json
+{
+  "schemaVersion": 1,
+  "status": "APPROVED",
+  "artifactIds": ["<selected artifactId>"],
+  "runtimeIds": ["<selected Android runtimeId>"],
+  "evidence": [
+    {
+      "kind": "benchmark-report",
+      "path": "device-evidence/<reviewed report>.json",
+      "sha256": "<64 lowercase hex SHA-256>"
+    }
+  ]
+}
+```
+
+Without this file, with `status` other than `APPROVED`, or after evidence hash
+drift, every candidate build fails closed.
 
 ```powershell
 java -jar gradle/wrapper/gradle-wrapper.jar --no-daemon `
   -PtargetAbi=armeabi-v7a `
-  :app:verifyCandidateModelLicenses `
+  -PcandidateSelectionEvidence=device-evidence/candidate-selection.json `
+  :app:verifyCandidateSelectionEvidence `
+  :app:generateCandidateModelAllowlist `
   :app:assembleCandidateDebug `
-  :app:auditCandidateDebugApk
+  :app:auditCandidateDebugApk `
+  :app:compareDistributionApkSizes
 ```
 
 Expected:
@@ -79,14 +168,26 @@ Expected:
 - `armeabi-v7a` exists
 - API 23/native coexistence audit passes
 - license gate passes
+- `app/build/reports/apk-audit/size-comparison.json` records the benchmark and
+  candidate APK sizes and their byte reduction
 
 ## 4. Pepper after Android pass
 
 ```powershell
 $PepperSerial = "<adb serial for Pepper>"
+$PepperApi = 23
+$AndroidPassManifest = "<absolute path to the Android acceptance-manifest.json>"
 
-adb -s $PepperSerial install -r app\build\outputs\apk\candidate\debug\app-candidate-debug.apk
-adb -s $PepperSerial shell am start -n com.example.pepper_person_id_poc.candidate/.MainActivity
+.\scripts\acceptance\Assert-AndroidPassBeforePepper.ps1 `
+  -AndroidPassManifestPath $AndroidPassManifest
+
+.\scripts\acceptance\Invoke-DeviceAcceptance.ps1 `
+  -Serial $PepperSerial `
+  -TargetClass Pepper `
+  -ExpectedAbi armeabi-v7a `
+  -ExpectedApiLevel $PepperApi `
+  -AndroidPassManifestPath $AndroidPassManifest `
+  -ScenarioResultsPath .\device-evidence\pepper-scenario-results.json
 ```
 
 Repeat the same scenarios as `P-*` using identical inputs and thresholds:
@@ -96,6 +197,13 @@ Repeat the same scenarios as `P-*` using identical inputs and thresholds:
 - `P-SPK-001` through `P-SPK-004`
 - `P-PRIV-001`
 - `P-SOAK-015`, `P-SOAK-030`, `P-SOAK-060`
+
+The Pepper runner performs only a read-only exact-serial preflight before the
+Android-pass gate. It does not build, install, clear logs, or launch if the
+Android manifest is missing, incomplete, has evidence hash drift, is not
+ARM64, or does not map the complete scenario-key set to the exact `P-*` IDs.
+Face-present and speech-present checkpoints must be repeated physically on
+Pepper; Android evidence cannot be copied as Pepper evidence.
 
 ## 5. Acceptance boundaries
 
@@ -107,3 +215,19 @@ Repeat the same scenarios as `P-*` using identical inputs and thresholds:
 - No-face telemetry is stability evidence only.
 - License blockers remain blockers; do not weaken the gate.
 - Features explicitly excluded: observation history, ID merge/split, face/voice links, persistent embeddings.
+# Logcat performance capture
+
+Live face, speaker, device, and benchmark events are emitted as one-line JSON to
+Logcat and are not persisted as app-private JSONL files.
+
+```powershell
+adb logcat -c
+adb logcat -v threadtime PepperIdentityMetrics:I PepperIdentityBenchmark:I *:S
+```
+
+Redirect the second command on the development PC when evidence must be retained:
+
+```powershell
+adb logcat -v threadtime PepperIdentityMetrics:I PepperIdentityBenchmark:I *:S |
+    Tee-Object -FilePath .\results\pepper-logcat.txt
+```

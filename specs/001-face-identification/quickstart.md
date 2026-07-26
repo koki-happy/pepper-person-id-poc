@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Nothing Phone (3a) and Pepper visible in `adb devices -l`
-- Local model assets verified in `app/src/main/assets/models`
+- Local model assets verified in `app/src/benchmark/assets/models`
 - Java runtime used through `gradle/wrapper/gradle-wrapper.jar` if `gradlew.bat` is unreliable
 
 ## Unit verification

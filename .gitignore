@@ -57,6 +57,7 @@ __pycache__/
 
 # Model binaries are obtained separately after license and device validation.
 /app/src/main/assets/models/
+/app/src/benchmark/assets/models/
 /app/libs/*.aar
 /app/src/main/cpp/third_party/
 /app/src/main/jniLibs/
