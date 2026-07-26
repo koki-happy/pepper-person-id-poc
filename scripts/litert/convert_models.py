@@ -109,12 +109,15 @@ def convert(
         shutil.copy2(candidates[0], output)
     if sha256(source) != source_hash_before:
         raise RuntimeError("source model changed during conversion")
+    public_command = list(command)
+    public_command[2] = source.name
+    public_command[4] = "OUTPUT_DIRECTORY"
     return manifest(
         source=source,
         output=output,
         source_hash=source_hash_before,
         environment_hash=environment_digest(lock_file, dockerfile),
-        command=command,
+        command=public_command,
         inspection=inspection,
     )
 
