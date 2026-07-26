@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.compose.CameraXViewfinder
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -134,7 +137,11 @@ fun CameraPreviewScreen(
     ) { padding ->
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(12.dp),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -222,7 +229,7 @@ fun CameraPreviewScreen(
                     Button(onClick = { launcher.launch(Manifest.permission.CAMERA) }) { Text("カメラ権限を許可") }
                 }
             }
-            Card(Modifier.fillMaxWidth().weight(1f)) {
+            Card(Modifier.fillMaxWidth()) {
                 FacePreviewContractDetails(
                     identity = identity,
                     detectionProcessingTimeMillis = detection.processingTimeMillis,
@@ -254,6 +261,7 @@ fun CameraPreviewScreen(
                             )
                         }
                     }.toMap(),
+                    modifier = Modifier.heightIn(min = 240.dp, max = 480.dp),
                 )
             }
         }

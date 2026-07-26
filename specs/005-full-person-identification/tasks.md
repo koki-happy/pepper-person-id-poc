@@ -401,3 +401,4 @@ Phase 1 Source of truth
 - [x] T200 [US2] Keep live speaker identification on Silero VAD and sherpa-onnx by replacing the conflicting Pyannote ONNX Runtime segmentation session with VAD-gated single-speaker segmentation
 - [x] T201 [US1] Remove the retired YuNet 2023mar INT8 detector option and migrate persisted selections to YuNet 2026may FP32
 - [x] T202 [US2] Tune live Silero VAD for faster response with threshold 0.35, 0.3-second minimum speech, 0.4-second silence, and 0.8-second speaker-identification eligibility
+- [x] T203 [US1] Make the complete face-identification screen vertically scrollable and bound the nested result list for Pepper landscape displays
