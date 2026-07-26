@@ -183,7 +183,7 @@
 - **FR-036**: ONNX Runtime Android 1.20.0によるSFace FP32およびface-0095 ONNX FP32の顔特徴抽出はARM64 Androidのexact pairだけを許可し、Pepper ARMv7では`BLOCKED`として暗黙フォールバックなく拒否しなければならない。
 - **FR-037**: ARM64 Android比較用成果物は、OpenCV/ONNX、ONNX Runtime、ncnn、MNN、LiteRTの各顔推論基盤を明示選択して実行でき、固定入力・モデル資産・ランタイムID・処理結果を基盤別に記録しなければならない。
 - **FR-038**: 設定画面はSFace、face-0095、YuNetを論理モデルとして一度だけ表示し、公開・変換可能な各モデルについてOpenCV、ONNX Runtime、ncnn、MNN、LiteRTの実装対象ランタイムごとに固有の資産ID、形式、ハッシュ、前処理、入出力を解決して実行できなければならない。ML Kitは非公開SDK内蔵モデルのため専用ランタイム固定とし、その理由を明示しなければならない。
-- **FR-039**: Android比較用成果物はCAM++ English、CAM++ Chinese-English、ERes2Net、SpeakerNet-M、TitaNet-S、WeSpeaker ResNet34-LM ONNXをsherpa-onnxの明示選択候補として同梱・実行でき、モデル別の前処理・次元・閾値・ライセンス状態を混同してはならない。
+- **FR-039**: アプリの話者モデル選択はWeSpeaker ResNet34-LM ONNXとCAM++ Chinese-English ONNXの2候補だけを表示し、どちらもsherpa-onnx CPUで実行しなければならない。他の話者モデルを選択肢へ表示してはならない。
 
 ### Key Entities
 

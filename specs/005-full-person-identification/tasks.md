@@ -397,3 +397,4 @@ Phase 1 Source of truth
 - [x] T196 [US2] Reduce the speaker identification screen to recording controls, selected anonymous ID, decision, similarity, quality reason, error, CPU, PSS, total processing time, and RTF in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/AudioRecordingScreen.kt`
 - [x] T197 [US5] Remove metric histories, graphs, statistics, window selectors, and measurement toggle from `app/src/main/java/com/example/pepper_person_id_poc/ui/component/DeviceLoadPanel.kt`
 - [ ] T198 Validate focused unit tests and the ARMv7 debug build, then record Logcat capture evidence in `specs/005-full-person-identification/quickstart.md`
+- [x] T199 [US3] Restrict speaker model selection to WeSpeaker ResNet34-LM ONNX and CAM++ Chinese-English ONNX on sherpa-onnx CPU in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/ModelSelectionScreen.kt`

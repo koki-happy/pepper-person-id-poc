@@ -168,7 +168,10 @@ fun ModelSelectionScreen(
             }
 
             ModelCard(title = "話者特徴量モデル") {
-                SpeakerModelOption.entries.forEach { option ->
+                listOf(
+                    SpeakerModelOption.WESPEAKER_RESNET34_LM,
+                    SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN,
+                ).forEach { option ->
                     val availability = selectionCoordinator.resolve(
                         option.artifactId,
                         settings.speakerRuntime.runtimeId,
