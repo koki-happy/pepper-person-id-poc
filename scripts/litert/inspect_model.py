@@ -19,6 +19,7 @@ def inspect_onnx(path: Path) -> dict[str, Any]:
     import onnx
 
     model = onnx.load(str(path), load_external_data=False)
+    initializer_names = {value.name for value in model.graph.initializer}
 
     def tensor(value: Any) -> dict[str, Any]:
         tensor_type = value.type.tensor_type
@@ -39,7 +40,11 @@ def inspect_onnx(path: Path) -> dict[str, Any]:
             {"domain": item.domain or "ai.onnx", "version": item.version}
             for item in model.opset_import
         ],
-        "inputs": [tensor(value) for value in model.graph.input],
+        "inputs": [
+            tensor(value)
+            for value in model.graph.input
+            if value.name not in initializer_names
+        ],
         "outputs": [tensor(value) for value in model.graph.output],
         "operators": sorted({node.op_type for node in model.graph.node}),
         "nodeCount": len(model.graph.node),

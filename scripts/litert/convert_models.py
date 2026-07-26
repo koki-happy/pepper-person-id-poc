@@ -51,7 +51,9 @@ def manifest(
             "toolVersion": importlib.metadata.version("onnx2tf"),
             "environmentDigest": environment_hash,
             "command": command,
-            "warnings": [],
+            "warnings": [
+                "onnx2tf strict accuracy correction is disabled; numeric equivalence is verified separately on fixed inputs."
+            ],
         },
         "verification": {
             "conversionCompleted": True,
@@ -68,6 +70,7 @@ def convert(
     expected_source_sha256: str,
     lock_file: Path,
     dockerfile: Path,
+    input_shapes: list[str] | None = None,
 ) -> dict[str, Any]:
     source = source.resolve()
     output = output.resolve()
@@ -87,9 +90,19 @@ def convert(
             "-o",
             str(conversion_directory),
             "--output_signaturedefs",
+            "--disable_strict_mode",
         ]
+        nchw_inputs = [
+            tensor["name"]
+            for tensor in inspection["inputs"]
+            if len(tensor["shape"]) == 4 and tensor["shape"][1] in (1, 3)
+        ]
+        if nchw_inputs:
+            command.extend(["--keep_ncw_or_nchw_or_ncdhw_input_names", *nchw_inputs])
+        if input_shapes:
+            command.extend(["--overwrite_input_shape", *input_shapes])
         subprocess.run(command, check=True)
-        candidates = sorted(conversion_directory.rglob("*.tflite"))
+        candidates = sorted(conversion_directory.rglob("*_float32.tflite"))
         if len(candidates) != 1:
             raise RuntimeError(f"expected one FP32 .tflite output, found {len(candidates)}")
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -112,6 +125,12 @@ def main() -> int:
     parser.add_argument("output", type=Path)
     parser.add_argument("--source-sha256", required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument(
+        "--input-shape",
+        action="append",
+        default=[],
+        help='Fix a dynamic input using onnx2tf syntax, for example "input:1,3,320,320".',
+    )
     script_directory = Path(__file__).resolve().parent
     parser.add_argument("--requirements-lock", type=Path, default=script_directory / "requirements.lock")
     parser.add_argument("--dockerfile", type=Path, default=script_directory / "Dockerfile")
@@ -122,6 +141,7 @@ def main() -> int:
         args.source_sha256,
         args.requirements_lock,
         args.dockerfile,
+        args.input_shape,
     )
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(
