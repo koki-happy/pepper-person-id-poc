@@ -37,6 +37,21 @@ foreach ($model in $selected) {
         continue
     }
 
+    if ($model.id -eq "wespeaker-resnet34-lm") {
+        & (Join-Path $repoRoot "scripts/prepare-wespeaker-resnet34-lm.ps1") -Force:$Force
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to prepare $($model.id)"
+        }
+        $prepared = Join-Path $repoRoot "app/src/benchmark/assets/models/$($model.filename)"
+        Copy-Item -LiteralPath $prepared -Destination $target -Force
+        if (((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $expectedHash) -or
+            ((Get-Item -LiteralPath $target).Length -ne [long]$model.fileSizeBytes)) {
+            throw "Prepared $($model.id) does not match config/models.json"
+        }
+        Write-Host "Prepared and verified $($model.id): $target"
+        continue
+    }
+
     $temporary = "$target.download"
     Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
     Write-Host "Downloading $($model.id) from pinned revision $($model.revision)"

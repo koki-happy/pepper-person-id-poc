@@ -4,7 +4,7 @@
 
 同じモデルとWAVをWindowsの直接ONNX Runtime経路とAndroidのsherpa-onnx経路へ入力し、ハッシュ、長さ、次元、score、判定を比較します。ライブマイク、VAD、区間化はこの試験に含めません。
 
-Androidで現在比較できるのはCAM++ English、CAM++ Chinese-English、ERes2Netの3モデルです。WindowsのJVS本比較は5モデルですが、SpeakerNet-MとTitaNet-SはAndroid未統合です。
+Android benchmarkの選択肢はCAM++ English、CAM++ Chinese-English、ERes2Net、WeSpeaker ResNet34-LM、SpeakerNet-M、TitaNet-Sです。SpeakerNet-MとTitaNet-SはWindowsと同じ固定hashのONNXをsherpa-onnxの`framework=nemo`経路で実行します。既存のAndroid parity実測証跡は下記3モデル分であり、追加3モデルはARM64端末でJSONを再回収するまで受入済みとは扱いません。
 
 ## 入力固定
 

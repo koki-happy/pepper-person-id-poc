@@ -7,6 +7,7 @@ import com.example.pepper_person_id_poc.domain.anonymous.AnonymousPersistencePol
 import com.example.pepper_person_id_poc.domain.anonymous.IdentificationDecision
 import com.example.pepper_person_id_poc.domain.anonymous.PersistenceOperation
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
+import com.example.pepper_person_id_poc.domain.metrics.FacePipelineMetrics
 import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
 import com.example.pepper_person_id_poc.infrastructure.face.FaceFeatureObservation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,8 @@ class FaceIdentityCoordinator(
     private val modelId: String,
     private val threshold: Float,
     private val maximumUpdateCount: Int,
+    private val nanoTime: () -> Long = System::nanoTime,
+    private val elapsedRealtimeMillis: () -> Long = { System.nanoTime() / 1_000_000L },
 ) : AutoCloseable {
     private val trackIdToAnonymousId = mutableMapOf<String, String>()
     private val mutableState = MutableStateFlow(FaceIdentityUiState(modelId = modelId))
@@ -34,17 +37,24 @@ class FaceIdentityCoordinator(
     }
 
     fun onFeatureObservations(observations: List<FaceFeatureObservation>) {
+        val pipelineStartedNanos = nanoTime()
+        var scoringNanos = 0L
+        var policyNanos = 0L
+        var repositoryNanos = 0L
+        var uiNanos = 0L
         val reserved = mutableSetOf<String>()
         val results = linkedMapOf<String, AnonymousIdentificationResult>()
         runCatching {
             observations.forEach { observation ->
                 val modelSpaceId = ModelSpaceId(modelId)
+                val scoringStartedNanos = nanoTime()
                 val initialEvaluation = repository.evaluate(
                     modelSpaceId = modelSpaceId,
                     embedding = observation.embedding,
                     threshold = threshold,
                     minimumLead = 0f,
                 )
+                scoringNanos += nanoTime() - scoringStartedNanos
                 val selectedId = initialEvaluation.candidates.firstOrNull { it.selected }?.anonymousId
                 val evaluation = if (
                     initialEvaluation.decision == IdentificationDecision.MATCHED_EXISTING &&
@@ -57,6 +67,7 @@ class FaceIdentityCoordinator(
                 } else {
                     initialEvaluation
                 }
+                val policyStartedNanos = nanoTime()
                 val (policy, operation) = AnonymousPersistencePolicy.evaluate(
                     decision = evaluation.decision,
                     createEligible = observation.qualityAssessment?.createEligible == true,
@@ -64,18 +75,27 @@ class FaceIdentityCoordinator(
                     reasons = observation.qualityAssessment?.rejectionReasons
                         ?: listOf("QUALITY_UNAVAILABLE"),
                 )
+                policyNanos += nanoTime() - policyStartedNanos
+                val repositoryStartedNanos = nanoTime()
                 val cluster = repository.apply(
                     operation = operation,
                     modelSpaceId = modelSpaceId,
                     embedding = observation.embedding,
                     selectedAnonymousId = selectedId,
                     maximumUpdateCount = maximumUpdateCount,
-                    nowElapsedRealtime = System.currentTimeMillis(),
+                    nowElapsedRealtime = elapsedRealtimeMillis(),
                 )
                 cluster?.anonymousId?.let {
                     reserved += it
                     trackIdToAnonymousId[observation.trackId] = it
                 }
+                val currentModelClusterCount = repository.getAll().count {
+                    it.modelSpaceId == modelSpaceId &&
+                        it.embeddingDimension == observation.embedding.size
+                }
+                val totalClusterCount = repository.count()
+                repositoryNanos += nanoTime() - repositoryStartedNanos
+                val uiStartedNanos = nanoTime()
                 val result = AnonymousIdentificationResult(
                     anonymousId = cluster?.anonymousId ?: "unknown",
                     modelId = modelId,
@@ -84,11 +104,8 @@ class FaceIdentityCoordinator(
                     isNewCluster = operation == PersistenceOperation.CREATE,
                     updateCount = cluster?.updateCount ?: 0,
                     maximumUpdateCount = maximumUpdateCount,
-                    currentModelClusterCount = repository.getAll().count {
-                        it.modelSpaceId == modelSpaceId &&
-                            it.embeddingDimension == observation.embedding.size
-                    },
-                    totalClusterCount = repository.count(),
+                    currentModelClusterCount = currentModelClusterCount,
+                    totalClusterCount = totalClusterCount,
                     candidateScores = evaluation.candidates.map {
                         AnonymousClusterScore(
                             anonymousId = it.anonymousId,
@@ -102,10 +119,30 @@ class FaceIdentityCoordinator(
                     persistenceOperation = operation,
                 )
                 results[observation.trackId] = result
+                uiNanos += nanoTime() - uiStartedNanos
             }
         }.onSuccess {
             val latest = results.values.lastOrNull()
-            mutableState.value = mutableState.value.copy(
+            val stateUpdateStartedNanos = nanoTime()
+            val partialMetrics = FacePipelineMetrics(
+                preprocessingMillis = observations.mapNotNull {
+                    it.preprocessingTimeMillis
+                }.maxOrNull()?.toDouble(),
+                detectionMillis = observations.mapNotNull {
+                    it.detectionTimeMillis
+                }.maxOrNull()?.toDouble(),
+                qualityMillis = observations.mapNotNull {
+                    it.qualityTimeMillis
+                }.maxOrNull()?.toDouble(),
+                alignmentMillis = observations.mapNotNull {
+                    it.alignmentTimeMillis
+                }.sum().toDouble().takeIf { observations.any { it.alignmentTimeMillis != null } },
+                embeddingMillis = observations.sumOf { it.embeddingTimeMillis }.toDouble(),
+                scoringMillis = scoringNanos.toMillis(),
+                policyMillis = policyNanos.toMillis(),
+                repositoryMillis = repositoryNanos.toMillis(),
+            )
+            val nextState = mutableState.value.copy(
                 results = results,
                 currentModelClusterCount = latest?.currentModelClusterCount ?: 0,
                 totalClusterCount = latest?.totalClusterCount ?: repository.count(),
@@ -113,10 +150,53 @@ class FaceIdentityCoordinator(
                     .takeIf { !it.isNaN() }?.toLong(),
                 lastEmbeddingMaximumTimeMillis = observations.maxOfOrNull { it.embeddingTimeMillis },
                 lastEmbeddingFaceCount = observations.size,
+                pipelineMetrics = partialMetrics,
                 error = null,
             )
+            uiNanos += nanoTime() - stateUpdateStartedNanos
+            val completedMetrics = partialMetrics.copy(uiMillis = uiNanos.toMillis())
+            mutableState.value = nextState.copy(
+                pipelineMetrics = completedMetrics.copy(
+                    totalMillis = maxOf(
+                        completedMetrics.measuredStageTotalMillis(),
+                        observations.sumOf { it.embeddingTimeMillis }.toDouble() +
+                            (nanoTime() - pipelineStartedNanos).toMillis(),
+                    ),
+                ),
+            )
         }.onFailure {
-            mutableState.value = mutableState.value.copy(error = it.message ?: it::class.java.simpleName)
+            val failedMetrics = FacePipelineMetrics(
+                preprocessingMillis = observations.mapNotNull {
+                    it.preprocessingTimeMillis
+                }.maxOrNull()?.toDouble(),
+                detectionMillis = observations.mapNotNull {
+                    it.detectionTimeMillis
+                }.maxOrNull()?.toDouble(),
+                qualityMillis = observations.mapNotNull {
+                    it.qualityTimeMillis
+                }.maxOrNull()?.toDouble(),
+                alignmentMillis = observations.mapNotNull {
+                    it.alignmentTimeMillis
+                }.sum().toDouble().takeIf { observations.any { it.alignmentTimeMillis != null } },
+                embeddingMillis = observations.sumOf { observation ->
+                    observation.embeddingTimeMillis
+                }.toDouble(),
+                scoringMillis = scoringNanos.toMillis(),
+                policyMillis = policyNanos.toMillis(),
+                repositoryMillis = repositoryNanos.toMillis(),
+                uiMillis = uiNanos.toMillis(),
+            )
+            mutableState.value = mutableState.value.copy(
+                pipelineMetrics = failedMetrics.copy(
+                    totalMillis = maxOf(
+                        failedMetrics.measuredStageTotalMillis(),
+                        observations.sumOf { observation ->
+                            observation.embeddingTimeMillis
+                        }.toDouble() + (nanoTime() - pipelineStartedNanos).toMillis(),
+                    ),
+                ),
+                error = it.message ?: it::class.java.simpleName,
+            )
         }
     }
 
@@ -132,6 +212,8 @@ class FaceIdentityCoordinator(
         trackIdToAnonymousId.clear()
         mutableState.value = mutableState.value.copy(results = emptyMap(), visibleFaceCount = 0)
     }
+
+    private fun Long.toMillis(): Double = coerceAtLeast(0L) / 1_000_000.0
 }
 
 data class FaceIdentityUiState(
@@ -144,5 +226,6 @@ data class FaceIdentityUiState(
     val lastEmbeddingAverageTimeMillis: Long? = null,
     val lastEmbeddingMaximumTimeMillis: Long? = null,
     val lastEmbeddingFaceCount: Int = 0,
+    val pipelineMetrics: FacePipelineMetrics? = null,
     val error: String? = null,
 )

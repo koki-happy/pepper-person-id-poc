@@ -1,0 +1,7 @@
+{
+  "scenarioId": "fixed-full-overlap",
+  "frameClasses": [4, 4, 4, 4],
+  "expectedLocalSpeakers": 0,
+  "expectedRepositoryCount": 0,
+  "expectedHoldReason": "COMPLETE_OVERLAP"
+}

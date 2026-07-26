@@ -29,6 +29,7 @@ object SpeakerModelAdapterFactory {
             "campplus" -> CampPlusAdapter(config, numThreads)
             "campplus-zh-en" -> CampPlusZhEnAdapter(config, numThreads)
             "eres2net" -> ERes2NetAdapter(config, numThreads)
+            "wespeaker" -> WeSpeakerAdapter(config, numThreads)
             "speakernet" -> SpeakerNetAdapter(config, numThreads)
             "titanet" -> TitaNetAdapter(config, numThreads)
             else -> throw IllegalArgumentException("Unsupported speaker model adapter: ${config.adapter}")
@@ -44,6 +45,9 @@ class CampPlusZhEnAdapter(config: ResolvedModelConfig, numThreads: Int = 1) :
 class ERes2NetAdapter(config: ResolvedModelConfig, numThreads: Int = 1) :
     OrtSpeakerModelAdapter(config, numThreads, ModelFamily.THREE_D_SPEAKER)
 
+class WeSpeakerAdapter(config: ResolvedModelConfig, numThreads: Int = 1) :
+    OrtSpeakerModelAdapter(config, numThreads, ModelFamily.WESPEAKER)
+
 class SpeakerNetAdapter(config: ResolvedModelConfig, numThreads: Int = 1) :
     OrtSpeakerModelAdapter(config, numThreads, ModelFamily.NEMO)
 
@@ -52,6 +56,7 @@ class TitaNetAdapter(config: ResolvedModelConfig, numThreads: Int = 1) :
 
 enum class ModelFamily {
     THREE_D_SPEAKER,
+    WESPEAKER,
     NEMO,
 }
 
@@ -93,6 +98,7 @@ open class OrtSpeakerModelAdapter internal constructor(
         val framework = metadata.required("framework")
         val expectedFramework = when (family) {
             ModelFamily.THREE_D_SPEAKER -> "3d-speaker"
+            ModelFamily.WESPEAKER -> "wespeaker"
             ModelFamily.NEMO -> "nemo"
         }
         require(framework == expectedFramework) {
@@ -108,7 +114,9 @@ open class OrtSpeakerModelAdapter internal constructor(
         }
 
         when (family) {
-            ModelFamily.THREE_D_SPEAKER -> {
+            ModelFamily.THREE_D_SPEAKER,
+            ModelFamily.WESPEAKER,
+            -> {
                 require(session.inputNames.size == 1) {
                     "${config.name} must expose one 3D-Speaker feature input: ${session.inputNames}"
                 }
@@ -188,6 +196,7 @@ open class OrtSpeakerModelAdapter internal constructor(
         val features = featureExtractor.compute(samples)
         val embedding = when (family) {
             ModelFamily.THREE_D_SPEAKER -> runThreeDSpeaker(features.values, features.numFrames, features.numBins)
+            ModelFamily.WESPEAKER -> runThreeDSpeaker(features.values, features.numFrames, features.numBins)
             ModelFamily.NEMO -> runNemo(features.values, features.numFrames, features.numBins)
         }
         require(embedding.size == embeddingDimension) {

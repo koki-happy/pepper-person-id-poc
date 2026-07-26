@@ -1,0 +1,7 @@
+{
+  "scenarioId": "fixed-alternating-speakers",
+  "frameClasses": [1, 1, 2, 2],
+  "expectedLocalSpeakers": 2,
+  "expectedRepositoryCount": 2,
+  "expectedHoldReason": null
+}

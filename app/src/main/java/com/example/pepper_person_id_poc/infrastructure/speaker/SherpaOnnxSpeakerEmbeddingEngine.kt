@@ -22,7 +22,7 @@ class SherpaOnnxSpeakerEmbeddingEngine(
     override fun prepare() {
         if (extractor != null) return
         require(numThreads > 0)
-        extractor = SpeakerEmbeddingExtractor(
+        val created = SpeakerEmbeddingExtractor(
             assetManager = assets,
             config = SpeakerEmbeddingExtractorConfig(
                 model = "models/${model.modelFileName}",
@@ -31,6 +31,15 @@ class SherpaOnnxSpeakerEmbeddingEngine(
                 provider = "cpu",
             ),
         )
+        val actualDimension = created.dim()
+        if (actualDimension != model.embeddingSize) {
+            created.release()
+            error(
+                "Speaker model ${model.configModelId} produced metadata dimension=$actualDimension; " +
+                    "expected=${model.embeddingSize}; no fallback",
+            )
+        }
+        extractor = created
     }
 
     @Synchronized
@@ -49,6 +58,9 @@ class SherpaOnnxSpeakerEmbeddingEngine(
             stream.inputFinished()
             require(activeExtractor.isReady(stream)) { "INSUFFICIENT_AUDIO: speaker model input is not ready" }
             activeExtractor.compute(stream).also { embedding ->
+                require(embedding.size == model.embeddingSize) {
+                    "Speaker model returned dimension=${embedding.size}; expected=${model.embeddingSize}; no fallback"
+                }
                 require(embedding.isNotEmpty() && embedding.all(Float::isFinite)) {
                     "Speaker model returned an invalid embedding"
                 }

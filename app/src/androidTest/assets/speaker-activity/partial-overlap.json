@@ -1,0 +1,7 @@
+{
+  "scenarioId": "fixed-partial-overlap",
+  "frameClasses": [1, 1, 4, 1],
+  "expectedLocalSpeakers": 1,
+  "expectedRepositoryCount": 1,
+  "expectedHoldReason": null
+}

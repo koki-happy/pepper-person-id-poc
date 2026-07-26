@@ -2,9 +2,16 @@ package com.example.pepper_person_id_poc.application.speaker
 
 import com.example.pepper_person_id_poc.domain.anonymous.PersistenceOperation
 import com.example.pepper_person_id_poc.domain.audio.PcmUtterance
+import com.example.pepper_person_id_poc.domain.model.ArtifactId
 import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
+import com.example.pepper_person_id_poc.domain.model.RuntimeId
+import com.example.pepper_person_id_poc.domain.speaker.DiarizationWindow
 import com.example.pepper_person_id_poc.domain.speaker.LocalSpeakerEmbeddingAggregator
+import com.example.pepper_person_id_poc.domain.speaker.SpeakerActivityFrame
+import com.example.pepper_person_id_poc.domain.speaker.SpeakerActivityState
 import com.example.pepper_person_id_poc.domain.speaker.SpeakerSegmentEmbedding
+import com.example.pepper_person_id_poc.application.contract.SpeakerSegmentationEngine
+import com.example.pepper_person_id_poc.application.contract.SpeakerSegmentationInput
 import com.example.pepper_person_id_poc.testsupport.FakeBenchmarkLogger
 import com.example.pepper_person_id_poc.testsupport.FakeSpeakerEmbeddingEngine
 import com.example.pepper_person_id_poc.testsupport.InMemoryAnonymousSpeakerRepository
@@ -15,6 +22,35 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Test
 
 class SpeakerIdentityCoordinatorTest {
+    @Test
+    fun missingActivityEngine_holdsWithoutEmbeddingOrRepositoryMutation() = runBlocking {
+        val repository = InMemoryAnonymousSpeakerRepository()
+        val embeddingEngine = FakeSpeakerEmbeddingEngine(floatArrayOf(1f, 0f))
+        val benchmarkLogger = FakeBenchmarkLogger()
+        val coordinator = SpeakerIdentityCoordinator(
+            repository = repository,
+            embeddingEngine = embeddingEngine,
+            threshold = 0.8f,
+            maximumUpdateCount = 20,
+            benchmarkLogger = benchmarkLogger,
+            segmentationEngine = null,
+        )
+
+        try {
+            coordinator.onUtterance(validUtterance())
+            val state = coordinator.state.first()
+
+            assertThat(repository.count()).isEqualTo(0)
+            assertThat(state.results).isEmpty()
+            assertThat(state.activityHoldReasons).contains("UNSUPPORTED_ACTIVITY_INFERENCE")
+            assertThat(benchmarkLogger.events).hasSize(1)
+            assertThat(benchmarkLogger.events.single().status).isEqualTo("HOLD")
+            assertThat(benchmarkLogger.events.single().attributes["vadMillis"]).isEqualTo("null")
+        } finally {
+            coordinator.close()
+        }
+    }
+
     @Test
     fun close_doesNotDeleteRepository() {
         val repository = InMemoryAnonymousSpeakerRepository()
@@ -84,19 +120,22 @@ class SpeakerIdentityCoordinatorTest {
                 nowElapsedRealtime = index.toLong(),
             )
         }
+        val benchmarkLogger = FakeBenchmarkLogger()
         val coordinator = SpeakerIdentityCoordinator(
             repository = repository,
             embeddingEngine = FakeSpeakerEmbeddingEngine(floatArrayOf(0.8f, 0.6f)),
             threshold = 0.7f,
             maximumUpdateCount = 20,
-            benchmarkLogger = FakeBenchmarkLogger(),
+            benchmarkLogger = benchmarkLogger,
+            segmentationEngine = SingleSpeakerSegmentationEngine(),
         )
 
         try {
             coordinator.onUtterance(validUtterance())
-            val result = withTimeout(5_000L) {
-                coordinator.state.first { !it.processing && it.result != null }.result!!
+            val state = withTimeout(5_000L) {
+                coordinator.state.first { !it.processing && it.result != null }
             }
+            val result = state.result!!
 
             assertThat(result.candidateScores.map { it.anonymousId }).containsExactly(
                 "anonymous-speaker-001",
@@ -112,16 +151,63 @@ class SpeakerIdentityCoordinatorTest {
             assertThat(result.evaluation.highestCandidateLead).isWithin(0.0001f).of(0.2f)
             assertThat(result.candidateScores.count { it.selected }).isEqualTo(1)
             assertThat(result.candidateScores.first().selected).isTrue()
+            val timings = state.stageTimings!!
+            assertThat(timings.recorderMillis).isNull()
+            assertThat(timings.vadMillis).isNull()
+            listOf(
+                timings.activityMillis,
+                timings.trackingMillis,
+                timings.qualityMillis,
+                timings.embeddingMillis,
+                timings.aggregationMillis,
+                timings.scoringMillis,
+                timings.policyMillis,
+                timings.repositoryMillis,
+                timings.totalMillis,
+            ).forEach { assertThat(checkNotNull(it)).isAtLeast(0L) }
+            assertThat(timings.audioDurationMillis).isEqualTo(2_000L)
+            assertThat(timings.realTimeFactor).isNotNull()
+            assertThat(benchmarkLogger.events).hasSize(1)
+            assertThat(benchmarkLogger.events.single().attributes["recorderMillis"]).isEqualTo("null")
+            assertThat(benchmarkLogger.events.single().attributes["realTimeFactor"]).isNotNull()
         } finally {
             coordinator.close()
         }
     }
 
     private fun validUtterance() = PcmUtterance(
-        pcm16 = ShortArray(16_000),
+        pcm16 = ShortArray(16_000) { 1_000 },
         sampleRate = 16_000,
         startedAtMillis = 1_000L,
         endedAtMillis = 3_000L,
         voicedDurationMillis = 2_000L,
     )
+
+    private class SingleSpeakerSegmentationEngine : SpeakerSegmentationEngine {
+        override val artifactId = ArtifactId("test-segmentation")
+        override val runtimeId = RuntimeId("test-runtime")
+
+        override fun prepare() = Unit
+
+        override fun segment(input: SpeakerSegmentationInput) = DiarizationWindow(
+            windowId = input.windowId,
+            startSample = input.startSample,
+            endSample = input.endSample,
+            sampleRate = input.sampleRate,
+            frames = listOf(
+                SpeakerActivityFrame(
+                    activityState = SpeakerActivityState.SINGLE_SPEAKER,
+                    activeSpeakerIndices = listOf(0),
+                    winningClassIndex = 1,
+                    winningScore = 1f,
+                    overlapProbability = 0f,
+                ),
+            ),
+            overlapRatio = 0f,
+            runtimeId = runtimeId.value,
+            inferenceTimeMillis = 1L,
+        )
+
+        override fun close() = Unit
+    }
 }

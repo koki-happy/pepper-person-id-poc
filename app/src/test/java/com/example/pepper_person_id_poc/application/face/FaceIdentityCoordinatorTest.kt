@@ -131,6 +131,46 @@ class FaceIdentityCoordinatorTest {
             .isEqualTo(before.single().normalizedEmbeddingSum.asList())
     }
 
+    @Test
+    fun stageTimings_includeUpstreamAndCoordinatorStages() {
+        val repository = InMemoryAnonymousFaceRepository()
+        var nanos = 0L
+        val coordinator = FaceIdentityCoordinator(
+            repository = repository,
+            modelId = "face-model",
+            threshold = 0.8f,
+            maximumUpdateCount = 20,
+            nanoTime = {
+                nanos += 1_000_000L
+                nanos
+            },
+            elapsedRealtimeMillis = { 123L },
+        )
+
+        coordinator.onFeatureObservations(
+            listOf(
+                feature("track-1", floatArrayOf(1f, 0f), 7L).copy(
+                    preprocessingTimeMillis = 2L,
+                    detectionTimeMillis = 3L,
+                    qualityTimeMillis = 4L,
+                    alignmentTimeMillis = 5L,
+                ),
+            ),
+        )
+
+        val metrics = coordinator.state.value.pipelineMetrics!!
+        assertThat(metrics.preprocessingMillis).isEqualTo(2.0)
+        assertThat(metrics.detectionMillis).isEqualTo(3.0)
+        assertThat(metrics.qualityMillis).isEqualTo(4.0)
+        assertThat(metrics.alignmentMillis).isEqualTo(5.0)
+        assertThat(metrics.embeddingMillis).isEqualTo(7.0)
+        assertThat(metrics.scoringMillis).isGreaterThan(0.0)
+        assertThat(metrics.policyMillis).isGreaterThan(0.0)
+        assertThat(metrics.repositoryMillis).isGreaterThan(0.0)
+        assertThat(metrics.uiMillis).isGreaterThan(0.0)
+        assertThat(metrics.totalMillis).isAtLeast(metrics.measuredStageTotalMillis())
+    }
+
     private fun feature(
         trackId: String,
         embedding: FloatArray,

@@ -8,6 +8,8 @@ import java.io.Closeable
 interface SpeakerSegmentationEngine : Closeable {
     val artifactId: ArtifactId
     val runtimeId: RuntimeId
+    val requiredWindowSamples: Int?
+        get() = null
 
     fun prepare()
 

@@ -32,4 +32,18 @@ class FacePipelineMetricsTest {
         assertThat(metrics.totalMillis).isEqualTo(35.0)
         assertThat(metrics.measuredStageTotalMillis()).isEqualTo(30.0)
     }
+
+    @Test
+    fun detailedCoordinatorStages_replaceLegacyIdentificationAggregate() {
+        val metrics = FacePipelineMetrics(
+            embeddingMillis = 5.0,
+            scoringMillis = 2.0,
+            policyMillis = 1.0,
+            identificationMillis = 99.0,
+            repositoryMillis = 3.0,
+            uiMillis = 4.0,
+        )
+
+        assertThat(metrics.measuredStageTotalMillis()).isEqualTo(15.0)
+    }
 }
