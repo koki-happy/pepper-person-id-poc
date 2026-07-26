@@ -11,6 +11,17 @@ function Get-StreamSha256 {
     }
 }
 
+function Get-FileSha256 {
+    param([Parameter(Mandatory)][string]$Path)
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        Get-StreamSha256 -Stream $stream
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 function Get-ApkInventory {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$ApkPath)
@@ -53,7 +64,7 @@ function Get-ApkInventory {
     [pscustomobject]@{
         schemaVersion = 1
         apkPath = $resolved
-        apkSha256 = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash.ToLowerInvariant()
+        apkSha256 = Get-FileSha256 -Path $resolved
         apkSizeBytes = (Get-Item -LiteralPath $resolved).Length
         entryCount = $entries.Count
         entries = $entries
