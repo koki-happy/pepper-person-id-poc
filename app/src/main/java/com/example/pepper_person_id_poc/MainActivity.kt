@@ -1,7 +1,10 @@
 package com.example.pepper_person_id_poc
 
 import android.Manifest
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
+import android.os.Build
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,13 +20,28 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.pepper_person_id_poc.application.session.AnonymousSessionStartupState
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorArtifactResolver
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingArtifactResolver
+import com.example.pepper_person_id_poc.domain.config.PocSettings
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkDevice
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkEvent
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkInput
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkModelSelection
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkRunMetadata
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkStatus
+import com.example.pepper_person_id_poc.domain.metrics.BenchmarkThresholds
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.screen.AudioRecordingScreen
+import com.example.pepper_person_id_poc.ui.screen.BenchmarkConfigurationUiState
+import com.example.pepper_person_id_poc.ui.screen.BenchmarkScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
 import com.example.pepper_person_id_poc.ui.screen.DeviceDiagnosticsScreen
 import com.example.pepper_person_id_poc.ui.screen.ModelSelectionScreen
@@ -34,6 +52,7 @@ import com.example.pepper_person_id_poc.ui.viewmodel.MainViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private val app by lazy { application as PepperPersonIdApplication }
@@ -62,6 +81,21 @@ class MainActivity : ComponentActivity() {
             PepperpersonidpocTheme {
                 val startup by app.startupState.collectAsState()
                 val uiState by viewModel.uiState.collectAsState()
+                var benchmarkConfiguration by remember {
+                    mutableStateOf(
+                        BenchmarkConfigurationUiState(
+                            scenarioId = "A-COMPARE-001",
+                            inputDescriptor = "fixed-input",
+                            preprocessingId = "explicit-preprocessing-id",
+                            datasetId = "local-fixed-inputs",
+                            repetitions = "10",
+                        ),
+                    )
+                }
+                var benchmarkStatus by remember { mutableStateOf<String?>(null) }
+                var candidateExportEnabled by remember {
+                    mutableStateOf(container.metricsBenchmarkLogGate.isLogcatEnabled())
+                }
                 when (val state = startup) {
                     AnonymousSessionStartupState.Initializing -> StartupMessage("セッションを初期化しています")
                     is AnonymousSessionStartupState.Error -> StartupMessage(
@@ -107,6 +141,41 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onRefresh = viewModel::refreshDiagnostics,
                             )
+                            AppScreen.Benchmark -> {
+                                val modelSelections = uiState.settings.benchmarkModelSelections()
+                                BenchmarkScreen(
+                                    configuration = benchmarkConfiguration,
+                                    modelSelections = modelSelections,
+                                    distribution = container.metricsBenchmarkLogGate.distribution,
+                                    candidateExportEnabled = candidateExportEnabled,
+                                    statusMessage = benchmarkStatus,
+                                    onConfigurationChange = {
+                                        benchmarkConfiguration = it
+                                        benchmarkStatus = null
+                                    },
+                                    onRun = {
+                                        val written = container.metricsBenchmarkLogger.append(
+                                            createBenchmarkConfigurationEvent(
+                                                configuration = benchmarkConfiguration,
+                                                settings = uiState.settings,
+                                                modelSelections = modelSelections,
+                                            ),
+                                        )
+                                        benchmarkStatus = if (written) {
+                                            "構成をLogcatへ出力しました"
+                                        } else {
+                                            "candidateのLogcat出力を有効にしてください"
+                                        }
+                                    },
+                                    onEnableCandidateExport = {
+                                        container.metricsBenchmarkLogGate.enableExplicitCandidateExport()
+                                        candidateExportEnabled =
+                                            container.metricsBenchmarkLogGate.isLogcatEnabled()
+                                        benchmarkStatus = "candidateのLogcat出力を有効にしました"
+                                    },
+                                    onBack = viewModel::returnToSettings,
+                                )
+                            }
                             AppScreen.AnonymousFaceIdentification -> CameraPreviewScreen(
                                 settings = uiState.settings,
                                 repository = container.anonymousFaceClusterRepository,
@@ -137,6 +206,89 @@ class MainActivity : ComponentActivity() {
             finishAndRemoveTask()
         }
     }
+
+    private fun createBenchmarkConfigurationEvent(
+        configuration: BenchmarkConfigurationUiState,
+        settings: PocSettings,
+        modelSelections: List<BenchmarkModelSelection>,
+    ): BenchmarkEvent {
+        val epochMillis = System.currentTimeMillis()
+        val elapsedRealtimeMillis = SystemClock.elapsedRealtime()
+        val distribution = container.metricsBenchmarkLogGate.distribution.name.lowercase()
+        val buildType = if (
+            applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        ) {
+            "Debug"
+        } else {
+            "Release"
+        }
+        return BenchmarkEvent(
+            eventType = "benchmark_configuration",
+            run = BenchmarkRunMetadata(
+                runId = UUID.randomUUID().toString(),
+                scenarioId = configuration.scenarioId,
+                timestampEpochMillis = epochMillis,
+                timestampElapsedRealtimeMillis = elapsedRealtimeMillis,
+                device = BenchmarkDevice(
+                    manufacturer = Build.MANUFACTURER.ifBlank { "unknown" },
+                    model = Build.MODEL.ifBlank { "unknown" },
+                    apiLevel = Build.VERSION.SDK_INT,
+                    abi = Build.SUPPORTED_ABIS.firstOrNull().orEmpty().ifBlank { "unknown" },
+                ),
+                buildVariant = distribution + buildType,
+                input = BenchmarkInput(
+                    descriptor = configuration.inputDescriptor,
+                    sha256 = configuration.inputSha256,
+                    preprocessingId = configuration.preprocessingId,
+                    datasetId = configuration.datasetId,
+                    repetition = configuration.repetitions.toInt(),
+                ),
+                models = modelSelections,
+                thresholds = BenchmarkThresholds(
+                    identification = settings.faceClusterJoinThreshold.toDouble(),
+                    minimumLead = settings.speakerModel.jvsCandidateMargin.toDouble(),
+                ),
+            ),
+            status = BenchmarkStatus.SUCCESS,
+        )
+    }
+}
+
+private fun PocSettings.benchmarkModelSelections(): List<BenchmarkModelSelection> {
+    val detectorArtifact = requireNotNull(
+        FaceDetectorArtifactResolver.resolve(faceDetectorModel, faceDetectorRuntime),
+    ) {
+        "No exact face detector artifact for ${faceDetectorModel.artifactId}/${faceDetectorRuntime.runtimeId}"
+    }
+    val embeddingArtifact = requireNotNull(
+        FaceEmbeddingArtifactResolver.resolve(faceEmbeddingModel, faceEmbeddingRuntime),
+    ) {
+        "No exact face embedding artifact for ${faceEmbeddingModel.artifactId}/${faceEmbeddingRuntime.runtimeId}"
+    }
+    return listOf(
+        BenchmarkModelSelection(
+            role = "FACE_DETECTOR",
+            artifactId = detectorArtifact.artifactId,
+            runtimeId = faceDetectorRuntime.runtimeId,
+        ),
+        BenchmarkModelSelection(
+            role = "FACE_EMBEDDING",
+            modelSpaceId = embeddingArtifact.modelSpaceId,
+            artifactId = embeddingArtifact.artifactId,
+            runtimeId = faceEmbeddingRuntime.runtimeId,
+        ),
+        BenchmarkModelSelection(
+            role = "SPEAKER_EMBEDDING",
+            modelSpaceId = speakerModel.modelSpaceId,
+            artifactId = speakerModel.artifactId,
+            runtimeId = speakerRuntime.runtimeId,
+        ),
+        BenchmarkModelSelection(
+            role = "VAD",
+            artifactId = vadModel.artifactId,
+            runtimeId = speakerRuntime.runtimeId,
+        ),
+    )
 }
 
 @androidx.compose.runtime.Composable

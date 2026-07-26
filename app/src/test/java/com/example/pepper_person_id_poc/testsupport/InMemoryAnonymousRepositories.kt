@@ -7,7 +7,6 @@ import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
 import com.example.pepper_person_id_poc.domain.model.BiometricModality
 import com.example.pepper_person_id_poc.infrastructure.repository.InMemoryAnonymousClusterRepository
-import java.io.File
 
 open class InMemoryAnonymousRepository(prefix: String) :
     InMemoryAnonymousClusterRepository(
@@ -33,7 +32,4 @@ class FakeSpeakerEmbeddingEngine(private val embedding: FloatArray) : SpeakerEmb
 class FakeBenchmarkLogger : BenchmarkLogger {
     val events = mutableListOf<BenchmarkEvent>()
     override fun append(event: BenchmarkEvent) { events += event }
-    override fun outputFile() = File("benchmark.jsonl")
-    override fun readRecent(limit: Int) = emptyList<String>()
-    override fun deleteAll() { events.clear() }
 }

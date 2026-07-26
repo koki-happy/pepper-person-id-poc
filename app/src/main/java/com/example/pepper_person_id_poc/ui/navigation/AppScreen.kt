@@ -4,6 +4,7 @@ enum class AppScreen {
     Settings,
     ModelSelection,
     DeviceDiagnostics,
+    Benchmark,
     AnonymousFaceIdentification,
     AnonymousSpeakerIdentification,
 }

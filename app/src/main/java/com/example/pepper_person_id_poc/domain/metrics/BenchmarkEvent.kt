@@ -96,8 +96,11 @@ data class FacePipelineMetrics(
     val qualityMillis: Double? = null,
     val alignmentMillis: Double? = null,
     val embeddingMillis: Double? = null,
+    val scoringMillis: Double? = null,
+    val policyMillis: Double? = null,
     val identificationMillis: Double? = null,
     val repositoryMillis: Double? = null,
+    val uiMillis: Double? = null,
     val totalMillis: Double? = null,
 ) {
     init {
@@ -108,8 +111,11 @@ data class FacePipelineMetrics(
             qualityMillis,
             alignmentMillis,
             embeddingMillis,
+            scoringMillis,
+            policyMillis,
             identificationMillis,
             repositoryMillis,
+            uiMillis,
             totalMillis,
         )
     }
@@ -121,8 +127,11 @@ data class FacePipelineMetrics(
         qualityMillis,
         alignmentMillis,
         embeddingMillis,
-        identificationMillis,
+        if (scoringMillis == null && policyMillis == null) identificationMillis else null,
+        scoringMillis,
+        policyMillis,
         repositoryMillis,
+        uiMillis,
     ).sum()
 }
 
@@ -177,6 +186,7 @@ data class ResourceMetrics(
     val pssBytes: Long? = null,
     val javaHeapBytes: Long? = null,
     val nativeHeapBytes: Long? = null,
+    val threadCount: Int? = null,
     val deviceAvailableMemoryBytes: Long? = null,
 ) {
     init {
@@ -185,6 +195,7 @@ data class ResourceMetrics(
         require(appCpuPercent == null || appCpuPercent >= 0.0)
         listOf(pssBytes, javaHeapBytes, nativeHeapBytes, deviceAvailableMemoryBytes)
             .forEach { require(it == null || it >= 0L) }
+        require(threadCount == null || threadCount >= 0)
     }
 }
 
@@ -297,8 +308,11 @@ object BenchmarkEventJson {
         putNullable("qualityMillis", qualityMillis)
         putNullable("alignmentMillis", alignmentMillis)
         putNullable("embeddingMillis", embeddingMillis)
+        putNullable("scoringMillis", scoringMillis)
+        putNullable("policyMillis", policyMillis)
         putNullable("identificationMillis", identificationMillis)
         putNullable("repositoryMillis", repositoryMillis)
+        putNullable("uiMillis", uiMillis)
         putNullable("totalMillis", totalMillis)
     }
 
@@ -322,6 +336,7 @@ object BenchmarkEventJson {
         putNullable("pssBytes", pssBytes)
         putNullable("javaHeapBytes", javaHeapBytes)
         putNullable("nativeHeapBytes", nativeHeapBytes)
+        putNullable("threadCount", threadCount)
         putNullable("deviceAvailableMemoryBytes", deviceAvailableMemoryBytes)
     }
 

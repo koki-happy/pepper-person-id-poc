@@ -54,6 +54,9 @@ class BenchmarkEventTest {
                     collectedAtElapsedRealtimeMillis = 550L,
                     appCpuPercent = null,
                     pssBytes = 123_456L,
+                    javaHeapBytes = 45_000L,
+                    nativeHeapBytes = 67_000L,
+                    threadCount = 12,
                 ),
                 status = BenchmarkStatus.SUCCESS,
             ),
@@ -64,6 +67,8 @@ class BenchmarkEventTest {
             .isEqualTo(JsonNull)
         assertThat(root.getValue("resources").jsonObject.getValue("appCpuPercent"))
             .isEqualTo(JsonNull)
+        assertThat(root.getValue("resources").jsonObject.getValue("threadCount").toString())
+            .isEqualTo("12")
         assertThat(root.getValue("run").jsonObject.getValue("runId").toString())
             .isEqualTo("\"run-001\"")
     }

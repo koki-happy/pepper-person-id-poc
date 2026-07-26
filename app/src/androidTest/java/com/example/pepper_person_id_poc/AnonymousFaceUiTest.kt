@@ -24,7 +24,7 @@ class AnonymousFaceUiTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun candidates_areCompleteAndVirtualizedWithoutTruncation() {
+    fun candidateList_isNotRenderedOnTheMinimalScreen() {
         val candidates = (1..60).map { number ->
             AnonymousClusterScore(
                 anonymousId = "anonymous-face-${number.toString().padStart(3, '0')}",
@@ -50,15 +50,11 @@ class AnonymousFaceUiTest {
             }
         }
 
-        composeRule.onNodeWithTag("face-candidate-track-17-anonymous-face-001").assertIsDisplayed()
-        composeRule.onNodeWithTag("face-preview-contract")
-            .performScrollToNode(hasTestTag("face-candidate-track-17-anonymous-face-060"))
-        composeRule.onNodeWithTag("face-candidate-track-17-anonymous-face-060").assertIsDisplayed()
-        composeRule.onNodeWithText("#60 anonymous-face-060").assertIsDisplayed()
+        composeRule.onNodeWithText("anonymous-face-001").assertIsDisplayed()
     }
 
     @Test
-    fun faceContract_rendersDetectionAndAnonymousIdsQualityAndMeasuredTimings() {
+    fun faceContract_rendersOnlyIdentificationQualityAndLoadSummary() {
         val state = faceState(
             result = faceResult(
                 anonymousId = "anonymous-face-009",
@@ -88,12 +84,9 @@ class AnonymousFaceUiTest {
         }
 
         listOf(
-            "12 ms",
-            "34 ms",
-            "track-17",
             "anonymous-face-009",
-            "blur=0.18, brightness=44.0",
-            "create=false, update=false",
+            "品質不足",
+            "0.93",
             "FACE_BLURRED",
         ).forEach(::assertTextCanBeDisplayed)
     }

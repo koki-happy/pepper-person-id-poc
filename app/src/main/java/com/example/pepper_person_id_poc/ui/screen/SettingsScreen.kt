@@ -52,6 +52,9 @@ fun SettingsScreen(
             Button(onClick = { onOpenScreen(AppScreen.DeviceDiagnostics) }, modifier = Modifier.fillMaxWidth()) {
                 Text("端末診断")
             }
+            Button(onClick = { onOpenScreen(AppScreen.Benchmark) }, modifier = Modifier.fillMaxWidth()) {
+                Text("ベンチマーク構成")
+            }
             Button(onClick = { onOpenScreen(AppScreen.AnonymousFaceIdentification) }, modifier = Modifier.fillMaxWidth()) {
                 Text("未登録顔識別")
             }

@@ -52,12 +52,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepper_person_id_poc.application.contract.AnonymousFaceClusterRepository
 import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.application.face.FaceIdentityCoordinator
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingArtifactResolver
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineFactory
 import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorFactory
 import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorPipeline
 import com.example.pepper_person_id_poc.ui.component.DeviceLoadPanel
+import com.example.pepper_person_id_poc.ui.component.StageMetricUiState
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -224,11 +226,15 @@ fun CameraPreviewScreen(
                 FacePreviewContractDetails(
                     identity = identity,
                     detectionProcessingTimeMillis = detection.processingTimeMillis,
+                    analysisFramesPerSecond = detection.analysisFramesPerSecond,
                     faceClusterJoinThreshold = settings.faceClusterJoinThreshold,
                     modelSpaceId = identity.results.values.firstOrNull()
                         ?.evaluation?.candidates?.firstOrNull()?.modelSpaceId?.value
                         ?: engine.modelName,
-                    artifactId = settings.faceEmbeddingModel.artifactId,
+                    artifactId = FaceEmbeddingArtifactResolver.resolve(
+                        settings.faceEmbeddingModel,
+                        settings.faceEmbeddingRuntime,
+                    )?.artifactId ?: "MISSING_EXACT_ARTIFACT",
                     runtimeId = settings.faceEmbeddingRuntime.runtimeId,
                     qualityByTrackId = detection.faces.mapNotNull { face ->
                         face.qualityAssessment?.let { quality ->
@@ -265,6 +271,7 @@ data class FaceQualityUiState(
 fun FacePreviewContractDetails(
     identity: com.example.pepper_person_id_poc.application.face.FaceIdentityUiState,
     detectionProcessingTimeMillis: Long?,
+    analysisFramesPerSecond: Float = 0f,
     faceClusterJoinThreshold: Float,
     qualityByTrackId: Map<String, FaceQualityUiState> = emptyMap(),
     modelSpaceId: String = "N/A",
@@ -279,71 +286,26 @@ fun FacePreviewContractDetails(
             .padding(12.dp)
             .testTag("face-preview-contract"),
     ) {
-        item {
-            TableHeader("Item", "Value")
-            DetailRow("顔モデル", identity.modelId)
-            DetailRow("Model Space ID", modelSpaceId)
-            DetailRow("Artifact ID", artifactId)
-            DetailRow("Runtime ID", runtimeId)
-            DetailRow("検出時間", detectionProcessingTimeMillis?.let { "$it ms" } ?: "未計測")
-            DetailRow(
-                "特徴抽出時間",
-                identity.lastEmbeddingAverageTimeMillis?.let { "$it ms" } ?: "未計測",
-            )
-            DetailRow("参加閾値", faceClusterJoinThreshold.score())
-            DetailRow("現在モデル", identity.currentModelClusterCount.toString())
-            DetailRow("全体クラスタ", identity.totalClusterCount.toString())
-        }
         identity.results.forEach { (trackId, result) ->
             item(key = "identity-$trackId") {
                 val quality = qualityByTrackId[trackId]
-                HorizontalDivider()
-                DetailRow("Detection ID", trackId)
                 DetailRow("Feature ID", result.anonymousId)
-                DetailRow("品質", quality?.summary ?: "N/A")
                 DetailRow(
-                    "品質保存可否",
-                    quality?.let {
-                        "create=${it.createEligible}, update=${it.updateEligible}"
-                    } ?: "N/A",
+                    "判定",
+                    when {
+                        quality != null && !quality.createEligible && !quality.updateEligible -> "品質不足"
+                        result.isNewCluster -> "新規Feature"
+                        else -> "既存Feature"
+                    },
                 )
                 DetailRow(
-                    "品質理由",
-                    quality?.rejectionReasons?.takeIf(List<String>::isNotEmpty)?.joinToString()
-                        ?: quality?.let { "なし" }
-                        ?: "N/A",
-                )
-                DetailRow(
-                    if (result.isNewCluster) "最高既存類似度" else "類似度",
+                    "類似度",
                     result.bestExistingScore?.score() ?: "比較対象なし",
                 )
-                DetailRow("更新", "${result.updateCount}/${result.maximumUpdateCount}")
-                DetailRow("判定", result.evaluation?.decision?.name ?: "N/A")
-                DetailRow(
-                    "1位-2位リード",
-                    result.evaluation?.highestCandidateLead?.score() ?: "N/A",
-                )
-                DetailRow("保存操作", result.persistenceOperation?.name ?: "N/A")
-                Text("類似度一覧", style = MaterialTheme.typography.titleSmall)
-                TableHeader("Feature ID", "Similarity", firstColumnWeight = 0.72f)
-            }
-            itemsIndexed(
-                items = result.candidateScores,
-                key = { _, candidate -> "$trackId-${candidate.anonymousId}" },
-            ) { index, candidate ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag("face-candidate-$trackId-${candidate.anonymousId}"),
-                ) {
-                    Text(
-                        "#${index + 1} ${if (candidate.selected) "✓ " else ""}${candidate.anonymousId}",
-                        modifier = Modifier.weight(0.72f),
-                    )
-                    Text(
-                        candidate.score.score(),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(0.28f),
+                quality?.rejectionReasons?.takeIf(List<String>::isNotEmpty)?.let { reasons ->
+                    DetailRow(
+                        "理由",
+                        reasons.joinToString(),
                     )
                 }
             }
@@ -351,9 +313,30 @@ fun FacePreviewContractDetails(
         identity.error?.let { error ->
             item { Text(error, color = MaterialTheme.colorScheme.error) }
         }
-        item { DeviceLoadPanel() }
+        item {
+            val metrics = identity.pipelineMetrics
+            DeviceLoadPanel(
+                stageMetrics = listOf(
+                    metrics?.preprocessingMillis.stage("face-preprocessing", "Preprocessing"),
+                    metrics?.detectionMillis.stage("face-detection", "Detection"),
+                    metrics?.qualityMillis.stage("face-quality", "Quality"),
+                    metrics?.alignmentMillis.stage("face-alignment", "Alignment"),
+                    metrics?.embeddingMillis.stage("face-embedding", "Embedding"),
+                    metrics?.scoringMillis.stage("face-scoring", "Scoring"),
+                    metrics?.policyMillis.stage("face-policy", "Policy"),
+                    metrics?.repositoryMillis.stage("face-repository", "Repository"),
+                    metrics?.uiMillis.stage("face-ui", "UI"),
+                    metrics?.totalMillis.stage("face-total", "Total"),
+                ),
+                rateLabel = "解析FPS",
+                rateValue = analysisFramesPerSecond,
+            )
+        }
     }
 }
+
+private fun Double?.stage(id: String, label: String): StageMetricUiState =
+    StageMetricUiState(id = id, label = label, currentMillis = this, samples = emptyList())
 
 @Composable
 private fun TableHeader(

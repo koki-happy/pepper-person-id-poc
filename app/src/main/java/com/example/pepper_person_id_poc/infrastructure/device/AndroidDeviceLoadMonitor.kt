@@ -7,6 +7,7 @@ import android.os.Process
 import android.os.SystemClock
 import com.example.pepper_person_id_poc.domain.device.DeviceLoadSnapshot
 import java.io.Closeable
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,20 +59,37 @@ class AndroidDeviceLoadMonitor(context: Context) : Closeable {
     }
 
     private fun collect(cpuPercent: Double?, measuring: Boolean) {
+        val runtime = Runtime.getRuntime()
         val appMemory = runCatching {
             Debug.MemoryInfo().also(Debug::getMemoryInfo).totalPss.toLong() * 1024L
+        }.getOrNull()
+        val javaHeap = runCatching {
+            runtime.totalMemory() - runtime.freeMemory()
+        }.getOrNull()
+        val nativeHeap = runCatching {
+            Debug.getNativeHeapAllocatedSize()
+        }.getOrNull()
+        val threadCount = runCatching {
+            File("/proc/self/task").list()?.size ?: Thread.getAllStackTraces().size
         }.getOrNull()
         val deviceMemory = runCatching {
             ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo)
         }.getOrNull()
+        val elapsedRealtime = SystemClock.elapsedRealtime()
+        val epochMillis = System.currentTimeMillis()
         mutableState.value = DeviceLoadSnapshot(
             measuringCpu = measuring,
             appCpuAllCoresPercent = cpuPercent,
             appPssBytes = appMemory,
+            appJavaHeapBytes = javaHeap,
+            appNativeHeapBytes = nativeHeap,
+            appThreadCount = threadCount,
             totalMemoryBytes = deviceMemory?.totalMem,
             availableMemoryBytes = deviceMemory?.availMem,
             lowMemory = deviceMemory?.lowMemory,
-            collectedAtMillis = System.currentTimeMillis(),
+            collectedAtElapsedRealtimeMillis = elapsedRealtime,
+            collectedAtEpochMillis = epochMillis,
+            collectedAtMillis = epochMillis,
         )
     }
 

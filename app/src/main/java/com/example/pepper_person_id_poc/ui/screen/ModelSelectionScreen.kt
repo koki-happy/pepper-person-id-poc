@@ -24,8 +24,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.pepper_person_id_poc.application.config.ModelPairAvailability
 import com.example.pepper_person_id_poc.application.config.ModelSelectionCoordinator
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorArtifactResolver
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingArtifactResolver
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import com.example.pepper_person_id_poc.domain.config.PocSettings
@@ -68,14 +70,24 @@ fun ModelSelectionScreen(
                 .testTag("model-selection-screen"),
         ) {
             ModelCard(title = "顔検出モデル資産") {
-                FaceDetectorModelOption.entries.forEach { option ->
+                FaceDetectorArtifactResolver.logicalModels.forEach { option ->
                     val availability = FaceDetectorRuntime.entries
-                        .map { selectionCoordinator.resolve(option.artifactId, it.runtimeId) }
+                        .map { runtime ->
+                            FaceDetectorArtifactResolver.resolve(option, runtime)?.let { artifact ->
+                                selectionCoordinator.resolve(artifact.artifactId, runtime.runtimeId)
+                            } ?: ModelPairAvailability(
+                                artifactId = option.artifactId,
+                                runtimeId = runtime.runtimeId,
+                                status = com.example.pepper_person_id_poc.domain.model.CompatibilityStatus.UNSUPPORTED,
+                                selectable = false,
+                                reason = "Exact runtime artifact is not prepared",
+                            )
+                        }
                         .bestAvailability()
                     ModelChoice(
                         title = option.displayName,
                         subtitle = option.details(availability),
-                        selected = settings.faceDetectorModel == option,
+                        selected = FaceDetectorArtifactResolver.logicalModel(settings.faceDetectorModel) == option,
                         enabled = availability.selectable,
                         onClick = { onFaceDetectorModelChanged(option) },
                     )
@@ -84,13 +96,21 @@ fun ModelSelectionScreen(
 
             ModelCard(title = "顔検出runtime") {
                 FaceDetectorRuntime.entries.forEach { option ->
-                    val availability = selectionCoordinator.resolve(
-                        settings.faceDetectorModel.artifactId,
-                        option.runtimeId,
+                    val artifact = FaceDetectorArtifactResolver.resolve(settings.faceDetectorModel, option)
+                    val availability = artifact?.let {
+                        selectionCoordinator.resolve(it.artifactId, option.runtimeId)
+                    } ?: ModelPairAvailability(
+                        artifactId = settings.faceDetectorModel.artifactId,
+                        runtimeId = option.runtimeId,
+                        status = com.example.pepper_person_id_poc.domain.model.CompatibilityStatus.UNSUPPORTED,
+                        selectable = false,
+                        reason = "Exact runtime artifact is not prepared",
                     )
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = option.description + availability.details(),
+                        subtitle = option.description +
+                            "\nartifact=${artifact?.artifactId ?: "MISSING"}" +
+                            availability.details(),
                         selected = settings.faceDetectorRuntime == option,
                         enabled = availability.selectable,
                         onClick = { onFaceDetectorRuntimeChanged(option) },
@@ -99,14 +119,24 @@ fun ModelSelectionScreen(
             }
 
             ModelCard(title = "顔特徴量モデル資産") {
-                FaceEmbeddingModelOption.entries.forEach { option ->
+                FaceEmbeddingArtifactResolver.logicalModels.forEach { option ->
                     val availability = FaceEmbeddingRuntime.entries
-                        .map { selectionCoordinator.resolve(option.artifactId, it.runtimeId) }
+                        .map { runtime ->
+                            FaceEmbeddingArtifactResolver.resolve(option, runtime)?.let { artifact ->
+                                selectionCoordinator.resolve(artifact.artifactId, runtime.runtimeId)
+                            } ?: ModelPairAvailability(
+                                artifactId = option.artifactId,
+                                runtimeId = runtime.runtimeId,
+                                status = com.example.pepper_person_id_poc.domain.model.CompatibilityStatus.UNSUPPORTED,
+                                selectable = false,
+                                reason = "Exact runtime artifact is not prepared",
+                            )
+                        }
                         .bestAvailability()
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = "${option.modelFileName}\nartifact=${option.artifactId}" + availability.details(),
-                        selected = settings.faceEmbeddingModel == option,
+                        subtitle = "logicalModel=${option.artifactId}" + availability.details(),
+                        selected = FaceEmbeddingArtifactResolver.logicalModel(settings.faceEmbeddingModel) == option,
                         enabled = availability.selectable,
                         onClick = { onFaceEmbeddingModelChanged(option) },
                     )
@@ -115,13 +145,21 @@ fun ModelSelectionScreen(
 
             ModelCard(title = "顔特徴量runtime") {
                 FaceEmbeddingRuntime.entries.forEach { option ->
-                    val availability = selectionCoordinator.resolve(
-                        settings.faceEmbeddingModel.artifactId,
-                        option.runtimeId,
+                    val artifact = FaceEmbeddingArtifactResolver.resolve(settings.faceEmbeddingModel, option)
+                    val availability = artifact?.let {
+                        selectionCoordinator.resolve(it.artifactId, option.runtimeId)
+                    } ?: ModelPairAvailability(
+                        artifactId = settings.faceEmbeddingModel.artifactId,
+                        runtimeId = option.runtimeId,
+                        status = com.example.pepper_person_id_poc.domain.model.CompatibilityStatus.UNSUPPORTED,
+                        selectable = false,
+                        reason = "Exact runtime artifact is not prepared",
                     )
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = option.description + availability.details(),
+                        subtitle = option.description +
+                            "\nartifact=${artifact?.artifactId ?: "MISSING"}" +
+                            availability.details(),
                         selected = settings.faceEmbeddingRuntime == option,
                         enabled = availability.selectable,
                         onClick = { onFaceEmbeddingRuntimeChanged(option) },
