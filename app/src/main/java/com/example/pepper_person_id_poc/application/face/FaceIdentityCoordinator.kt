@@ -1,8 +1,13 @@
 package com.example.pepper_person_id_poc.application.face
 
 import com.example.pepper_person_id_poc.application.contract.AnonymousFaceClusterRepository
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterScore
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousIdentificationResult
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousPersistencePolicy
+import com.example.pepper_person_id_poc.domain.anonymous.IdentificationDecision
+import com.example.pepper_person_id_poc.domain.anonymous.PersistenceOperation
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
+import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
 import com.example.pepper_person_id_poc.infrastructure.face.FaceFeatureObservation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,15 +38,67 @@ class FaceIdentityCoordinator(
         val results = linkedMapOf<String, AnonymousIdentificationResult>()
         runCatching {
             observations.forEach { observation ->
-                val result = repository.identify(
-                    modelId = modelId,
+                val modelSpaceId = ModelSpaceId(modelId)
+                val initialEvaluation = repository.evaluate(
+                    modelSpaceId = modelSpaceId,
                     embedding = observation.embedding,
                     threshold = threshold,
-                    maximumUpdateCount = maximumUpdateCount,
-                    reservedAnonymousIds = reserved,
+                    minimumLead = 0f,
                 )
-                reserved += result.anonymousId
-                trackIdToAnonymousId[observation.trackId] = result.anonymousId
+                val selectedId = initialEvaluation.candidates.firstOrNull { it.selected }?.anonymousId
+                val evaluation = if (
+                    initialEvaluation.decision == IdentificationDecision.MATCHED_EXISTING &&
+                    selectedId in reserved
+                ) {
+                    initialEvaluation.copy(
+                        candidates = initialEvaluation.candidates.map { it.copy(selected = false) },
+                        decision = IdentificationDecision.AMBIGUOUS,
+                    )
+                } else {
+                    initialEvaluation
+                }
+                val (policy, operation) = AnonymousPersistencePolicy.evaluate(
+                    decision = evaluation.decision,
+                    createEligible = true,
+                    updateEligible = true,
+                )
+                val cluster = repository.apply(
+                    operation = operation,
+                    modelSpaceId = modelSpaceId,
+                    embedding = observation.embedding,
+                    selectedAnonymousId = selectedId,
+                    maximumUpdateCount = maximumUpdateCount,
+                    nowElapsedRealtime = System.currentTimeMillis(),
+                )
+                cluster?.anonymousId?.let {
+                    reserved += it
+                    trackIdToAnonymousId[observation.trackId] = it
+                }
+                val result = AnonymousIdentificationResult(
+                    anonymousId = cluster?.anonymousId ?: "unknown",
+                    modelId = modelId,
+                    bestExistingScore = evaluation.highestScore,
+                    threshold = threshold,
+                    isNewCluster = operation == PersistenceOperation.CREATE,
+                    updateCount = cluster?.updateCount ?: 0,
+                    maximumUpdateCount = maximumUpdateCount,
+                    currentModelClusterCount = repository.getAll().count {
+                        it.modelSpaceId == modelSpaceId &&
+                            it.embeddingDimension == observation.embedding.size
+                    },
+                    totalClusterCount = repository.count(),
+                    candidateScores = evaluation.candidates.map {
+                        AnonymousClusterScore(
+                            anonymousId = it.anonymousId,
+                            score = it.score,
+                            selected = it.anonymousId == cluster?.anonymousId &&
+                                operation == PersistenceOperation.UPDATE,
+                        )
+                    },
+                    evaluation = evaluation,
+                    persistencePolicy = policy,
+                    persistenceOperation = operation,
+                )
                 results[observation.trackId] = result
             }
         }.onSuccess {

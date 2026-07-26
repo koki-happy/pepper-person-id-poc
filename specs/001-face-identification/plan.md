@@ -1,5 +1,8 @@
 # Implementation Plan: Guided Face Registration and Real-time Enrolled-person Identification
 
+> Superseded for active anonymous face behavior by
+> [`../005-full-person-identification/plan.md`](../005-full-person-identification/plan.md).
+
 **Branch**: `codex/face-identification` | **Date**: 2026-07-18 | **Spec**: [spec.md](spec.md)
 
 ## Summary

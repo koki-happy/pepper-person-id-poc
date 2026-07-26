@@ -35,6 +35,24 @@ __pycache__/
 *.so
 .venv/
 
+# Generated LiteRT conversion/equivalence artifacts. Source scripts, schemas, and docs stay tracked.
+*.tflite
+/litert-artifacts/
+/scripts/litert/.work/
+/scripts/litert/out/
+
+# Generated benchmark reports and device evidence. Metadata-only source manifests stay tracked.
+/results/**/*.jsonl
+/results/**/*.csv
+/results/**/*.svg
+/results/**/*.md
+/speaker-benchmark/results/**/*.jsonl
+/speaker-benchmark/results/**/*.csv
+/speaker-benchmark/results/**/*.svg
+/speaker-benchmark/results/**/*.md
+/device-evidence/
+/artifacts/device-evidence/
+
 # Model binaries are obtained separately after license and device validation.
 /app/src/main/assets/models/
 /app/libs/*.aar

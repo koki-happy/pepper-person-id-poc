@@ -1,6 +1,7 @@
 # Feature Specification: Guided Face Registration and Real-time Enrolled-person Identification
 
-> Superseded by [`../004-anonymous-biometric-identification/spec.md`](../004-anonymous-biometric-identification/spec.md).
+> Superseded for active anonymous face behavior by
+> [`../005-full-person-identification/spec.md`](../005-full-person-identification/spec.md).
 
 **Feature Branch**: `codex/face-identification`  
 **Status**: Implemented and validated on Nothing Phone (3a) and Pepper API 23 / ARMv7

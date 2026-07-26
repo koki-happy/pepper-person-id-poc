@@ -1,4 +1,19 @@
-# Speaker benchmark data
+# Evaluation data policy
+
+Evaluation inputs and generated results are local-only and scoped to one evaluation run. Obtain
+test inputs from public information or public datasets for each evaluation, and verify the source
+URL, license or terms, permitted use, and redistribution conditions at acquisition time.
+
+Dataset bodies and generated evaluation results must never be committed to Git or packaged in an
+APK. This includes downloaded archives, face images, video, PCM, WAV, embeddings, converted copies,
+benchmark output, and device evidence. Remove local copies when the evaluation no longer requires
+them.
+
+Collection and preparation scripts, reusable documentation, configuration, and metadata-only
+manifests may be tracked. A tracked manifest must use relative paths and must not contain biometric
+content, embeddings, locally generated measurements, or local absolute paths.
+
+## Speaker benchmark data
 
 Audio, face images, embeddings, and other biometric data are local-only inputs and must not be
 committed. The tracked CSV files under `manifests/` contain metadata and relative paths only.

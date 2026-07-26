@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity() {
             withContext(Dispatchers.IO) {
                 container.anonymousFaceClusterRepository.deleteAll()
                 container.anonymousSpeakerClusterRepository.deleteAll()
+                container.deleteLegacyAnonymousClusterFiles()
             }
             finishAndRemoveTask()
         }

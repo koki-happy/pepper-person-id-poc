@@ -1,6 +1,7 @@
 # Feature Specification: Registered-speaker Identification
 
-> Superseded by [`../004-anonymous-biometric-identification/spec.md`](../004-anonymous-biometric-identification/spec.md).
+> Superseded for active anonymous speaker and multi-speaker safety behavior by
+> [`../005-full-person-identification/spec.md`](../005-full-person-identification/spec.md).
 
 **Feature Branch**: `codex/face-identification`  
 **Status**: Current implementation documented; constitution alignment, method selection, and evaluation remain incomplete

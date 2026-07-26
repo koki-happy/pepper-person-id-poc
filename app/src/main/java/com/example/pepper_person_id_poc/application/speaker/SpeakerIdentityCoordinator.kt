@@ -3,8 +3,12 @@ package com.example.pepper_person_id_poc.application.speaker
 import com.example.pepper_person_id_poc.application.contract.AnonymousSpeakerClusterRepository
 import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.application.contract.SpeakerEmbeddingEngine
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterScore
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousIdentificationResult
+import com.example.pepper_person_id_poc.domain.anonymous.AnonymousPersistencePolicy
+import com.example.pepper_person_id_poc.domain.anonymous.PersistenceOperation
 import com.example.pepper_person_id_poc.domain.audio.PcmUtterance
+import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
 import java.io.Closeable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,11 +63,51 @@ class SpeakerIdentityCoordinator(
                 val started = System.nanoTime()
                 runCatching {
                     val embedding = embeddingEngine.extract(utterance.pcm16, utterance.sampleRate)
-                    repository.identify(
-                        modelId = embeddingEngine.modelName,
+                    val modelSpaceId = ModelSpaceId(embeddingEngine.modelName)
+                    val evaluation = repository.evaluate(
+                        modelSpaceId = modelSpaceId,
                         embedding = embedding,
                         threshold = threshold,
+                        minimumLead = 0f,
+                    )
+                    val (policy, operation) = AnonymousPersistencePolicy.evaluate(
+                        decision = evaluation.decision,
+                        createEligible = true,
+                        updateEligible = true,
+                    )
+                    val selectedId = evaluation.candidates.firstOrNull { it.selected }?.anonymousId
+                    val cluster = repository.apply(
+                        operation = operation,
+                        modelSpaceId = modelSpaceId,
+                        embedding = embedding,
+                        selectedAnonymousId = selectedId,
                         maximumUpdateCount = maximumUpdateCount,
+                        nowElapsedRealtime = System.currentTimeMillis(),
+                    )
+                    AnonymousIdentificationResult(
+                        anonymousId = cluster?.anonymousId ?: "unknown",
+                        modelId = modelSpaceId.value,
+                        bestExistingScore = evaluation.highestScore,
+                        threshold = threshold,
+                        isNewCluster = operation == PersistenceOperation.CREATE,
+                        updateCount = cluster?.updateCount ?: 0,
+                        maximumUpdateCount = maximumUpdateCount,
+                        currentModelClusterCount = repository.getAll().count {
+                            it.modelSpaceId == modelSpaceId &&
+                                it.embeddingDimension == embedding.size
+                        },
+                        totalClusterCount = repository.count(),
+                        candidateScores = evaluation.candidates.map {
+                            AnonymousClusterScore(
+                                anonymousId = it.anonymousId,
+                                score = it.score,
+                                selected = it.anonymousId == cluster?.anonymousId &&
+                                    operation == PersistenceOperation.UPDATE,
+                            )
+                        },
+                        evaluation = evaluation,
+                        persistencePolicy = policy,
+                        persistenceOperation = operation,
                     )
                 }.onSuccess { result ->
                     mutableState.value = mutableState.value.copy(

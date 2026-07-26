@@ -1,5 +1,8 @@
 # Feature Specification: Session-scoped Anonymous Biometric Identification
 
+> Superseded by
+> [`../005-full-person-identification/spec.md`](../005-full-person-identification/spec.md).
+
 **Status**: Approved
 
 ## User Scenarios

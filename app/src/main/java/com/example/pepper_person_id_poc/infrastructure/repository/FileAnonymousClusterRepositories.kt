@@ -11,6 +11,21 @@ import com.example.pepper_person_id_poc.domain.anonymous.AnonymousIdentification
 import java.io.ByteArrayOutputStream
 import java.io.File
 
+object LegacyAnonymousClusterFiles {
+    private const val BIOMETRIC_DIRECTORY = "biometric"
+    private val legacyFileNames = listOf(
+        "anonymous-face-clusters.bin",
+        "anonymous-speaker-clusters.bin",
+    )
+
+    fun deleteAll(context: Context) {
+        val directory = File(context.applicationContext.filesDir, BIOMETRIC_DIRECTORY)
+        legacyFileNames.forEach { File(directory, it).delete() }
+        directory.delete()
+    }
+}
+
+@Deprecated("Production biometric state is session-only and must use in-memory repositories")
 abstract class FileAnonymousClusterRepository(
     context: Context,
     fileName: String,

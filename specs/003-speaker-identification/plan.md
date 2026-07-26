@@ -1,5 +1,8 @@
 # Implementation Plan: Registered-speaker Identification
 
+> Superseded for active anonymous speaker and multi-speaker safety behavior by
+> [`../005-full-person-identification/plan.md`](../005-full-person-identification/plan.md).
+
 **Branch**: `codex/face-identification`  
 **Spec**: [`spec.md`](spec.md)
 
