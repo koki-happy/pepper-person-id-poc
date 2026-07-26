@@ -196,17 +196,8 @@ class OnnxRuntimeYuNetFaceDetector(
             outputs = yunetOnnxOutputs(inputSize = 320, dynamicAnchors = true),
         )
 
-        val INT8_2023_CONTRACT = YuNetOnnxContract(
-            artifactId = "yunet-2023mar-onnx-int8",
-            modelFileName = "face_detection_yunet_2023mar_int8.onnx",
-            fileSizeBytes = 100_416L,
-            sha256 = "321aa5a6afabf7ecc46a3d06bfab2b579dc96eb5c3be7edd365fa04502ad9294",
-            input = YuNetOnnxTensorContract(INPUT_NAME, listOf(1, 3, 640, 640)),
-        )
-
         fun contractFor(model: FaceDetectorModelOption): YuNetOnnxContract = when (model) {
             FaceDetectorModelOption.YUNET_2026MAY_FP32 -> FP32_2026_CONTRACT
-            FaceDetectorModelOption.YUNET_2023MAR_INT8 -> INT8_2023_CONTRACT
             else -> throw IllegalArgumentException(
                 "Unsupported YuNet ONNX Runtime artifact=${model.artifactId}; no fallback",
             )

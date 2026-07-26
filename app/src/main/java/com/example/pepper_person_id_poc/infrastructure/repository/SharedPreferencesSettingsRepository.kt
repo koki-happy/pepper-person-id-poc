@@ -71,7 +71,7 @@ internal object SettingsSchemaMigration {
         val defaults = PocSettings()
         val modelSelections = if (schemaVersion == CURRENT_SCHEMA_VERSION) {
             ModelSelections(
-                faceDetectorModel = raw.requiredEnum(KEY_FACE_DETECTOR_MODEL),
+                faceDetectorModel = raw.requiredFaceDetectorModel(),
                 faceDetectorRuntime = raw.requiredEnum(KEY_FACE_DETECTOR_RUNTIME),
                 faceEmbeddingModel = raw.requiredEnum(KEY_FACE_EMBEDDING_MODEL),
                 faceEmbeddingRuntime = raw.requiredEnum(KEY_FACE_EMBEDDING_RUNTIME),
@@ -113,7 +113,7 @@ internal object SettingsSchemaMigration {
             "YUNET_OPEN_CV" ->
                 FaceDetectorModelOption.YUNET_2026MAY_FP32 to FaceDetectorRuntime.OPEN_CV
             "YUNET_2023MAR_INT8_OPEN_CV" ->
-                FaceDetectorModelOption.YUNET_2023MAR_INT8 to FaceDetectorRuntime.OPEN_CV
+                FaceDetectorModelOption.YUNET_2026MAY_FP32 to FaceDetectorRuntime.OPEN_CV
             else -> throw SettingsMigrationException(
                 "Cannot migrate $LEGACY_KEY_FACE_DETECTOR=$saved",
             )
@@ -170,6 +170,16 @@ internal object SettingsSchemaMigration {
         val speakerRuntime: SpeakerRuntime,
         val vadModel: VadModelOption,
     )
+}
+
+private fun Map<String, *>.requiredFaceDetectorModel(): FaceDetectorModelOption {
+    val value = optionalString(KEY_FACE_DETECTOR_MODEL)
+        ?: throw SettingsMigrationException("Current settings schema requires $KEY_FACE_DETECTOR_MODEL")
+    if (value == "YUNET_2023MAR_INT8") {
+        return FaceDetectorModelOption.YUNET_2026MAY_FP32
+    }
+    return enumValues<FaceDetectorModelOption>().firstOrNull { it.name == value }
+        ?: throw SettingsMigrationException("Unknown $KEY_FACE_DETECTOR_MODEL=$value")
 }
 
 private inline fun <reified T : Enum<T>> Map<String, *>.requiredEnum(key: String): T {

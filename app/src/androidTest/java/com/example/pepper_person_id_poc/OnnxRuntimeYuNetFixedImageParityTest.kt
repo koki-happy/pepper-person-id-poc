@@ -22,12 +22,9 @@ import org.opencv.objdetect.FaceDetectorYN
 @RunWith(AndroidJUnit4::class)
 class OnnxRuntimeYuNetFixedImageParityTest {
     @Test
-    fun fp32AndInt8ActualSessionMetadataAndFixedImageMatchOpenCvWithoutFallback() {
+    fun fp32ActualSessionMetadataAndFixedImageMatchOpenCvWithoutFallback() {
         assertTrue("OpenCV native runtime unavailable", OpenCVLoader.initLocal())
-        listOf(
-            FaceDetectorModelOption.YUNET_2026MAY_FP32,
-            FaceDetectorModelOption.YUNET_2023MAR_INT8,
-        ).forEach(::assertFixedImageParity)
+        assertFixedImageParity(FaceDetectorModelOption.YUNET_2026MAY_FP32)
     }
 
     private fun assertFixedImageParity(model: FaceDetectorModelOption) {

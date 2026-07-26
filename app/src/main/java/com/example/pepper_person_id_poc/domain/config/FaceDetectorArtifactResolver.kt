@@ -5,7 +5,6 @@ object FaceDetectorArtifactResolver {
     val logicalModels: List<FaceDetectorModelOption> = listOf(
         FaceDetectorModelOption.ML_KIT_BUNDLED,
         FaceDetectorModelOption.YUNET_2026MAY_FP32,
-        FaceDetectorModelOption.YUNET_2023MAR_INT8,
     )
 
     fun logicalModel(model: FaceDetectorModelOption): FaceDetectorModelOption = when (model) {
@@ -31,9 +30,6 @@ object FaceDetectorArtifactResolver {
             FaceDetectorModelOption.YUNET_2026MAY_MNN_FP32
         FaceDetectorModelOption.YUNET_2026MAY_FP32 to FaceDetectorRuntime.LITERT ->
             FaceDetectorModelOption.YUNET_2026MAY_LITERT_FP32
-        FaceDetectorModelOption.YUNET_2023MAR_INT8 to FaceDetectorRuntime.OPEN_CV,
-        FaceDetectorModelOption.YUNET_2023MAR_INT8 to FaceDetectorRuntime.ONNX_RUNTIME ->
-            FaceDetectorModelOption.YUNET_2023MAR_INT8
         else -> null
     }
 }

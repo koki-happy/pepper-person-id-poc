@@ -54,12 +54,6 @@ enum class FaceDetectorModelOption(
         modelFileName = "face_detection_yunet_2026may.onnx",
         description = "YuNet FP32 ONNX",
     ),
-    YUNET_2023MAR_INT8(
-        artifactId = "yunet-2023mar-onnx-int8",
-        displayName = "YuNet 2023mar INT8",
-        modelFileName = "face_detection_yunet_2023mar_int8.onnx",
-        description = "YuNet INT8 ONNX",
-    ),
     YUNET_2026MAY_LITERT_FP32(
         artifactId = "yunet-2026may-litert-fp32-320",
         displayName = "YuNet 2026may LiteRT FP32 320",

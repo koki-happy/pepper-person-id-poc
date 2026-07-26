@@ -7,13 +7,11 @@ import org.junit.Test
 
 class FaceDetectorRuntimeMatrixContractTest {
     @Test
-    fun bothOnnxYuNetArtifactsAcceptTheExactOnnxRuntimePair() {
-        listOf(
+    fun yuNet2026AcceptsTheExactOnnxRuntimePair() {
+        FaceDetectorFactory.requireExactPair(
             FaceDetectorModelOption.YUNET_2026MAY_FP32,
-            FaceDetectorModelOption.YUNET_2023MAR_INT8,
-        ).forEach { model ->
-            FaceDetectorFactory.requireExactPair(model, FaceDetectorRuntime.ONNX_RUNTIME)
-        }
+            FaceDetectorRuntime.ONNX_RUNTIME,
+        )
     }
 
     @Test

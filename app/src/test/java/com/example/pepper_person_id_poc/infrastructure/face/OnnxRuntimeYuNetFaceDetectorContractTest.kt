@@ -27,24 +27,6 @@ class OnnxRuntimeYuNetFaceDetectorContractTest {
     }
 
     @Test
-    fun exact2023Int8ContractPinsArtifactHashInputAndRawOutputs() {
-        val contract = OnnxRuntimeYuNetFaceDetector.contractFor(
-            FaceDetectorModelOption.YUNET_2023MAR_INT8,
-        )
-
-        assertThat(contract.artifactId).isEqualTo("yunet-2023mar-onnx-int8")
-        assertThat(contract.modelFileName).isEqualTo("face_detection_yunet_2023mar_int8.onnx")
-        assertThat(contract.fileSizeBytes).isEqualTo(100_416L)
-        assertThat(contract.sha256)
-            .isEqualTo("321aa5a6afabf7ecc46a3d06bfab2b579dc96eb5c3be7edd365fa04502ad9294")
-        assertExactTensorContract(contract, inputSize = 640)
-        assertThat(contract.input.metadataDimensions).containsExactly(1, 3, 640, 640).inOrder()
-        assertThat(contract.outputs.map { it.metadataDimensions })
-            .containsExactlyElementsIn(contract.outputs.map { it.dimensions })
-            .inOrder()
-    }
-
-    @Test
     fun rejectsEveryNonExactYuNetOnnxArtifactWithoutFallback() {
         assertThrows(IllegalArgumentException::class.java) {
             OnnxRuntimeYuNetFaceDetector.contractFor(
@@ -102,30 +84,6 @@ class OnnxRuntimeYuNetFaceDetectorContractTest {
     }
 
     @Test
-    fun int8DecoderUses640GridAndAnchorCounts() {
-        val contract = OnnxRuntimeYuNetFaceDetector.INT8_2023_CONTRACT
-        val outputs = contract.outputs.map { FloatArray(it.elementCount) }
-        val anchor = 2 * 20 + 3
-        outputs[2][anchor] = 0.81f
-        outputs[5][anchor] = 1f
-
-        val row = YuNetLiteRtPostprocessor.decode(
-            outputs = outputs,
-            imageWidth = 640,
-            imageHeight = 640,
-            scoreThreshold = 0.8f,
-            nmsThreshold = 0.3f,
-            topK = 5_000,
-            inputSize = contract.inputSize,
-        ).single().asOpenCvRow()
-
-        assertThat(row.copyOfRange(0, 4).asList())
-            .containsExactly(80f, 48f, 32f, 32f)
-            .inOrder()
-        assertThat(row[14]).isWithin(1e-6f).of(0.9f)
-    }
-
-    @Test
     fun dynamicMetadataWildcardAcceptsOnlyDynamicOrExactInferenceAxes() {
         val input = OnnxRuntimeYuNetFaceDetector.FP32_2026_CONTRACT.input
         val output = OnnxRuntimeYuNetFaceDetector.FP32_2026_CONTRACT.outputs.first()
@@ -136,17 +94,6 @@ class OnnxRuntimeYuNetFaceDetectorContractTest {
         assertThat(output.acceptsMetadataShape(listOf(1L, -1L, 1L))).isTrue()
         assertThat(output.acceptsMetadataShape(listOf(1L, 1_600L, 1L))).isTrue()
         assertThat(output.acceptsMetadataShape(listOf(1L, 6_400L, 1L))).isFalse()
-    }
-
-    @Test
-    fun int8MetadataRemainsExactWithNoWildcardAcceptance() {
-        val input = OnnxRuntimeYuNetFaceDetector.INT8_2023_CONTRACT.input
-        val output = OnnxRuntimeYuNetFaceDetector.INT8_2023_CONTRACT.outputs.first()
-
-        assertThat(input.acceptsMetadataShape(listOf(1L, 3L, 640L, 640L))).isTrue()
-        assertThat(input.acceptsMetadataShape(listOf(1L, 3L, -1L, -1L))).isFalse()
-        assertThat(output.acceptsMetadataShape(listOf(1L, 6_400L, 1L))).isTrue()
-        assertThat(output.acceptsMetadataShape(listOf(1L, -1L, 1L))).isFalse()
     }
 
     private fun assertExactTensorContract(contract: YuNetOnnxContract, inputSize: Int) {

@@ -9,7 +9,6 @@ class FaceDetectorArtifactResolverTest {
         assertThat(FaceDetectorArtifactResolver.logicalModels).containsExactly(
             FaceDetectorModelOption.ML_KIT_BUNDLED,
             FaceDetectorModelOption.YUNET_2026MAY_FP32,
-            FaceDetectorModelOption.YUNET_2023MAR_INT8,
         ).inOrder()
     }
 
@@ -29,15 +28,4 @@ class FaceDetectorArtifactResolverTest {
             .isEqualTo(FaceDetectorModelOption.YUNET_2026MAY_LITERT_FP32)
     }
 
-    @Test
-    fun yuNetInt8AcceptsOnlyDirectOnnxRuntimes() {
-        val model = FaceDetectorModelOption.YUNET_2023MAR_INT8
-
-        assertThat(FaceDetectorArtifactResolver.resolve(model, FaceDetectorRuntime.OPEN_CV))
-            .isEqualTo(model)
-        assertThat(FaceDetectorArtifactResolver.resolve(model, FaceDetectorRuntime.ONNX_RUNTIME))
-            .isEqualTo(model)
-        assertThat(FaceDetectorArtifactResolver.resolve(model, FaceDetectorRuntime.MNN)).isNull()
-        assertThat(FaceDetectorArtifactResolver.resolve(model, FaceDetectorRuntime.LITERT)).isNull()
-    }
 }

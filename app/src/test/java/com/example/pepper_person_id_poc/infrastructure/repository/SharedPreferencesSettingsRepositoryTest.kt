@@ -29,11 +29,11 @@ class SharedPreferencesSettingsRepositoryTest {
     }
 
     @Test
-    fun currentValidChoicesArePreservedExactly() {
+    fun removedYuNet2023ChoiceMigratesToYuNet2026() {
         val migrated = SettingsSchemaMigration.migrate(
             mapOf(
                 "settings_schema_version" to 2,
-                "face_detector_model" to FaceDetectorModelOption.YUNET_2023MAR_INT8.name,
+                "face_detector_model" to "YUNET_2023MAR_INT8",
                 "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
                 "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32.name,
                 "face_embedding_runtime" to FaceEmbeddingRuntime.NCNN.name,
@@ -43,7 +43,7 @@ class SharedPreferencesSettingsRepositoryTest {
             ),
         )
 
-        assertThat(migrated.faceDetectorModel).isEqualTo(FaceDetectorModelOption.YUNET_2023MAR_INT8)
+        assertThat(migrated.faceDetectorModel).isEqualTo(FaceDetectorModelOption.YUNET_2026MAY_FP32)
         assertThat(migrated.faceEmbeddingModel).isEqualTo(FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32)
         assertThat(migrated.faceEmbeddingRuntime).isEqualTo(FaceEmbeddingRuntime.NCNN)
         assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS)
