@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "scenarioSetId": "person-identification-acceptance-v1",
+  "scenarios": [
+    {
+      "key": "DIAG-001",
+      "androidId": "A-DIAG-001",
+      "pepperId": "P-DIAG-001",
+      "description": "API, ABI, front camera, 16 kHz microphone, and offline diagnostics",
+      "requiresHumanPresence": false,
+      "requiredEvidence": ["device-preflight", "ui-hierarchy", "targeted-logcat"]
+    },
+    {
+      "key": "FACE-001",
+      "androidId": "A-FACE-001",
+      "pepperId": "P-FACE-001",
+      "description": "One face creates and reuses one anonymous face ID and reports all candidates",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["face-present-checkpoint", "screenshot", "ui-hierarchy", "targeted-logcat", "structured-metrics"]
+    },
+    {
+      "key": "FACE-002",
+      "androidId": "A-FACE-002",
+      "pepperId": "P-FACE-002",
+      "description": "Multiple visible faces retain independent IDs and five-landmark diagnostics",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["face-present-checkpoint", "screenshot", "ui-hierarchy", "targeted-logcat", "structured-metrics"]
+    },
+    {
+      "key": "FACE-003",
+      "androidId": "A-FACE-003",
+      "pepperId": "P-FACE-003",
+      "description": "Low-quality face observation returns HOLD without repository mutation",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["face-present-checkpoint", "screenshot", "targeted-logcat", "repository-state"]
+    },
+    {
+      "key": "FACE-004",
+      "androidId": "A-FACE-004",
+      "pepperId": "P-FACE-004",
+      "description": "Explicit face runtime switching never falls back to another runtime",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["face-present-checkpoint", "screenshot", "targeted-logcat", "model-runtime-selection"]
+    },
+    {
+      "key": "SPK-001",
+      "androidId": "A-SPK-001",
+      "pepperId": "P-SPK-001",
+      "description": "One live speaker creates and reuses one anonymous speaker ID and reports all candidates",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["speech-present-checkpoint", "screenshot", "targeted-logcat", "structured-metrics"]
+    },
+    {
+      "key": "SPK-002",
+      "androidId": "A-SPK-002",
+      "pepperId": "P-SPK-002",
+      "description": "Alternating live speakers retain local track identity",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["speech-present-checkpoint", "screenshot", "targeted-logcat", "structured-metrics"]
+    },
+    {
+      "key": "SPK-003",
+      "androidId": "A-SPK-003",
+      "pepperId": "P-SPK-003",
+      "description": "Partial overlap updates identity only from solo speech segments",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["speech-present-checkpoint", "screenshot", "targeted-logcat", "structured-metrics"]
+    },
+    {
+      "key": "SPK-004",
+      "androidId": "A-SPK-004",
+      "pepperId": "P-SPK-004",
+      "description": "Full overlap, ambiguous speech, or multiple speakers returns HOLD",
+      "requiresHumanPresence": true,
+      "requiredEvidence": ["speech-present-checkpoint", "screenshot", "targeted-logcat", "repository-state"]
+    },
+    {
+      "key": "PRIV-001",
+      "androidId": "A-PRIV-001",
+      "pepperId": "P-PRIV-001",
+      "description": "No biometric or media files remain at rest and explicit exit clears the session",
+      "requiresHumanPresence": false,
+      "requiredEvidence": ["privacy-scan", "crash-report", "package-state"]
+    },
+    {
+      "key": "SOAK-015",
+      "androidId": "A-SOAK-015",
+      "pepperId": "P-SOAK-015",
+      "description": "Bounded 15-minute stability collection",
+      "requiresHumanPresence": false,
+      "soakMinutes": 15,
+      "requiredEvidence": ["soak-summary", "crash-report"]
+    },
+    {
+      "key": "SOAK-030",
+      "androidId": "A-SOAK-030",
+      "pepperId": "P-SOAK-030",
+      "description": "Bounded 30-minute stability collection",
+      "requiresHumanPresence": false,
+      "soakMinutes": 30,
+      "requiredEvidence": ["soak-summary", "crash-report"]
+    },
+    {
+      "key": "SOAK-060",
+      "androidId": "A-SOAK-060",
+      "pepperId": "P-SOAK-060",
+      "description": "Bounded 60-minute stability collection",
+      "requiresHumanPresence": false,
+      "soakMinutes": 60,
+      "requiredEvidence": ["soak-summary", "crash-report"]
+    }
+  ]
+}
