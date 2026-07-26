@@ -52,13 +52,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pepper_person_id_poc.application.contract.AnonymousFaceClusterRepository
 import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.application.face.FaceIdentityCoordinator
-import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraXPreviewController
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineFactory
+import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorFactory
 import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorPipeline
-import com.example.pepper_person_id_poc.infrastructure.face.MlKitFaceDetector
-import com.example.pepper_person_id_poc.infrastructure.face.YuNetFaceDetector
 import com.example.pepper_person_id_poc.ui.component.DeviceLoadPanel
 import java.util.Locale
 
@@ -72,8 +70,8 @@ fun CameraPreviewScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val engine = remember(settings.faceModel, settings.faceInferenceBackend) {
-        FaceEmbeddingEngineFactory.create(context, settings.faceModel, settings.faceInferenceBackend)
+    val engine = remember(settings.faceEmbeddingModel, settings.faceEmbeddingRuntime) {
+        FaceEmbeddingEngineFactory.create(context, settings.faceEmbeddingModel, settings.faceEmbeddingRuntime)
     }
     val coordinator = remember(repository, engine.modelName, settings.faceClusterJoinThreshold, settings.faceClusterMaxUpdateCount) {
         FaceIdentityCoordinator(
@@ -83,32 +81,25 @@ fun CameraPreviewScreen(
             maximumUpdateCount = settings.faceClusterMaxUpdateCount,
         )
     }
-    val detector: FaceDetectorPipeline = remember(coordinator, settings.faceDetector, engine) {
-        when (settings.faceDetector) {
-            FaceDetectorOption.ML_KIT_BUNDLED -> MlKitFaceDetector(
-                context = context,
-                embeddingEngine = engine,
-                analysisIntervalMillis = 1_000L,
-                estimateHeadPose = false,
-                onPoseObservations = coordinator::onFaceAnalysis,
-                onFeatureObservations = coordinator::onFeatureObservations,
-                onEmbeddingReady = coordinator::reportEmbeddingReady,
-                onEmbeddingError = coordinator::reportEmbeddingError,
-                onBenchmarkEvent = benchmarkLogger::append,
-            )
-            else -> YuNetFaceDetector(
-                context = context,
-                detectorOption = settings.faceDetector,
-                embeddingEngine = engine,
-                analysisIntervalMillis = 1_000L,
-                estimateHeadPose = false,
-                onPoseObservations = coordinator::onFaceAnalysis,
-                onFeatureObservations = coordinator::onFeatureObservations,
-                onEmbeddingReady = coordinator::reportEmbeddingReady,
-                onEmbeddingError = coordinator::reportEmbeddingError,
-                onBenchmarkEvent = benchmarkLogger::append,
-            )
-        }
+    val detector: FaceDetectorPipeline = remember(
+        coordinator,
+        settings.faceDetectorModel,
+        settings.faceDetectorRuntime,
+        engine,
+    ) {
+        FaceDetectorFactory.create(
+            context = context,
+            model = settings.faceDetectorModel,
+            runtime = settings.faceDetectorRuntime,
+            embeddingEngine = engine,
+            analysisIntervalMillis = 1_000L,
+            estimateHeadPose = false,
+            onPoseObservations = coordinator::onFaceAnalysis,
+            onFeatureObservations = coordinator::onFeatureObservations,
+            onEmbeddingReady = coordinator::reportEmbeddingReady,
+            onEmbeddingError = coordinator::reportEmbeddingError,
+            onBenchmarkEvent = benchmarkLogger::append,
+        )
     }
     val controller = remember(detector) { CameraXPreviewController(context, detector) }
     val surfaceRequest by controller.surfaceRequest.collectAsState()
@@ -237,8 +228,8 @@ fun CameraPreviewScreen(
                     modelSpaceId = identity.results.values.firstOrNull()
                         ?.evaluation?.candidates?.firstOrNull()?.modelSpaceId?.value
                         ?: engine.modelName,
-                    artifactId = settings.faceModel.modelFileName,
-                    runtimeId = settings.faceInferenceBackend.name,
+                    artifactId = settings.faceEmbeddingModel.artifactId,
+                    runtimeId = settings.faceEmbeddingRuntime.runtimeId,
                     qualityByTrackId = detection.faces.mapNotNull { face ->
                         face.qualityAssessment?.let { quality ->
                             val input = quality.input

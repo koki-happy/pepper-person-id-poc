@@ -71,3 +71,33 @@
 - **Decision**: 観測履歴、ID統合・分離、顔IDと話者IDの関連付け、特徴量の永続・暗号化保存を実装しない。
 - **Rationale**: ユーザーが不要と明示し、Constitution 3.0.0の匿名・モダリティ分離・セッション限定方針と一致する。
 - **Alternatives considered**: 外部改訂計画の該当項目を維持する案はユーザーの最新指示に反する。
+
+## User Story 3 supported matrix
+
+設定schema v2は検出モデル、検出runtime、特徴量モデル、特徴量runtimeを別キーで保存する。
+選択可否は`config/models.json`の正確なartifact/runtime/ABI/APIレコードとAPK内の資産名を
+照合して決め、`VERIFIED`または`BUILDABLE`だけを選択可能にする。
+
+| Pipeline | Artifact | Runtime | Catalog status / build scope |
+|---|---|---|---|
+| Detection | `mlkit-face-detection-16.1.7-bundled` | `mlkit-face-16.1.7-bundled` | BUILDABLE: ARM64, ARMv7 |
+| Detection | `yunet-2026may-onnx-fp32` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
+| Detection | `yunet-2023mar-onnx-int8` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
+| Embedding | `sface-2021dec-onnx-fp32` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
+| Embedding | `sface-2021dec-onnx-int8` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
+| Embedding | `face-0095-onnx-fp32` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
+| Embedding | `sface-2021dec-ncnn-fp32` | `ncnn-20260526-android-cpu` | BUILDABLE: ARMv7 only |
+| Embedding | `sface-2021dec-mnn-fp32` | `mnn-3.5.0-android-cpu` | BUILDABLE: ARMv7 only |
+| Embedding | `face-0095-ncnn-fp32` | `ncnn-20260526-android-cpu` | BUILDABLE: ARMv7 only |
+| Embedding | `face-0095-mnn-fp32` | `mnn-3.5.0-android-cpu` | BUILDABLE: ARMv7 only |
+| Embedding | `sface-2021dec-onnx-fp32` | `onnxruntime-mobile-1.27.0-android-cpu` | BLOCKED: custom Android AAR and equivalence evidence missing |
+
+上表にない組合せ、対象ABIのレコードがない組合せ、またはAPK内に資産がない組合せは
+`UNSUPPORTED`または`BLOCKED`として保存・実行を禁止する。factoryも同じ正確な組合せだけを
+生成し、ロード失敗時に別モデルや別runtimeへ切り替えない。
+
+Host evidence (2026-07-26):
+
+- settings migration, catalog selection, defaults, exact ID tests: `:app:testDebugUnitTest` passed
+- unsupported/missing-asset UI and no-fallback instrumentation: `:app:compileDebugAndroidTestKotlin` passed
+- instrumentation execution: Android development device is disconnected; device pass remains pending

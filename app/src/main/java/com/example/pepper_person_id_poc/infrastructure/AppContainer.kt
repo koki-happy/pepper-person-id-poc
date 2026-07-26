@@ -3,6 +3,7 @@ package com.example.pepper_person_id_poc.infrastructure
 import android.content.Context
 import com.example.pepper_person_id_poc.infrastructure.benchmark.JsonLinesBenchmarkLogger
 import com.example.pepper_person_id_poc.infrastructure.device.AndroidDeviceDiagnosticsProvider
+import com.example.pepper_person_id_poc.infrastructure.model.AndroidModelSelectionCoordinatorFactory
 import com.example.pepper_person_id_poc.infrastructure.repository.InMemoryAnonymousFaceClusterRepository
 import com.example.pepper_person_id_poc.infrastructure.repository.InMemoryAnonymousSpeakerClusterRepository
 import com.example.pepper_person_id_poc.infrastructure.repository.LegacyAnonymousClusterFiles
@@ -16,6 +17,7 @@ class AppContainer(context: Context) {
     }
 
     val settingsRepository by lazy { SharedPreferencesSettingsRepository(appContext) }
+    val modelSelectionCoordinator by lazy { AndroidModelSelectionCoordinatorFactory.create(appContext) }
     val diagnosticsProvider by lazy { AndroidDeviceDiagnosticsProvider(appContext) }
     val benchmarkLogger by lazy { JsonLinesBenchmarkLogger(appContext) }
     val anonymousFaceClusterRepository by lazy { InMemoryAnonymousFaceClusterRepository() }

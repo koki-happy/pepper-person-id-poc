@@ -5,12 +5,12 @@ import org.junit.Test
 
 class PocSettingsTest {
     @Test
-    fun defaultsUseCamPlusPlusAndItsThreshold() {
+    fun defaultsUseChineseEnglishCamPlusPlusAndItsThreshold() {
         val defaults = PocSettings()
         assertThat(defaults.isValid()).isTrue()
-        assertThat(defaults.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS)
+        assertThat(defaults.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN)
         assertThat(defaults.speakerClusterJoinThreshold)
-            .isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS.jvsCandidateThreshold)
+            .isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.jvsCandidateThreshold)
     }
 
     @Test

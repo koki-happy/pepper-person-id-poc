@@ -19,7 +19,7 @@ import com.example.pepper_person_id_poc.domain.face.FaceQualityThresholds
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
 import com.example.pepper_person_id_poc.domain.face.PixelBoundingBox
 import com.example.pepper_person_id_poc.domain.face.PixelFaceLandmark
-import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraFrameProcessor
 import java.io.Closeable
 import java.io.File
@@ -36,7 +36,7 @@ import org.opencv.objdetect.FaceDetectorYN
 
 class YuNetFaceDetector(
     context: Context,
-    private val detectorOption: FaceDetectorOption = FaceDetectorOption.YUNET_OPEN_CV,
+    private val detectorOption: FaceDetectorModelOption = FaceDetectorModelOption.YUNET_2026MAY_FP32,
     private val embeddingEngine: FaceEmbeddingEngine? = null,
     private val analysisIntervalMillis: Long = DEFAULT_ANALYSIS_INTERVAL_MILLIS,
     private val estimateHeadPose: Boolean = true,

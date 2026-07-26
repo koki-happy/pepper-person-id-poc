@@ -1,24 +1,46 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
-import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceModelFormat
+
+class UnsupportedModelRuntimePairException(message: String) : IllegalArgumentException(message)
 
 object FaceEmbeddingEngineFactory {
     fun create(
         context: Context,
-        model: FaceModelOption,
-        backend: FaceInferenceBackend,
+        model: FaceEmbeddingModelOption,
+        runtime: FaceEmbeddingRuntime,
     ): FaceEmbeddingEngine {
-        return when (backend) {
-            FaceInferenceBackend.OPEN_CV -> if (model.isSFace) {
+        requireExactPair(model, runtime)
+        return when (runtime) {
+            FaceEmbeddingRuntime.OPEN_CV -> if (model.isSFace) {
                 SFaceEmbeddingEngine(context, model)
             } else {
                 FaceReidentificationRetail0095EmbeddingEngine(context)
             }
-            FaceInferenceBackend.ONNX_RUNTIME -> OnnxRuntimeFaceEmbeddingEngine(context, model)
-            FaceInferenceBackend.NCNN -> NativeFaceEmbeddingEngine(context, model, backend)
-            FaceInferenceBackend.MNN -> NativeFaceEmbeddingEngine(context, model, backend)
+            FaceEmbeddingRuntime.ONNX_RUNTIME -> OnnxRuntimeFaceEmbeddingEngine(context, model)
+            FaceEmbeddingRuntime.NCNN,
+            FaceEmbeddingRuntime.MNN,
+            -> NativeFaceEmbeddingEngine(context, model, runtime)
+        }
+    }
+
+    fun requireExactPair(
+        model: FaceEmbeddingModelOption,
+        runtime: FaceEmbeddingRuntime,
+    ) {
+        val supported = when (runtime) {
+            FaceEmbeddingRuntime.OPEN_CV -> model.format == FaceModelFormat.ONNX
+            FaceEmbeddingRuntime.ONNX_RUNTIME -> false
+            FaceEmbeddingRuntime.NCNN -> model.format == FaceModelFormat.NCNN
+            FaceEmbeddingRuntime.MNN -> model.format == FaceModelFormat.MNN
+        }
+        if (!supported) {
+            throw UnsupportedModelRuntimePairException(
+                "Unsupported face embedding pair artifact=${model.artifactId} runtime=${runtime.runtimeId}; no fallback",
+            )
         }
     }
 }

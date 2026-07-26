@@ -20,11 +20,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
-import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
-import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
-import com.example.pepper_person_id_poc.domain.config.ModelImplementationStatus
+import com.example.pepper_person_id_poc.application.config.ModelPairAvailability
+import com.example.pepper_person_id_poc.application.config.ModelSelectionCoordinator
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 
@@ -32,18 +35,21 @@ import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 @Composable
 fun ModelSelectionScreen(
     settings: PocSettings,
+    selectionCoordinator: ModelSelectionCoordinator,
     settingsSaved: Boolean,
-    onFaceModelChanged: (FaceModelOption) -> Unit,
-    onFaceDetectorChanged: (FaceDetectorOption) -> Unit,
-    onFaceInferenceBackendChanged: (FaceInferenceBackend) -> Unit,
+    onFaceDetectorModelChanged: (FaceDetectorModelOption) -> Unit,
+    onFaceDetectorRuntimeChanged: (FaceDetectorRuntime) -> Unit,
+    onFaceEmbeddingModelChanged: (FaceEmbeddingModelOption) -> Unit,
+    onFaceEmbeddingRuntimeChanged: (FaceEmbeddingRuntime) -> Unit,
     onSpeakerModelChanged: (SpeakerModelOption) -> Unit,
     onSave: () -> Unit,
     onBackToSettings: () -> Unit,
 ) {
+    val settingsAvailability = selectionCoordinator.resolve(settings)
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("モデル選択") },
+                title = { Text("モデル・runtime選択") },
                 navigationIcon = {
                     Button(onClick = onBackToSettings, modifier = Modifier.padding(horizontal = 8.dp)) {
                         Text("← 設定")
@@ -58,93 +64,126 @@ fun ModelSelectionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp),
+                .padding(20.dp)
+                .testTag("model-selection-screen"),
         ) {
-            ModelCard(title = "顔検出・追跡") {
-                FaceDetectorOption.entries.forEach { option ->
+            ModelCard(title = "顔検出モデル資産") {
+                FaceDetectorModelOption.entries.forEach { option ->
+                    val availability = FaceDetectorRuntime.entries
+                        .map { selectionCoordinator.resolve(option.artifactId, it.runtimeId) }
+                        .bestAvailability()
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = option.description,
-                        selected = settings.faceDetector == option,
-                        onClick = { onFaceDetectorChanged(option) },
+                        subtitle = option.details(availability),
+                        selected = settings.faceDetectorModel == option,
+                        enabled = availability.selectable,
+                        onClick = { onFaceDetectorModelChanged(option) },
                     )
                 }
             }
 
-            ModelCard(title = "顔識別モデル") {
-                FaceModelOption.entries.forEach { option ->
+            ModelCard(title = "顔検出runtime") {
+                FaceDetectorRuntime.entries.forEach { option ->
+                    val availability = selectionCoordinator.resolve(
+                        settings.faceDetectorModel.artifactId,
+                        option.runtimeId,
+                    )
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = buildString {
-                            append(option.modelFileName)
-                            if (option == FaceModelOption.SFACE_2021DEC_INT8) {
-                                append("\n対応推論基盤: OpenCV 5.0.0 DNN")
-                            }
-                            if (option.implementationStatus == ModelImplementationStatus.PENDING) {
-                                append("\n実装状態: 未実装 / 推論起動: 無効")
-                            } else if (option.implementationStatus == ModelImplementationStatus.UNAVAILABLE) {
-                                append("\nPepper互換性: 非対応 / 欠落要素: OpenVINO IRランタイム")
-                            }
-                        },
-                        selected = settings.faceModel == option,
-                        onClick = { onFaceModelChanged(option) },
+                        subtitle = option.description + availability.details(),
+                        selected = settings.faceDetectorRuntime == option,
+                        enabled = availability.selectable,
+                        onClick = { onFaceDetectorRuntimeChanged(option) },
                     )
                 }
             }
 
-            ModelCard(title = "顔特徴量の推論基盤") {
-                FaceInferenceBackend.entries.forEach { option ->
-                    val supported = settings.faceModel.supports(option)
+            ModelCard(title = "顔特徴量モデル資産") {
+                FaceEmbeddingModelOption.entries.forEach { option ->
+                    val availability = FaceEmbeddingRuntime.entries
+                        .map { selectionCoordinator.resolve(option.artifactId, it.runtimeId) }
+                        .bestAvailability()
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = buildString {
-                            append(option.description)
-                            option.runtimeArtifact?.let { append("\nローカル成果物: $it") }
-                            if (!supported) append("\n選択中の顔識別モデルでは未対応")
-                        },
-                        selected = settings.faceInferenceBackend == option,
-                        enabled = supported,
-                        onClick = { onFaceInferenceBackendChanged(option) },
+                        subtitle = "${option.modelFileName}\nartifact=${option.artifactId}" + availability.details(),
+                        selected = settings.faceEmbeddingModel == option,
+                        enabled = availability.selectable,
+                        onClick = { onFaceEmbeddingModelChanged(option) },
                     )
                 }
             }
 
-            ModelCard(title = "話者識別モデル") {
+            ModelCard(title = "顔特徴量runtime") {
+                FaceEmbeddingRuntime.entries.forEach { option ->
+                    val availability = selectionCoordinator.resolve(
+                        settings.faceEmbeddingModel.artifactId,
+                        option.runtimeId,
+                    )
+                    ModelChoice(
+                        title = option.displayName,
+                        subtitle = option.description + availability.details(),
+                        selected = settings.faceEmbeddingRuntime == option,
+                        enabled = availability.selectable,
+                        onClick = { onFaceEmbeddingRuntimeChanged(option) },
+                    )
+                }
+            }
+
+            ModelCard(title = "話者特徴量モデル") {
                 SpeakerModelOption.entries.forEach { option ->
+                    val availability = selectionCoordinator.resolve(
+                        option.artifactId,
+                        settings.speakerRuntime.runtimeId,
+                    )
                     ModelChoice(
                         title = option.displayName,
-                        subtitle = buildString {
-                            append("${option.modelFileName}\n16 kHz mono PCM / sherpa-onnx")
-                            append("\nJVS候補: 閾値 %.3f / Top-2 margin %.3f".format(
-                                java.util.Locale.US,
-                                option.jvsCandidateThreshold,
-                                option.jvsCandidateMargin,
-                            ))
-                            if (option == SpeakerModelOption.CAM_PLUS_PLUS) {
-                                append("\n新規設定の既定")
-                            } else if (option == SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN) {
-                                append("\nJVS評価 第1候補")
-                            } else if (option == SpeakerModelOption.ERES2NET) {
-                                append("\nJVS評価 第2候補 / Pepper既存スモーク実績")
-                            }
-                        },
+                        subtitle = "${option.modelFileName}\nartifact=${option.artifactId}" + availability.details(),
                         selected = settings.speakerModel == option,
+                        enabled = availability.selectable,
                         onClick = { onSpeakerModelChanged(option) },
                     )
                 }
             }
 
+            val vadAvailability = settingsAvailability.vad
             Text(
-                "閾値プリセット: JVS studio評価値 / 調整入力: Pepperマイク収録音声\n" +
-                    "モデル配布: Git管理外のローカルアセット / モデル欠落時: エラー / フォールバック: 無効",
-                color = MaterialTheme.colorScheme.primary,
+                "VAD: ${settings.vadModel.displayName} / ${settings.speakerRuntime.displayName}" +
+                    vadAvailability.details(),
+                color = if (vadAvailability.selectable) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+                modifier = Modifier.testTag("vad-compatibility"),
             )
-            Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+            if (!settingsAvailability.selectable) {
+                Text(
+                    "保存不可: BLOCKEDまたはUNSUPPORTEDの組合せがあります",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("selection-blocked"),
+                )
+            }
+            Button(
+                onClick = onSave,
+                enabled = settingsAvailability.selectable,
+                modifier = Modifier.fillMaxWidth().testTag("save-model-selection"),
+            ) {
                 Text(if (settingsSaved) "モデル選択を保存しました" else "モデル選択を保存")
             }
         }
     }
 }
+
+private fun FaceDetectorModelOption.details(availability: ModelPairAvailability): String =
+    "${description}\nartifact=$artifactId" + availability.details()
+
+private fun ModelPairAvailability.details(): String = buildString {
+    append("\nstatus=$status")
+    reason?.let { append("\nreason=$it") }
+}
+
+private fun List<ModelPairAvailability>.bestAvailability(): ModelPairAvailability =
+    firstOrNull { it.selectable } ?: first()
 
 @Composable
 private fun ModelCard(
@@ -167,7 +206,7 @@ private fun ModelChoice(
     title: String,
     subtitle: String,
     selected: Boolean,
-    enabled: Boolean = true,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
@@ -180,7 +219,11 @@ private fun ModelChoice(
         RadioButton(selected = selected, enabled = enabled, onClick = onClick)
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

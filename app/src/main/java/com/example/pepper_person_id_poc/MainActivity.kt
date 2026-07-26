@@ -39,7 +39,12 @@ class MainActivity : ComponentActivity() {
     private val app by lazy { application as PepperPersonIdApplication }
     private val container get() = app.container
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory(container.settingsRepository, container.diagnosticsProvider, container.benchmarkLogger)
+        MainViewModelFactory(
+            container.settingsRepository,
+            container.modelSelectionCoordinator,
+            container.diagnosticsProvider,
+            container.benchmarkLogger,
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,10 +87,12 @@ class MainActivity : ComponentActivity() {
                             )
                             AppScreen.ModelSelection -> ModelSelectionScreen(
                                 settings = uiState.settings,
+                                selectionCoordinator = container.modelSelectionCoordinator,
                                 settingsSaved = uiState.settingsSaved,
-                                onFaceModelChanged = viewModel::updateFaceModel,
-                                onFaceDetectorChanged = viewModel::updateFaceDetector,
-                                onFaceInferenceBackendChanged = viewModel::updateFaceInferenceBackend,
+                                onFaceDetectorModelChanged = viewModel::updateFaceDetectorModel,
+                                onFaceDetectorRuntimeChanged = viewModel::updateFaceDetectorRuntime,
+                                onFaceEmbeddingModelChanged = viewModel::updateFaceEmbeddingModel,
+                                onFaceEmbeddingRuntimeChanged = viewModel::updateFaceEmbeddingRuntime,
                                 onSpeakerModelChanged = viewModel::updateSpeakerModel,
                                 onSave = viewModel::saveSettings,
                                 onBackToSettings = viewModel::returnToSettings,

@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.pepper_person_id_poc.application.contract.BenchmarkLogger
 import com.example.pepper_person_id_poc.application.contract.DeviceDiagnosticsProvider
 import com.example.pepper_person_id_poc.application.contract.SettingsRepository
+import com.example.pepper_person_id_poc.application.config.ModelSelectionCoordinator
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
-import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
-import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
@@ -23,6 +25,7 @@ import kotlinx.coroutines.withContext
 
 class MainViewModel(
     private val settingsRepository: SettingsRepository,
+    private val modelSelectionCoordinator: ModelSelectionCoordinator,
     private val diagnosticsProvider: DeviceDiagnosticsProvider,
     private val benchmarkLogger: BenchmarkLogger,
 ) : ViewModel() {
@@ -39,18 +42,15 @@ class MainViewModel(
     fun updateFaceClusterMaxUpdateCount(value: Int) = update { copy(faceClusterMaxUpdateCount = value.coerceIn(PocSettings.CLUSTER_MAX_UPDATE_COUNT_RANGE)) }
     fun updateSpeakerClusterJoinThreshold(value: Float) = update { copy(speakerClusterJoinThreshold = value.coerceIn(PocSettings.SCORE_RANGE)) }
     fun updateSpeakerClusterMaxUpdateCount(value: Int) = update { copy(speakerClusterMaxUpdateCount = value.coerceIn(PocSettings.CLUSTER_MAX_UPDATE_COUNT_RANGE)) }
-    fun updateFaceModel(value: FaceModelOption) = update {
-        copy(faceModel = value, faceInferenceBackend = faceInferenceBackend.takeIf(value::supports) ?: FaceInferenceBackend.OPEN_CV)
-    }
-    fun updateFaceDetector(value: FaceDetectorOption) = update { copy(faceDetector = value) }
-    fun updateFaceInferenceBackend(value: FaceInferenceBackend) = update {
-        if (faceModel.supports(value)) copy(faceInferenceBackend = value) else this
-    }
+    fun updateFaceDetectorModel(value: FaceDetectorModelOption) = update { copy(faceDetectorModel = value) }
+    fun updateFaceDetectorRuntime(value: FaceDetectorRuntime) = update { copy(faceDetectorRuntime = value) }
+    fun updateFaceEmbeddingModel(value: FaceEmbeddingModelOption) = update { copy(faceEmbeddingModel = value) }
+    fun updateFaceEmbeddingRuntime(value: FaceEmbeddingRuntime) = update { copy(faceEmbeddingRuntime = value) }
     fun updateSpeakerModel(value: SpeakerModelOption) = update { withSpeakerModel(value) }
 
     fun saveSettings() {
         val settings = mutableUiState.value.settings
-        if (!settings.isValid()) return
+        if (!settings.isValid() || !modelSelectionCoordinator.resolve(settings).selectable) return
         settingsRepository.save(settings)
         mutableUiState.update { it.copy(settingsSaved = true) }
     }

@@ -1,7 +1,7 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import java.io.File
 import java.nio.FloatBuffer
 import java.util.Collections
@@ -10,7 +10,7 @@ import org.opencv.core.Mat
 /** Uses reflection so normal builds remain possible until the API-23/ARMv7 custom AAR is generated. */
 class OnnxRuntimeFaceEmbeddingEngine(
     context: Context,
-    private val model: FaceModelOption,
+    private val model: FaceEmbeddingModelOption,
 ) : FaceEmbeddingEngine {
     private val appContext = context.applicationContext
     private var environment: Any? = null

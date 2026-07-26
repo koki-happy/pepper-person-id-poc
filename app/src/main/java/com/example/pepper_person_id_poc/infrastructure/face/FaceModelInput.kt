@@ -1,6 +1,6 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.Size
@@ -15,7 +15,7 @@ internal data class FaceModelInput(
 )
 
 internal fun prepareFaceModelInput(
-    model: FaceModelOption,
+    model: FaceEmbeddingModelOption,
     imageBgr: Mat,
     detectedFace: Mat,
 ): FaceModelInput {

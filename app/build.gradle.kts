@@ -6,6 +6,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val generatedModelCatalogAssets = layout.buildDirectory.dir("generated/modelCatalogAssets/main")
+val generateModelCatalogAsset by tasks.registering(Copy::class) {
+    from(rootProject.file("config/models.json"))
+    into(generatedModelCatalogAssets.map { it.dir("model-catalog") })
+}
+
 android {
     namespace = "com.example.pepper_person_id_poc"
     compileSdk {
@@ -59,6 +65,7 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets.getByName("main").assets.srcDir(generatedModelCatalogAssets.get().asFile)
     if (file("src/main/cpp/third_party/ready.marker").isFile) {
         externalNativeBuild {
             cmake {
@@ -67,6 +74,10 @@ android {
             }
         }
     }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(generateModelCatalogAsset)
 }
 
 val verifyModelArtifactHashes by tasks.registering {

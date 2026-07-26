@@ -17,6 +17,23 @@ data class ParsedModelCatalog(
     val modelSpaceIds: Set<String>,
     val runtimeIds: Set<String>,
     val artifactIds: Set<String>,
+    val artifacts: List<ParsedCatalogArtifact>,
+)
+
+data class ParsedCatalogArtifact(
+    val artifactId: String,
+    val role: String,
+    val format: String,
+    val filename: String?,
+    val runtimeCompatibility: List<ParsedRuntimeCompatibility>,
+)
+
+data class ParsedRuntimeCompatibility(
+    val runtimeId: String,
+    val abi: String,
+    val minApi: Int,
+    val status: String,
+    val reason: String?,
 )
 
 class JsonModelCatalogRepository {
@@ -37,7 +54,7 @@ class JsonModelCatalogRepository {
         val runtimeIds = runtimes.uniqueIds("runtimeId")
         val artifactIds = artifacts.uniqueIds("artifactId")
 
-        artifacts.forEach { artifact ->
+        val parsedArtifacts = artifacts.map { artifact ->
             val artifactId = artifact.requiredString("artifactId")
             val role = artifact.requiredString("role")
             val modelSpaceId = artifact.optionalString("modelSpaceId")
@@ -60,7 +77,7 @@ class JsonModelCatalogRepository {
                 require(it > 0) { "$artifactId fileSizeBytes must be positive" }
             }
 
-            artifact.requiredObjects("runtimeCompatibility").forEach { compatibility ->
+            val parsedCompatibility = artifact.requiredObjects("runtimeCompatibility").map { compatibility ->
                 require(compatibility.requiredString("artifactId") == artifactId) {
                     "runtime compatibility must reference $artifactId"
                 }
@@ -70,7 +87,8 @@ class JsonModelCatalogRepository {
                 }
                 require(compatibility.requiredString("abi").isNotBlank())
                 require(compatibility.requiredInt("minApi") >= 1)
-                when (val status = compatibility.requiredString("status")) {
+                val status = compatibility.requiredString("status")
+                when (status) {
                     "VERIFIED" -> require(!compatibility.optionalString("evidence").isNullOrBlank()) {
                         "VERIFIED compatibility requires evidence"
                     }
@@ -81,6 +99,13 @@ class JsonModelCatalogRepository {
                     "BUILDABLE", "CONVERSION_REQUIRED" -> Unit
                     else -> error("Unknown compatibility status=$status")
                 }
+                ParsedRuntimeCompatibility(
+                    runtimeId = runtimeId,
+                    abi = compatibility.requiredString("abi"),
+                    minApi = compatibility.requiredInt("minApi"),
+                    status = status,
+                    reason = compatibility.optionalString("reason"),
+                )
             }
 
             artifact.optionalObject("conversion")?.let { conversion ->
@@ -96,6 +121,13 @@ class JsonModelCatalogRepository {
                     conversion.requiredString("outputSha256"),
                 )
             }
+            ParsedCatalogArtifact(
+                artifactId = artifactId,
+                role = role,
+                format = format,
+                filename = filename,
+                runtimeCompatibility = parsedCompatibility,
+            )
         }
 
         return ParsedModelCatalog(
@@ -103,6 +135,7 @@ class JsonModelCatalogRepository {
             modelSpaceIds = modelSpaceIds,
             runtimeIds = runtimeIds,
             artifactIds = artifactIds,
+            artifacts = parsedArtifacts,
         )
     }
 }

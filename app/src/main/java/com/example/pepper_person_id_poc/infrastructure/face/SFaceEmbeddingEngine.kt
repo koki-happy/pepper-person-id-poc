@@ -1,14 +1,14 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import java.io.File
 import org.opencv.core.Mat
 import org.opencv.objdetect.FaceRecognizerSF
 
 class SFaceEmbeddingEngine(
     context: Context,
-    private val model: FaceModelOption = FaceModelOption.SFACE_2021DEC,
+    private val model: FaceEmbeddingModelOption = FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
 ) : FaceEmbeddingEngine {
     init {
         require(model.isSFace)

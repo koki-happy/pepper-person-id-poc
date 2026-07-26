@@ -1,18 +1,18 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
 import android.content.Context
-import com.example.pepper_person_id_poc.domain.config.FaceInferenceBackend
-import com.example.pepper_person_id_poc.domain.config.FaceModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import java.io.File
 import org.opencv.core.Mat
 
 class NativeFaceEmbeddingEngine(
     context: Context,
-    private val model: FaceModelOption,
-    private val backend: FaceInferenceBackend,
+    private val model: FaceEmbeddingModelOption,
+    private val backend: FaceEmbeddingRuntime,
 ) : FaceEmbeddingEngine {
     init {
-        require(backend == FaceInferenceBackend.NCNN || backend == FaceInferenceBackend.MNN)
+        require(backend == FaceEmbeddingRuntime.NCNN || backend == FaceEmbeddingRuntime.MNN)
     }
 
     private val appContext = context.applicationContext
@@ -46,18 +46,21 @@ class NativeFaceEmbeddingEngine(
         if (handle != 0L) return handle
         initializationFailure?.let { throw IllegalStateException("$modelName initialization failed", it) }
         return runCatching {
-            val baseName = model.modelFileName.removeSuffix(".onnx")
             val modelDirectory = File(appContext.filesDir, "models").apply { mkdirs() }
             when (backend) {
-                FaceInferenceBackend.NCNN -> {
-                    copyAsset("models/$baseName.ncnn.param", File(modelDirectory, "$baseName.ncnn.param"))
-                    copyAsset("models/$baseName.ncnn.bin", File(modelDirectory, "$baseName.ncnn.bin"))
-                    NativeBridge.createNcnn(File(modelDirectory, "$baseName.ncnn.param").absolutePath,
-                        File(modelDirectory, "$baseName.ncnn.bin").absolutePath)
+                FaceEmbeddingRuntime.NCNN -> {
+                    val parameterName = model.modelFileName
+                    val weightsName = parameterName.removeSuffix(".param") + ".bin"
+                    copyAsset("models/$parameterName", File(modelDirectory, parameterName))
+                    copyAsset("models/$weightsName", File(modelDirectory, weightsName))
+                    NativeBridge.createNcnn(
+                        File(modelDirectory, parameterName).absolutePath,
+                        File(modelDirectory, weightsName).absolutePath,
+                    )
                 }
-                FaceInferenceBackend.MNN -> {
-                    val file = File(modelDirectory, "$baseName.mnn")
-                    copyAsset("models/$baseName.mnn", file)
+                FaceEmbeddingRuntime.MNN -> {
+                    val file = File(modelDirectory, model.modelFileName)
+                    copyAsset("models/${model.modelFileName}", file)
                     NativeBridge.createMnn(file.absolutePath)
                 }
                 else -> error("Unsupported native backend: $backend")
