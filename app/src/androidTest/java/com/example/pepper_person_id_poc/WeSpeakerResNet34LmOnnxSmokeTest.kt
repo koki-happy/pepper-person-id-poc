@@ -15,8 +15,28 @@ import org.junit.runner.RunWith
 class WeSpeakerResNet34LmOnnxSmokeTest {
     @Test
     fun pinnedOnnxRunsFixedPcmThroughSherpaWithoutFallback() {
+        runModel(
+            model = SpeakerModelOption.WESPEAKER_RESNET34_LM,
+            expectedHash = WESPEAKER_SHA256,
+            expectedDimension = 256,
+        )
+    }
+
+    @Test
+    fun camPlusPlusChineseEnglishRunsFixedPcmThroughSherpaWithoutFallback() {
+        runModel(
+            model = SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN,
+            expectedHash = CAM_PLUS_PLUS_ZH_EN_SHA256,
+            expectedDimension = 192,
+        )
+    }
+
+    private fun runModel(
+        model: SpeakerModelOption,
+        expectedHash: String,
+        expectedDimension: Int,
+    ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val model = SpeakerModelOption.WESPEAKER_RESNET34_LM
         val assetPath = "models/${model.modelFileName}"
         val hash = context.assets.open(assetPath).use { input ->
             val digest = MessageDigest.getInstance("SHA-256")
@@ -28,7 +48,7 @@ class WeSpeakerResNet34LmOnnxSmokeTest {
             }
             digest.digest().joinToString("") { "%02x".format(it) }
         }
-        assertThat(hash).isEqualTo(EXPECTED_SHA256)
+        assertThat(hash).isEqualTo(expectedHash)
 
         val fixedPcm = ShortArray(SAMPLE_RATE * 3) { index ->
             val seconds = index.toDouble() / SAMPLE_RATE
@@ -38,11 +58,11 @@ class WeSpeakerResNet34LmOnnxSmokeTest {
         val engine = SherpaOnnxSpeakerEmbeddingEngine(context, model, numThreads = 1)
         try {
             engine.prepare()
-            assertThat(engine.modelName).isEqualTo("wespeaker-resnet34-lm")
-            assertThat(engine.embeddingDimension).isEqualTo(256)
+            assertThat(engine.modelName).isEqualTo(model.configModelId)
+            assertThat(engine.embeddingDimension).isEqualTo(expectedDimension)
             val first = engine.extract(fixedPcm, SAMPLE_RATE)
             val second = engine.extract(fixedPcm, SAMPLE_RATE)
-            assertThat(first).hasLength(256)
+            assertThat(first).hasLength(expectedDimension)
             assertThat(first.all(Float::isFinite)).isTrue()
             assertThat(first.any { it != 0f }).isTrue()
             assertThat(second.toList()).containsExactlyElementsIn(first.toList()).inOrder()
@@ -53,6 +73,9 @@ class WeSpeakerResNet34LmOnnxSmokeTest {
 
     private companion object {
         const val SAMPLE_RATE = 16_000
-        const val EXPECTED_SHA256 = "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605"
+        const val WESPEAKER_SHA256 =
+            "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605"
+        const val CAM_PLUS_PLUS_ZH_EN_SHA256 =
+            "aa3cfc16963a10586a9393f5035d6d6b57e98d358b347f80c2a30bf4f00ceba2"
     }
 }

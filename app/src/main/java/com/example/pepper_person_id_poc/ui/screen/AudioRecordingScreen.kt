@@ -45,8 +45,8 @@ import com.example.pepper_person_id_poc.application.speaker.SpeakerIdentityUiSta
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
 import com.example.pepper_person_id_poc.infrastructure.audio.AndroidPcmAudioRecorder
-import com.example.pepper_person_id_poc.infrastructure.speaker.PyannoteSegmentationOnnxEngine
 import com.example.pepper_person_id_poc.infrastructure.speaker.SherpaOnnxSpeakerEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.speaker.VadGatedSingleSpeakerSegmentationEngine
 import com.example.pepper_person_id_poc.ui.component.DeviceLoadPanel
 import com.example.pepper_person_id_poc.ui.component.StageMetricUiState
 import java.util.Locale
@@ -76,7 +76,7 @@ fun AudioRecordingScreen(
             embeddingModelSpaceId = ModelSpaceId(settings.speakerModel.modelSpaceId),
             embeddingArtifactId = settings.speakerModel.artifactId,
             embeddingRuntimeId = "sherpa-onnx-1.13.4-android-cpu",
-            segmentationEngine = PyannoteSegmentationOnnxEngine(context),
+            segmentationEngine = VadGatedSingleSpeakerSegmentationEngine(),
         )
     }
     val recorder = remember(coordinator) {

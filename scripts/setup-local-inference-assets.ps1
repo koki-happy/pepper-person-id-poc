@@ -23,11 +23,6 @@ $artifacts = @(
         Sha256 = "2B0E941E6F16CC048C20AEE0C8E31F569118F65D702914540F7BFDC14048D78A"
     },
     @{
-        RelativePath = "app/src/benchmark/assets/models/face_detection_yunet_2023mar_int8.onnx"
-        Url = "https://huggingface.co/opencv/face_detection_yunet/resolve/main/face_detection_yunet_2023mar_int8.onnx"
-        Sha256 = "321AA5A6AFABF7ECC46A3D06BFAB2B579DC96EB5C3BE7EDD365FA04502AD9294"
-    },
-    @{
         RelativePath = "app/src/benchmark/assets/models/face-reidentification-retail-0095.xml"
         Url = "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/face-reidentification-retail-0095/FP32/face-reidentification-retail-0095.xml"
         Sha256 = "6CF60C341452155E35C467510C6C50A96ADE5B2BD8F88C5A90902E905D8A80C3"
@@ -48,29 +43,9 @@ $artifacts = @(
         Sha256 = "9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6"
     },
     @{
-        RelativePath = "app/src/benchmark/assets/models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"
-        Url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx"
-        Sha256 = "357A834F702B80161E5B981182C038E18553C1F2CA752ED6CEC2052365D4129B"
-    },
-    @{
         RelativePath = "app/src/benchmark/assets/models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx"
         Url = "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx?download=true"
         Sha256 = "AA3CFC16963A10586A9393F5035D6D6B57E98D358B347F80C2A30BF4F00CEBA2"
-    },
-    @{
-        RelativePath = "app/src/benchmark/assets/models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
-        Url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
-        Sha256 = "C59158379255AD66E161679CCA6AF8D52D51E389E3224AB7D7A7BAAE295C2DB5"
-    },
-    @{
-        RelativePath = "app/src/benchmark/assets/models/nemo_en_speakerverification_speakernet.onnx"
-        Url = "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_speakerverification_speakernet.onnx?download=true"
-        Sha256 = "D204DC8AAC0014B8543F05FC8E310510C7022BC65B6452C203EC205EF7A66B23"
-    },
-    @{
-        RelativePath = "app/src/benchmark/assets/models/nemo_en_titanet_small.onnx"
-        Url = "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_titanet_small.onnx?download=true"
-        Sha256 = "AD4A1802485D8B34C722D2A9D04249662F2ECE5D28A7A039063CA22F515A789E"
     },
     @{
         RelativePath = "app/src/androidTest/assets/speaker-test/fangjun-sr-1.wav"

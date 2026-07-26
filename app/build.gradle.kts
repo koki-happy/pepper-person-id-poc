@@ -578,20 +578,12 @@ val verifyReleaseModelLicenses by tasks.registering {
 
     doLast {
         val requiredCatalogIds = setOf(
-            "campplus-en",
             "campplus-zh-en",
-            "eres2net-en",
             "wespeaker-resnet34-lm",
-            "speakernet-m",
-            "titanet-s",
         )
         val requiredBundledModels = mapOf(
-            "campplus-en" to "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
             "campplus-zh-en" to "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
-            "eres2net-en" to "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
             "wespeaker-resnet34-lm" to "wespeaker_en_voxceleb_resnet34_LM.onnx",
-            "speakernet-m" to "nemo_en_speakerverification_speakernet.onnx",
-            "titanet-s" to "nemo_en_titanet_small.onnx",
         )
         val allowedNonSpeakerOnnxAssets = setOf(
             "face-reidentification-retail-0095.onnx",
