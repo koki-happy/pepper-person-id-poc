@@ -1,5 +1,7 @@
 package com.example.pepper_person_id_poc.application.config
 
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingArtifactResolver
+import com.example.pepper_person_id_poc.domain.config.FaceDetectorArtifactResolver
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.domain.model.CompatibilityStatus
 import com.example.pepper_person_id_poc.infrastructure.model.ParsedModelCatalog
@@ -76,8 +78,26 @@ class ModelSelectionCoordinator(
     }
 
     fun resolve(settings: PocSettings): SettingsPairAvailability = SettingsPairAvailability(
-        detector = resolve(settings.faceDetectorModel.artifactId, settings.faceDetectorRuntime.runtimeId),
-        embedding = resolve(settings.faceEmbeddingModel.artifactId, settings.faceEmbeddingRuntime.runtimeId),
+        detector = FaceDetectorArtifactResolver.resolve(
+            settings.faceDetectorModel,
+            settings.faceDetectorRuntime,
+        )?.let { resolve(it.artifactId, settings.faceDetectorRuntime.runtimeId) }
+            ?: unavailable(
+                settings.faceDetectorModel.artifactId,
+                settings.faceDetectorRuntime.runtimeId,
+                CompatibilityStatus.UNSUPPORTED,
+                "No exact artifact exists for this logical face detector/runtime pair",
+            ),
+        embedding = FaceEmbeddingArtifactResolver.resolve(
+            settings.faceEmbeddingModel,
+            settings.faceEmbeddingRuntime,
+        )?.let { resolve(it.artifactId, settings.faceEmbeddingRuntime.runtimeId) }
+            ?: unavailable(
+                settings.faceEmbeddingModel.artifactId,
+                settings.faceEmbeddingRuntime.runtimeId,
+                CompatibilityStatus.UNSUPPORTED,
+                "No exact artifact exists for this logical face model/runtime pair",
+            ),
         speaker = resolve(settings.speakerModel.artifactId, settings.speakerRuntime.runtimeId),
         vad = resolve(settings.vadModel.artifactId, settings.speakerRuntime.runtimeId),
     )

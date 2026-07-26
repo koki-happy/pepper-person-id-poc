@@ -23,17 +23,27 @@ class SFaceEmbeddingEngine(
         getOrCreateRecognizer()
     }
 
-    override fun extract(imageBgr: Mat, detectedFace: Mat): FloatArray {
+    override fun extract(imageBgr: Mat, detectedFace: Mat): FloatArray =
+        extractMeasured(imageBgr, detectedFace).embedding
+
+    override fun extractMeasured(imageBgr: Mat, detectedFace: Mat): FaceEmbeddingExtraction {
         val activeRecognizer = getOrCreateRecognizer()
         val alignedFace = Mat()
         val feature = Mat()
         try {
+            val alignmentStarted = System.nanoTime()
             activeRecognizer.alignCrop(imageBgr, detectedFace, alignedFace)
+            val alignmentMillis = (System.nanoTime() - alignmentStarted) / 1_000_000L
+            val embeddingStarted = System.nanoTime()
             activeRecognizer.feature(alignedFace, feature)
             val embedding = FloatArray((feature.total() * feature.channels()).toInt())
             feature.get(0, 0, embedding)
             require(embedding.isNotEmpty()) { "SFace produced an empty embedding" }
-            return embedding
+            return FaceEmbeddingExtraction(
+                embedding = embedding,
+                alignmentMillis = alignmentMillis,
+                embeddingMillis = (System.nanoTime() - embeddingStarted) / 1_000_000L,
+            )
         } finally {
             feature.release()
             alignedFace.release()

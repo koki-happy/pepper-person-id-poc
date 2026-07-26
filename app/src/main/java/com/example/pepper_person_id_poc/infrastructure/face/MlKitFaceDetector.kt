@@ -121,6 +121,9 @@ class MlKitFaceDetector(
         analysisFps: Float,
         startedAtNanos: Long,
     ) {
+        val detectionMillis =
+            (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
+        val qualityStartedAtNanos = SystemClock.elapsedRealtimeNanos()
         val boxes = faces.map { it.normalizedBoundingBox(bgr.cols(), bgr.rows()) }
         val detectedLandmarkCounts = faces.map { it.availableFiveLandmarkCount() }
         val fallbackTracks = fallbackTracker.update(boxes, detectedLandmarkCounts)
@@ -144,6 +147,8 @@ class MlKitFaceDetector(
                 },
             ).withQuality(qualityAssessment(bgr, boxes[index], fallbackTracks[index], face))
         }
+        val qualityMillis =
+            (SystemClock.elapsedRealtimeNanos() - qualityStartedAtNanos) / 1_000_000L
         val processingMillis = (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
         val detectedFaces = observations.map { observation ->
             DetectedFace(
@@ -169,13 +174,13 @@ class MlKitFaceDetector(
             observations.mapNotNull { observation ->
                 if (observation.trackId !in embeddingTrackIds) return@mapNotNull null
                 val row = observation.toDetectorRow(bgr.cols(), bgr.rows())
-                val embeddingStartedAtNanos = SystemClock.elapsedRealtimeNanos()
                 try {
-                    runCatching { activeEngine.extract(bgr, row) }
+                    runCatching { activeEngine.extractMeasured(bgr, row) }
                         .onFailure(::reportEmbeddingFailure)
                         .getOrNull()
-                        ?.let { embedding ->
-                            val elapsed = (SystemClock.elapsedRealtimeNanos() - embeddingStartedAtNanos) / 1_000_000L
+                        ?.let { extraction ->
+                            val embedding = extraction.embedding
+                            val elapsed = extraction.embeddingMillis
                             onBenchmarkEvent(
                                 BenchmarkEvent(
                                     event = "face_embedding",
@@ -193,6 +198,10 @@ class MlKitFaceDetector(
                                 embedding = embedding,
                                 embeddingTimeMillis = elapsed,
                                 qualityAssessment = observation.qualityAssessment,
+                                preprocessingTimeMillis = extraction.preprocessingMillis,
+                                detectionTimeMillis = detectionMillis,
+                                qualityTimeMillis = qualityMillis,
+                                alignmentTimeMillis = extraction.alignmentMillis,
                             )
                         }
                 } finally {

@@ -6,6 +6,7 @@ import importlib.metadata
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -83,8 +84,17 @@ def convert(
         immutable_copy = temporary / source.name
         shutil.copy2(source, immutable_copy)
         conversion_directory = temporary / "converted"
+        converter = shutil.which("onnx2tf")
+        if converter is None:
+            adjacent = Path(sys.executable).with_name(
+                "onnx2tf.exe" if sys.platform == "win32" else "onnx2tf"
+            )
+            if adjacent.is_file():
+                converter = str(adjacent)
+        if converter is None:
+            raise RuntimeError("onnx2tf executable is unavailable in the pinned environment")
         command = [
-            "onnx2tf",
+            converter,
             "-i",
             str(immutable_copy),
             "-o",
@@ -110,6 +120,7 @@ def convert(
     if sha256(source) != source_hash_before:
         raise RuntimeError("source model changed during conversion")
     public_command = list(command)
+    public_command[0] = "onnx2tf"
     public_command[2] = source.name
     public_command[4] = "OUTPUT_DIRECTORY"
     return manifest(

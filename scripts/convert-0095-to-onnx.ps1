@@ -5,9 +5,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$xml = Join-Path $repoRoot "app/src/main/assets/models/face-reidentification-retail-0095.xml"
-$bin = Join-Path $repoRoot "app/src/main/assets/models/face-reidentification-retail-0095.bin"
-$output = Join-Path $repoRoot "app/src/main/assets/models/face-reidentification-retail-0095.onnx"
+$xml = Join-Path $repoRoot "app/src/benchmark/assets/models/face-reidentification-retail-0095.xml"
+$bin = Join-Path $repoRoot "app/src/benchmark/assets/models/face-reidentification-retail-0095.bin"
+$output = Join-Path $repoRoot "app/src/benchmark/assets/models/face-reidentification-retail-0095.onnx"
 $workDirectory = Join-Path $repoRoot "datasets/0095-conversion"
 $venv = Join-Path $workDirectory "venv"
 $venvPython = Join-Path $venv "Scripts/python.exe"
@@ -27,7 +27,7 @@ if ((Get-FileHash -Algorithm SHA256 -LiteralPath $bin).Hash -ne $expected.Bin) {
 if ((Test-Path -LiteralPath $output) -and
     ((Get-FileHash -Algorithm SHA256 -LiteralPath $output).Hash -eq $expected.Onnx) -and
     -not $Force) {
-    Write-Host "Verified app/src/main/assets/models/face-reidentification-retail-0095.onnx"
+    Write-Host "Verified app/src/benchmark/assets/models/face-reidentification-retail-0095.onnx"
     exit 0
 }
 
@@ -56,11 +56,11 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to convert 0095 IR to ONNX" }
     --ir $xml `
     --onnx $temporary `
     --face-assets (Join-Path $repoRoot "app/src/androidTest/assets/face-test") `
-    --detector (Join-Path $repoRoot "app/src/main/assets/models/face_detection_yunet_2026may.onnx") `
+    --detector (Join-Path $repoRoot "app/src/benchmark/assets/models/face_detection_yunet_2026may.onnx") `
     --output (Join-Path $workDirectory "validation.json")
 if ($LASTEXITCODE -ne 0) { throw "0095 conversion validation failed" }
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $temporary).Hash -ne $expected.Onnx) {
     throw "Unexpected converted 0095 ONNX SHA-256"
 }
 Copy-Item -LiteralPath $temporary -Destination $output -Force
-Write-Host "Converted and validated app/src/main/assets/models/face-reidentification-retail-0095.onnx"
+Write-Host "Converted and validated app/src/benchmark/assets/models/face-reidentification-retail-0095.onnx"

@@ -6,19 +6,22 @@
     { "modelSpaceId": "face-sface-int8-opencv-128-l2-v1", "modality": "FACE", "embeddingDimension": 128, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
     { "modelSpaceId": "face-sface-fp32-ncnn-128-l2-unverified", "modality": "FACE", "embeddingDimension": 128, "normalization": "L2", "equivalenceStatus": "UNVERIFIED" },
     { "modelSpaceId": "face-sface-fp32-mnn-128-l2-unverified", "modality": "FACE", "embeddingDimension": 128, "normalization": "L2", "equivalenceStatus": "UNVERIFIED" },
+    { "modelSpaceId": "face-sface-fp32-litert-128-l2-unverified", "modality": "FACE", "embeddingDimension": 128, "normalization": "L2", "equivalenceStatus": "UNVERIFIED" },
     { "modelSpaceId": "face-0095-256-l2-v1", "modality": "FACE", "embeddingDimension": 256, "normalization": "L2", "equivalenceStatus": "VERIFIED_IR_TO_ONNX" },
     { "modelSpaceId": "face-0095-ncnn-256-l2-unverified", "modality": "FACE", "embeddingDimension": 256, "normalization": "L2", "equivalenceStatus": "UNVERIFIED" },
     { "modelSpaceId": "face-0095-mnn-256-l2-unverified", "modality": "FACE", "embeddingDimension": 256, "normalization": "L2", "equivalenceStatus": "UNVERIFIED" },
     { "modelSpaceId": "speaker-campplus-en-512-l2-v1", "modality": "SPEAKER", "embeddingDimension": 512, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
     { "modelSpaceId": "speaker-campplus-zh-en-192-l2-v1", "modality": "SPEAKER", "embeddingDimension": 192, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
     { "modelSpaceId": "speaker-eres2net-en-192-l2-v1", "modality": "SPEAKER", "embeddingDimension": 192, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
+    { "modelSpaceId": "speaker-wespeaker-resnet34-lm-256-l2-v1", "modality": "SPEAKER", "embeddingDimension": 256, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
     { "modelSpaceId": "speaker-speakernet-m-256-l2-v1", "modality": "SPEAKER", "embeddingDimension": 256, "normalization": "L2", "equivalenceStatus": "REFERENCE" },
     { "modelSpaceId": "speaker-titanet-s-192-l2-v1", "modality": "SPEAKER", "embeddingDimension": 192, "normalization": "L2", "equivalenceStatus": "REFERENCE" }
   ],
   "runtimes": [
     { "runtimeId": "mlkit-face-16.1.7-bundled", "name": "ML Kit Face Detection", "version": "16.1.7", "provider": "ANDROID_CPU", "license": "UNVERIFIED", "licenseEvidence": null },
     { "runtimeId": "opencv-5.0.0-android-cpu", "name": "OpenCV Android", "version": "5.0.0", "provider": "ANDROID_CPU", "license": "Apache-2.0", "licenseEvidence": "https://github.com/opencv/opencv/blob/5.0.0/LICENSE" },
-    { "runtimeId": "onnxruntime-mobile-1.27.0-android-cpu", "name": "ONNX Runtime Mobile", "version": "1.27.0", "provider": "ANDROID_CPU", "license": "MIT", "licenseEvidence": "https://github.com/microsoft/onnxruntime/blob/v1.27.0/LICENSE" },
+    { "runtimeId": "litert-2.1.6-android-cpu", "name": "Google LiteRT CompiledModel", "version": "2.1.6", "provider": "ANDROID_CPU_ONLY", "license": "Apache-2.0", "licenseEvidence": "https://github.com/google-ai-edge/LiteRT/blob/v2.1.6/LICENSE" },
+    { "runtimeId": "onnxruntime-android-1.20.0-cpu", "name": "ONNX Runtime Android", "version": "1.20.0", "provider": "ANDROID_CPU", "license": "MIT", "licenseEvidence": "https://github.com/microsoft/onnxruntime/blob/v1.20.0/LICENSE" },
     { "runtimeId": "ncnn-20260526-android-cpu", "name": "ncnn", "version": "20260526", "provider": "ANDROID_CPU_NO_VULKAN_NO_OPENMP", "license": "BSD-3-Clause", "licenseEvidence": "https://github.com/Tencent/ncnn/blob/20260526/LICENSE.txt" },
     { "runtimeId": "mnn-3.5.0-android-cpu", "name": "MNN", "version": "3.5.0", "provider": "ANDROID_CPU", "license": "Apache-2.0", "licenseEvidence": "https://github.com/alibaba/MNN/blob/3.5.0/LICENSE.txt" },
     { "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "name": "sherpa-onnx static ONNX Runtime", "version": "1.13.4", "provider": "ANDROID_CPU", "license": "Apache-2.0 AND MIT", "licenseEvidence": "https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.4/LICENSE" },
@@ -46,7 +49,49 @@
       "outputShape": [1, 1, null, 15], "outputSemantics": "bounding box, score, and five landmarks per detection", "opset": 11, "conversion": null,
       "runtimeCompatibility": [
         { "artifactId": "yunet-2026may-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "yunet-2026may-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }
+        { "artifactId": "yunet-2026may-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "yunet-2026may-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "The exact YuNet ONNX path is implemented, but ONNX Runtime API23/ARMv7 symbol and live Pepper acceptance evidence are missing; no fallback is allowed.", "evidence": null },
+        { "artifactId": "yunet-2026may-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact ONNX artifact, hash, tensor contract, and raw 12-head decoder are implemented; ARM64 device parity remains required.", "evidence": "Host contract tests pin input, all 12 output heads, artifact size, and SHA-256." }
+      ],
+      "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE"
+    },
+    {
+      "artifactId": "yunet-2026may-litert-fp32-320", "modelSpaceId": null, "modality": "FACE", "role": "DETECTION",
+      "architecture": "YuNet", "precision": "FP32", "format": "TFLITE", "filename": "face_detection_yunet_2026may_320.tflite",
+      "sourceUrl": "https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet", "sourceRevision": "2026may", "sha256": "e9ef1bee56db8d5aea88edba67515fc182d56eeb36acfbf8b1dff7f77934885d", "fileSizeBytes": 238836,
+      "inputShape": [1, 3, 320, 320], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "scale": "1.0", "mean": "0.0" },
+      "outputShape": [[1,1600,1],[1,400,1],[1,100,1],[1,1600,1],[1,400,1],[1,100,1],[1,1600,4],[1,400,4],[1,100,4],[1,1600,10],[1,400,10],[1,100,10]], "outputSemantics": "cls8/16/32, obj8/16/32, bbox8/16/32, kps8/16/32 before YuNet decode and NMS", "opset": null,
+      "conversion": { "sourceArtifactId": "yunet-2026may-onnx-fp32", "tool": "onnx2tf", "toolRevision": "1.28.2", "environmentDigest": "7a348ea21a089544b379f2d615010af2cda448438b29e4a5932c950b36b2ac4b", "command": "See normalized tracked LiteRT conversion manifest.", "convertedAt": "2026-07-26T06:23:42.486813+00:00", "outputSha256": "e9ef1bee56db8d5aea88edba67515fc182d56eeb36acfbf8b1dff7f77934885d", "tensorMetadata": { "input": "input FLOAT32 [1,3,320,320]", "outputs": "Identity..Identity_11 FLOAT32; anchors 1600/400/100; components 1/4/10" }, "warnings": ["onnx2tf strict accuracy correction was disabled.", "Identity_11 kps32 uses a conversion-only 10x10x10 transpose (2,0,1); LiteRtYuNetFaceDetector must invert it with (1,2,0) before decode.", "Runtime acceptance on ARM64 Android and Pepper ARMv7 remains unverified."] },
+      "runtimeCompatibility": [
+        { "artifactId": "yunet-2026may-litert-fp32-320", "runtimeId": "litert-2.1.6-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and adapter-level tensor equivalence are complete; Pepper inference acceptance remains required.", "evidence": "All outputs except raw Identity_11 max abs <= 6.8e-6; kps32 after exact inverse-permutation adapter max abs 1.31e-5." },
+        { "artifactId": "yunet-2026may-litert-fp32-320", "runtimeId": "litert-2.1.6-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and adapter-level tensor equivalence are complete; ARM64 device inference acceptance remains required.", "evidence": "All outputs except raw Identity_11 max abs <= 6.8e-6; kps32 after exact inverse-permutation adapter max abs 1.31e-5." }
+      ],
+      "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE"
+    },
+    {
+      "artifactId": "yunet-2026may-ncnn-fp32-320", "modelSpaceId": null, "modality": "FACE", "role": "DETECTION",
+      "architecture": "YuNet", "precision": "FP32", "format": "NCNN", "filename": "face_detection_yunet_2026may_320.ncnn.param",
+      "companionFiles": [{ "filename": "face_detection_yunet_2026may_320.ncnn.bin", "sha256": "8faa696d61ad6bf5c13ed5d6c8ae35e376c660968db53d723a329020856ca5c9", "fileSizeBytes": 212628 }],
+      "sourceUrl": "https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet", "sourceRevision": "2026may", "sha256": "f3b6ec99c4773da6edc0950f0fb1d6d728982114114e87a673780eb243b72bbf", "fileSizeBytes": 9089,
+      "inputShape": [1, 3, 320, 320], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "scale": "1.0", "mean": "0.0" },
+      "outputShape": [[1,1600,1],[1,400,1],[1,100,1],[1,1600,1],[1,400,1],[1,100,1],[1,1600,4],[1,400,4],[1,100,4],[1,1600,10],[1,400,10],[1,100,10]], "outputSemantics": "out0..out11 mapped to cls/obj/bbox/kps at strides 8/16/32 before shared decode and NMS", "opset": null,
+      "conversion": { "sourceArtifactId": "yunet-2026may-onnx-fp32", "tool": "pnnx", "toolRevision": "20260526", "environmentDigest": "See scripts/native-face/manifests/yunet-2026may-320-native.json", "command": "pnnx fixed-320.onnx inputshape=[1,3,320,320]f32 fp16=0 optlevel=2", "convertedAt": null, "outputSha256": "f3b6ec99c4773da6edc0950f0fb1d6d728982114114e87a673780eb243b72bbf", "tensorMetadata": { "input": "input FLOAT32 [1,3,320,320]", "outputs": "out0..out11 in shared YuNet postprocessor order" }, "warnings": ["Fixed-shape intermediary SHA-256 is pinned in the native conversion manifest.", "Cross-runtime fixed-image device parity remains required."] },
+      "runtimeCompatibility": [
+        { "artifactId": "yunet-2026may-ncnn-fp32-320", "runtimeId": "ncnn-20260526-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact converted assets, JNI 12-head inference, and contiguous-NCHW host parity are complete; Pepper inference acceptance remains required.", "evidence": "All 12 ncnn outputs agree with ONNX Runtime at maximum absolute error 3.34e-6 or less." },
+        { "artifactId": "yunet-2026may-ncnn-fp32-320", "runtimeId": "ncnn-20260526-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact converted assets, JNI 12-head inference, and contiguous-NCHW host parity are complete; ARM64 device acceptance remains required.", "evidence": "All 12 ncnn outputs agree with ONNX Runtime at maximum absolute error 3.34e-6 or less." }
+      ],
+      "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE"
+    },
+    {
+      "artifactId": "yunet-2026may-mnn-fp32-320", "modelSpaceId": null, "modality": "FACE", "role": "DETECTION",
+      "architecture": "YuNet", "precision": "FP32", "format": "MNN", "filename": "face_detection_yunet_2026may_320.mnn",
+      "sourceUrl": "https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet", "sourceRevision": "2026may", "sha256": "31cb825bbff3cfe1535cc40dc27e72c3614c8efcc0f3ae00beb1b557f5f04b69", "fileSizeBytes": 226056,
+      "inputShape": [1, 3, 320, 320], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "scale": "1.0", "mean": "0.0" },
+      "outputShape": [[1,1600,1],[1,400,1],[1,100,1],[1,1600,1],[1,400,1],[1,100,1],[1,1600,4],[1,400,4],[1,100,4],[1,1600,10],[1,400,10],[1,100,10]], "outputSemantics": "named cls/obj/bbox/kps outputs at strides 8/16/32 before shared decode and NMS", "opset": null,
+      "conversion": { "sourceArtifactId": "yunet-2026may-onnx-fp32", "tool": "MNNConvert", "toolRevision": "3.5.0", "environmentDigest": "See scripts/native-face/manifests/yunet-2026may-320-native.json", "command": "MNNConvert fixed-320.onnx --keepInputFormat --optimizeLevel 1 --compressionParamsFile fixed-uuid.json", "convertedAt": null, "outputSha256": "31cb825bbff3cfe1535cc40dc27e72c3614c8efcc0f3ae00beb1b557f5f04b69", "tensorMetadata": { "input": "input FLOAT32 [1,3,320,320]", "outputs": "cls/obj/bbox/kps named tensors in shared postprocessor order" }, "warnings": ["MNNConvert 3.5.0 may terminate with Windows access violation after Converted Success; only the exact pinned output hash is accepted.", "Cross-runtime fixed-image device parity remains required."] },
+      "runtimeCompatibility": [
+        { "artifactId": "yunet-2026may-mnn-fp32-320", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact converted asset, JNI 12-head inference, and host raw-output parity are complete; Pepper inference acceptance remains required.", "evidence": "All 12 MNN outputs agree with ONNX Runtime at maximum absolute error 3.6e-6 or less." },
+        { "artifactId": "yunet-2026may-mnn-fp32-320", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact converted asset, JNI 12-head inference, and host raw-output parity are complete; ARM64 device acceptance remains required.", "evidence": "All 12 MNN outputs agree with ONNX Runtime at maximum absolute error 3.6e-6 or less." }
       ],
       "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE"
     },
@@ -58,7 +103,9 @@
       "outputShape": [1, 1, null, 15], "outputSemantics": "bounding box, score, and five landmarks per detection", "opset": 11, "conversion": null,
       "runtimeCompatibility": [
         { "artifactId": "yunet-2023mar-onnx-int8", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "yunet-2023mar-onnx-int8", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }
+        { "artifactId": "yunet-2023mar-onnx-int8", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "yunet-2023mar-onnx-int8", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "The exact INT8 ONNX path is implemented, but ONNX Runtime API23/ARMv7 symbol and live Pepper acceptance evidence are missing; no fallback is allowed.", "evidence": null },
+        { "artifactId": "yunet-2023mar-onnx-int8", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact QLinear ONNX artifact, hash, tensor contract, and raw 12-head decoder are implemented; ARM64 device parity remains required.", "evidence": "Host contract tests pin input, all 12 output heads, artifact size, and SHA-256." }
       ],
       "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE"
     },
@@ -71,8 +118,21 @@
       "runtimeCompatibility": [
         { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
         { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "onnxruntime-mobile-1.27.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "Custom API-23 ARMv7 AAR is not present in the repository and runtime equivalence is unverified.", "evidence": null },
-        { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "onnxruntime-mobile-1.27.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BLOCKED", "reason": "Custom Android AAR and runtime equivalence evidence are not present.", "evidence": null }
+        { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "Pepper ARMv7 is not accepted for the packaged ONNX Runtime Android dependency; no fallback is allowed.", "evidence": null },
+        { "artifactId": "sface-2021dec-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact ARM64 dependency com.microsoft.onnxruntime:onnxruntime-android:1.20.0 is packaged; device smoke acceptance remains required.", "evidence": null }
+      ],
+      "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/LICENSE"
+    },
+    {
+      "artifactId": "sface-2021dec-litert-fp32", "modelSpaceId": "face-sface-fp32-litert-128-l2-unverified", "modality": "FACE", "role": "EMBEDDING",
+      "architecture": "MobileFaceNet with SFace loss", "precision": "FP32", "format": "TFLITE", "filename": "face_recognition_sface_2021dec.tflite",
+      "sourceUrl": "https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface", "sourceRevision": "2021dec", "sha256": "0859a63b74c8373ce47464d1834678193786282aad35911491c0505f2cacba1e", "fileSizeBytes": 38549364,
+      "inputShape": [1, 3, 112, 112], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "scale": "1/128", "mean": "127.5", "output": "L2" },
+      "outputShape": [1, 128], "outputSemantics": "face embedding", "opset": null,
+      "conversion": { "sourceArtifactId": "sface-2021dec-onnx-fp32", "tool": "onnx2tf", "toolRevision": "1.28.2", "environmentDigest": "7a348ea21a089544b379f2d615010af2cda448438b29e4a5932c950b36b2ac4b", "command": "See normalized tracked LiteRT conversion manifest.", "convertedAt": "2026-07-26T06:22:24.297233+00:00", "outputSha256": "0859a63b74c8373ce47464d1834678193786282aad35911491c0505f2cacba1e", "tensorMetadata": { "input": "data FLOAT32 [1,3,112,112]", "output": "Identity FLOAT32 [1,128]" }, "warnings": ["onnx2tf strict accuracy correction was disabled.", "Fixed-input normalized embedding cosine against ONNX is 0.99999999988; model-space equivalence remains provisional until device acceptance.", "Runtime acceptance on ARM64 Android and Pepper ARMv7 remains unverified."] },
+      "runtimeCompatibility": [
+        { "artifactId": "sface-2021dec-litert-fp32", "runtimeId": "litert-2.1.6-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and fixed-input cosine verification are complete; Pepper inference acceptance remains required.", "evidence": "Normalized embedding cosine against ONNX: 0.99999999988." },
+        { "artifactId": "sface-2021dec-litert-fp32", "runtimeId": "litert-2.1.6-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and fixed-input cosine verification are complete; ARM64 device inference acceptance remains required.", "evidence": "Normalized embedding cosine against ONNX: 0.99999999988." }
       ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/LICENSE"
     },
@@ -110,7 +170,22 @@
       "conversion": { "sourceArtifactId": "face-0095-openvino-ir-fp32", "tool": "openvino2onnx", "toolRevision": "1.1.0", "environmentDigest": "UNRECORDED", "command": "openvino2onnx INPUT_XML OUTPUT_ONNX --opset-version 13 --infer-shapes", "convertedAt": null, "outputSha256": "861d2edc47214f19fe973f97a05b2bd8ba61e103279fe232f0365534903dd589", "tensorMetadata": { "input": "1x3x128x128 BGR", "output": "1x256x1x1" }, "warnings": ["OpenVINO IR to ONNX is an experimental reverse conversion."] },
       "runtimeCompatibility": [
         { "artifactId": "face-0095-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "face-0095-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }
+        { "artifactId": "face-0095-onnx-fp32", "runtimeId": "opencv-5.0.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "face-0095-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "Pepper ARMv7 is not accepted for the packaged ONNX Runtime Android dependency; no fallback is allowed.", "evidence": null },
+        { "artifactId": "face-0095-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact ARM64 dependency com.microsoft.onnxruntime:onnxruntime-android:1.20.0 is packaged; device smoke acceptance remains required.", "evidence": null }
+      ],
+      "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/LICENSE"
+    },
+    {
+      "artifactId": "face-0095-litert-fp32", "modelSpaceId": "face-0095-256-l2-v1", "modality": "FACE", "role": "EMBEDDING",
+      "architecture": "MobileNet V2", "precision": "FP32", "format": "TFLITE", "filename": "face-reidentification-retail-0095.tflite",
+      "sourceUrl": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/models/intel/face-reidentification-retail-0095/model.yml", "sourceRevision": "Open Model Zoo master snapshot used by conversion script", "sha256": "6ad2a160ab016b84a55442dcb2cd1d36b684aa9e8324357411b14a77756c68d8", "fileSizeBytes": 4475508,
+      "inputShape": [1, 3, 128, 128], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "scale": "1.0", "mean": "0.0" },
+      "outputShape": [1, 1, 1, 256], "outputSemantics": "L2-normalized face embedding after exact LiteRT output flattening", "opset": null,
+      "conversion": { "sourceArtifactId": "face-0095-onnx-fp32", "tool": "onnx2tf", "toolRevision": "1.28.2", "environmentDigest": "7a348ea21a089544b379f2d615010af2cda448438b29e4a5932c950b36b2ac4b", "command": "See scripts/litert/manifests/face-0095-litert.json.", "convertedAt": "2026-07-26T07:29:02.765159+00:00", "outputSha256": "6ad2a160ab016b84a55442dcb2cd1d36b684aa9e8324357411b14a77756c68d8", "tensorMetadata": { "input": "0 FLOAT32 [1,3,128,128], raw BGR 0..255", "output": "Identity FLOAT32 [1,1,1,256]" }, "warnings": ["onnx2tf strict accuracy correction was disabled.", "Fixed-input normalized embedding cosine against ONNX is 0.99999994 with maximum absolute error 2.17e-7.", "Android ARM64 and Pepper ARMv7 runtime acceptance remain unverified."] },
+      "runtimeCompatibility": [
+        { "artifactId": "face-0095-litert-fp32", "runtimeId": "litert-2.1.6-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and fixed-input numerical equivalence are complete; Pepper inference acceptance remains required.", "evidence": "Normalized embedding cosine 0.99999994; maximum absolute error 2.17e-7." },
+        { "artifactId": "face-0095-litert-fp32", "runtimeId": "litert-2.1.6-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Conversion and fixed-input numerical equivalence are complete; ARM64 device inference acceptance remains required.", "evidence": "Normalized embedding cosine 0.99999994; maximum absolute error 2.17e-7." }
       ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/LICENSE"
     },
@@ -122,7 +197,10 @@
       "inputShape": [1, 3, 112, 112], "inputLayout": "NCHW", "inputColorOrder": "RGB", "normalization": { "scale": "1/128", "mean": "127.5", "output": "L2" },
       "outputShape": [1, 128], "outputSemantics": "face embedding", "opset": null,
       "conversion": { "sourceArtifactId": "sface-2021dec-onnx-fp32", "tool": "pnnx", "toolRevision": "20260526", "environmentDigest": "UNRECORDED", "command": "pnnx INPUT_ONNX inputshape=[1,3,112,112] ncnnparam=OUTPUT_PARAM ncnnbin=OUTPUT_BIN fp16=0", "convertedAt": null, "outputSha256": "51f2ce5e65c8759acd9d21a4b50f21fbf74f4e50246fac8238ba509473ca18da", "tensorMetadata": { "input": "1x3x112x112", "output": "1x128" }, "warnings": ["Cross-runtime numeric equivalence is unverified."] },
-      "runtimeCompatibility": [{ "artifactId": "sface-2021dec-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }],
+      "runtimeCompatibility": [
+        { "artifactId": "sface-2021dec-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "sface-2021dec-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": "ARM64 ncnn library and converted model are packaged; device inference acceptance remains required." }
+      ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/LICENSE"
     },
     {
@@ -132,7 +210,10 @@
       "inputShape": [1, 3, 112, 112], "inputLayout": "NCHW", "inputColorOrder": "RGB", "normalization": { "scale": "1/128", "mean": "127.5", "output": "L2" },
       "outputShape": [1, 128], "outputSemantics": "face embedding", "opset": null,
       "conversion": { "sourceArtifactId": "sface-2021dec-onnx-fp32", "tool": "MNNConvert", "toolRevision": "3.5.0", "environmentDigest": "UNRECORDED", "command": "MNNConvert -f ONNX --modelFile INPUT_ONNX --MNNModel OUTPUT_MNN --bizCode MNN", "convertedAt": null, "outputSha256": "76b234c08b657581f1280f5dc09e676603c88cf41d7ed3945aa99d46f1a0eca1", "tensorMetadata": { "input": "1x3x112x112", "output": "1x128" }, "warnings": ["Cross-runtime numeric equivalence is unverified."] },
-      "runtimeCompatibility": [{ "artifactId": "sface-2021dec-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }],
+      "runtimeCompatibility": [
+        { "artifactId": "sface-2021dec-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "sface-2021dec-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": "ARM64 MNN library and converted model are packaged; device inference acceptance remains required." }
+      ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/LICENSE"
     },
     {
@@ -143,7 +224,10 @@
       "inputShape": [1, 3, 128, 128], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "embedded": "BGR-to-RGB and /255", "output": "L2" },
       "outputShape": [1, 256], "outputSemantics": "face embedding", "opset": null,
       "conversion": { "sourceArtifactId": "face-0095-onnx-fp32", "tool": "pnnx", "toolRevision": "20260526", "environmentDigest": "UNRECORDED", "command": "pnnx INPUT_ONNX inputshape=[1,3,128,128] ncnnparam=OUTPUT_PARAM ncnnbin=OUTPUT_BIN fp16=0", "convertedAt": null, "outputSha256": "c028f0401614593a89ccec2444a55e75292117ae9158d7b1cfe3a0bf9896b11f", "tensorMetadata": { "input": "1x3x128x128", "output": "1x256" }, "warnings": ["Cross-runtime numeric equivalence is unverified."] },
-      "runtimeCompatibility": [{ "artifactId": "face-0095-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }],
+      "runtimeCompatibility": [
+        { "artifactId": "face-0095-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "face-0095-ncnn-fp32", "runtimeId": "ncnn-20260526-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": "ARM64 ncnn library and converted model are packaged; device inference acceptance remains required." }
+      ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/LICENSE"
     },
     {
@@ -153,7 +237,10 @@
       "inputShape": [1, 3, 128, 128], "inputLayout": "NCHW", "inputColorOrder": "BGR", "normalization": { "embedded": "BGR-to-RGB and /255", "output": "L2" },
       "outputShape": [1, 256], "outputSemantics": "face embedding", "opset": null,
       "conversion": { "sourceArtifactId": "face-0095-onnx-fp32", "tool": "MNNConvert", "toolRevision": "3.5.0", "environmentDigest": "UNRECORDED", "command": "MNNConvert -f ONNX --modelFile INPUT_ONNX --MNNModel OUTPUT_MNN --bizCode MNN", "convertedAt": null, "outputSha256": "01fbf9ba970e1fd0498d01a515ab82b1f5ff6b14a1ed3f28d27b80f8ba4bee47", "tensorMetadata": { "input": "1x3x128x128", "output": "1x256" }, "warnings": ["Cross-runtime numeric equivalence is unverified."] },
-      "runtimeCompatibility": [{ "artifactId": "face-0095-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }],
+      "runtimeCompatibility": [
+        { "artifactId": "face-0095-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
+        { "artifactId": "face-0095-mnn-fp32", "runtimeId": "mnn-3.5.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": "ARM64 MNN library and converted model are packaged; device inference acceptance remains required." }
+      ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/openvinotoolkit/open_model_zoo/blob/master/LICENSE"
     },
     {
@@ -196,32 +283,63 @@
       "weightLicense": "UNVERIFIED", "commercialUse": "UNKNOWN", "licenseEvidence": null
     },
     {
+      "artifactId": "wespeaker-resnet34-lm-onnx-fp32-source", "modelSpaceId": "speaker-wespeaker-resnet34-lm-256-l2-v1", "modality": "SPEAKER", "role": "EMBEDDING",
+      "architecture": "WeSpeaker ResNet34-TSTP after large-margin fine-tuning", "precision": "FP32", "format": "ONNX", "filename": "voxceleb_resnet34_LM.onnx",
+      "packagedInApp": false, "localPath": "models/voxceleb_resnet34_LM.onnx",
+      "sourceUrl": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx", "sourceRevision": "f0c48c298fd835726c27956a5d617bad7115627e", "sha256": "7bb2f06e9df17cdf1ef14ee8a15ab08ed28e8d0ef5054ee135741560df2ec068", "fileSizeBytes": 26530309,
+      "inputShape": ["B", "T", 80], "inputLayout": "BATCH_TIME_FEATURE", "inputColorOrder": null,
+      "normalization": { "sampleRate": "16000", "pcmAmplitude": "signed PCM16 scale", "numMelBins": "80", "frameLengthMs": "25", "frameShiftMs": "10", "dither": "0 for inference", "window": "hamming", "featureNormalization": "global mean subtraction without variance normalization" },
+      "outputShape": ["B", 256], "outputSemantics": "embs speaker embedding", "opset": 14, "conversion": null,
+      "runtimeCompatibility": [
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-source", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "The upstream ONNX has no sherpa-onnx framework/sample-rate/output-dimension metadata; fail-closed preparation is required.", "evidence": null },
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-source", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BLOCKED", "reason": "The upstream ONNX has no sherpa-onnx framework/sample-rate/output-dimension metadata; fail-closed preparation is required.", "evidence": null }
+      ],
+      "weightLicense": "CC-BY-4.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md"
+    },
+    {
+      "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "modelSpaceId": "speaker-wespeaker-resnet34-lm-256-l2-v1", "modality": "SPEAKER", "role": "EMBEDDING",
+      "architecture": "WeSpeaker ResNet34-TSTP after large-margin fine-tuning", "precision": "FP32", "format": "ONNX", "filename": "wespeaker_en_voxceleb_resnet34_LM.onnx",
+      "sourceUrl": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx", "sourceRevision": "f0c48c298fd835726c27956a5d617bad7115627e", "sha256": "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605", "fileSizeBytes": 26530697,
+      "inputShape": ["B", "T", 80], "inputLayout": "BATCH_TIME_FEATURE", "inputColorOrder": null,
+      "normalization": { "sampleRate": "16000", "audioApiInput": "mono FLOAT32 PCM in -1..1", "metadataSampleScaling": "normalize_samples=0; sherpa-onnx multiplies by 32768 before fbank", "numMelBins": "80", "frameLengthMs": "25", "frameShiftMs": "10", "dither": "0", "snipEdges": "false", "window": "povey", "lowFrequencyHz": "20", "highFrequencyHz": "7600", "featureNormalization": "global-mean", "scoring": "cosine normalization outside the model" },
+      "outputShape": ["B", 256], "outputSemantics": "embs raw 256-D speaker embedding", "opset": 14,
+      "conversion": { "sourceArtifactId": "wespeaker-resnet34-lm-onnx-fp32-source", "tool": "scripts/speaker/prepare-wespeaker-resnet34-lm.py", "toolRevision": "1; sherpa-onnx-v1.13.4 metadata contract", "environmentDigest": "bec7151f88e1e0e0f89dcb619e062b1460c93576e091ed4a80b53593bdae468c", "command": "python scripts/speaker/prepare-wespeaker-resnet34-lm.py --source INPUT --output OUTPUT", "convertedAt": null, "outputSha256": "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605", "tensorMetadata": { "input": "feats FLOAT32 [B,T,80]", "output": "embs FLOAT32 [B,256]", "metadata": "framework=wespeaker; sample_rate=16000; output_dim=256; normalize_samples=0; feature_normalize_type=global-mean" }, "warnings": ["Only ONNX metadata is added; graph nodes and weights are unchanged.", "sherpa-onnx v1.13.4 uses its 80-bin kaldi-native-fbank path (Povey window, snip_edges=false, 20-7600 Hz), which differs from the upstream WeSpeaker reference Hamming/snip-edges path; thresholds require device/JVS calibration."] },
+      "runtimeCompatibility": [
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Metadata contract and artifact hash are verified; live Pepper inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 dispatches framework=wespeaker to the general embedding extractor." },
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Metadata contract and artifact hash are verified; ARM64 Android inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 dispatches framework=wespeaker to the general embedding extractor." },
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": "Fixed-input host inference test is required before benchmark acceptance.", "evidence": "ONNX input/output and metadata contracts are validated by the preparation script." }
+      ],
+      "weightLicense": "CC-BY-4.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md"
+    },
+    {
       "artifactId": "speakernet-m-onnx-fp32", "modelSpaceId": "speaker-speakernet-m-256-l2-v1", "modality": "SPEAKER", "role": "EMBEDDING",
       "architecture": "NeMo SpeakerNet-M", "precision": "FP32", "format": "ONNX", "filename": "nemo_en_speakerverification_speakernet.onnx",
-      "packagedInApp": false, "localPath": "models/nemo_en_speakerverification_speakernet.onnx",
+      "packagedInApp": true,
       "sourceUrl": "https://huggingface.co/csukuangfj/speaker-embedding-models/blob/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_speakerverification_speakernet.onnx", "sourceRevision": "0743f301363dec56491a490f6d6cbc9d67f9a3bf", "sha256": "d204dc8aac0014b8543f05fc8e310510c7022bc65b6452c203ec205ef7a66b23", "fileSizeBytes": 23411863,
-      "inputShape": [null, 64, null], "inputLayout": "BATCH_FEATURE_TIME", "inputColorOrder": null, "normalization": { "sampleRate": "16000", "featureNormalization": "per_feature", "windowMs": "20", "strideMs": "10", "window": "hann", "output": "L2" },
+      "inputShape": ["B", 64, "T"], "inputLayout": "BATCH_FEATURE_TIME", "inputColorOrder": null, "normalization": { "sampleRate": "16000", "audioApiInput": "mono FLOAT32 PCM in -1..1", "numMelBins": "64", "frameLengthMs": "20", "frameShiftMs": "10", "window": "hann", "featureNormalization": "per_feature", "scoring": "L2-normalized cosine outside the model" },
       "additionalInputs": [{ "name": "length", "shape": [null], "type": "INT64" }],
       "outputShape": [null, 256], "outputSemantics": "embs speaker embedding; auxiliary logits shape [batch,7205]", "opset": null, "conversion": null,
       "runtimeCompatibility": [
-        { "artifactId": "speakernet-m-onnx-fp32", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "speakernet-m-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "The model is not integrated or packaged in the Android speaker path.", "evidence": null }
+        { "artifactId": "speakernet-m-onnx-fp32", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": null, "evidence": "Fixed JVS benchmark adapter validates framework=nemo, tensor names, output dimension, and preprocessing metadata." },
+        { "artifactId": "speakernet-m-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact framework=nemo artifact is packaged; live Pepper inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 SpeakerEmbeddingExtractor handles NeMo metadata and AAssetManager models." },
+        { "artifactId": "speakernet-m-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact framework=nemo artifact is packaged; ARM64 Android inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 SpeakerEmbeddingExtractor handles NeMo metadata and AAssetManager models." }
       ],
-      "weightLicense": "UNVERIFIED", "commercialUse": "UNKNOWN", "licenseEvidence": null
+      "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/speakerverification_speakernet"
     },
     {
       "artifactId": "titanet-s-onnx-fp32", "modelSpaceId": "speaker-titanet-s-192-l2-v1", "modality": "SPEAKER", "role": "EMBEDDING",
       "architecture": "NeMo TitaNet Small", "precision": "FP32", "format": "ONNX", "filename": "nemo_en_titanet_small.onnx",
-      "packagedInApp": false, "localPath": "models/nemo_en_titanet_small.onnx",
-      "sourceUrl": "https://huggingface.co/csukuangfj/speaker-embedding-models/blob/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_titanet_small.onnx", "sourceRevision": "2b697b2295172ca9cfe4881d5d45beb721bc84fc", "sha256": "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e", "fileSizeBytes": 40257283,
-      "inputShape": [null, 80, null], "inputLayout": "BATCH_FEATURE_TIME", "inputColorOrder": null, "normalization": { "sampleRate": "16000", "featureNormalization": "per_feature", "windowMs": "25", "strideMs": "10", "window": "hann", "output": "L2" },
+      "packagedInApp": true,
+      "sourceUrl": "https://huggingface.co/csukuangfj/speaker-embedding-models/blob/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_titanet_small.onnx", "sourceRevision": "0743f301363dec56491a490f6d6cbc9d67f9a3bf", "sha256": "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e", "fileSizeBytes": 40257283,
+      "inputShape": ["B", 80, "T"], "inputLayout": "BATCH_FEATURE_TIME", "inputColorOrder": null, "normalization": { "sampleRate": "16000", "audioApiInput": "mono FLOAT32 PCM in -1..1", "numMelBins": "80", "frameLengthMs": "25", "frameShiftMs": "10", "window": "hann", "featureNormalization": "per_feature", "scoring": "L2-normalized cosine outside the model" },
       "additionalInputs": [{ "name": "length", "shape": [null], "type": "INT64" }],
       "outputShape": [null, 192], "outputSemantics": "embs speaker embedding; auxiliary logits shape [batch,16681]", "opset": null, "conversion": null,
       "runtimeCompatibility": [
-        { "artifactId": "titanet-s-onnx-fp32", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "titanet-s-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "The model is not integrated or packaged in the Android speaker path.", "evidence": null }
+        { "artifactId": "titanet-s-onnx-fp32", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": null, "evidence": "Fixed JVS benchmark adapter validates framework=nemo, tensor names, output dimension, and preprocessing metadata." },
+        { "artifactId": "titanet-s-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact framework=nemo artifact is packaged; live Pepper inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 SpeakerEmbeddingExtractor handles NeMo metadata and AAssetManager models." },
+        { "artifactId": "titanet-s-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Exact framework=nemo artifact is packaged; ARM64 Android inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 SpeakerEmbeddingExtractor handles NeMo metadata and AAssetManager models." }
       ],
-      "weightLicense": "UNVERIFIED", "commercialUse": "UNKNOWN", "licenseEvidence": null
+      "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/titanet_small"
     },
     {
       "artifactId": "silero-vad-onnx-fp32", "modelSpaceId": null, "modality": "AUDIO_ACTIVITY", "role": "VAD",
@@ -236,16 +354,16 @@
       "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://github.com/snakers4/silero-vad/blob/master/LICENSE"
     },
     {
-      "artifactId": "pyannote-segmentation-3.0-onnx-placeholder", "modelSpaceId": null, "modality": "AUDIO_ACTIVITY", "role": "SEGMENTATION",
-      "architecture": "pyannote segmentation 3.0 equivalent", "precision": "FP32", "format": "ONNX", "filename": "pyannote-segmentation-3.0.onnx",
-      "sourceUrl": "https://huggingface.co/pyannote/segmentation-3.0", "sourceRevision": "UNPINNED", "sha256": null, "fileSizeBytes": null,
-      "inputShape": [], "inputLayout": "MONO_PCM_UNCONFIRMED", "inputColorOrder": null, "normalization": { "status": "UNCONFIRMED" },
-      "outputShape": [], "outputSemantics": "speaker activity powerset logits; tensor contract unconfirmed", "opset": null, "conversion": null,
+      "artifactId": "pyannote-segmentation-3.0-sherpa-onnx-fp32", "modelSpaceId": null, "modality": "AUDIO_ACTIVITY", "role": "SEGMENTATION",
+      "architecture": "pyannote segmentation 3.0", "precision": "FP32", "format": "ONNX", "filename": "pyannote-segmentation-3.0.onnx",
+      "sourceUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2", "sourceRevision": "archive-sha256:24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488", "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079", "fileSizeBytes": 5992913,
+      "inputShape": [1, 1, 160000], "inputLayout": "NCT_MONO_PCM_FLOAT32", "inputColorOrder": null, "normalization": { "sampleRate": "16000", "pcmScale": "1/32768", "windowSamples": "160000" },
+      "outputShape": [1, 589, 7], "outputSemantics": "7-class speaker activity powerset scores; receptive-field step 270 samples", "opset": 13, "conversion": null,
       "runtimeCompatibility": [
-        { "artifactId": "pyannote-segmentation-3.0-onnx-placeholder", "runtimeId": "onnxruntime-mobile-1.27.0-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "ONNX conversion, exact input/output contract, hash, license evidence, and Pepper runtime evidence are missing.", "evidence": null },
-        { "artifactId": "pyannote-segmentation-3.0-onnx-placeholder", "runtimeId": "onnxruntime-mobile-1.27.0-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BLOCKED", "reason": "ONNX conversion, exact input/output contract, hash, license evidence, and Android runtime evidence are missing.", "evidence": null }
+        { "artifactId": "pyannote-segmentation-3.0-sherpa-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BLOCKED", "reason": "ONNX Runtime 1.20.0 API-23/ARMv7 native-symbol and live Pepper inference evidence are missing.", "evidence": null },
+        { "artifactId": "pyannote-segmentation-3.0-sherpa-onnx-fp32", "runtimeId": "onnxruntime-android-1.20.0-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": "Host contract and catalog validation only; Android inference acceptance remains required." }
       ],
-      "weightLicense": "UNVERIFIED", "commercialUse": "UNKNOWN", "licenseEvidence": null
+      "weightLicense": "MIT", "commercialUse": "ALLOWED", "licenseEvidence": "https://huggingface.co/pyannote/segmentation-3.0/blob/main/LICENSE"
     }
   ],
   "generatedIntermediates": [
@@ -319,6 +437,27 @@
       "notes": "Different architecture from CAM++. Model-weight license and training-data-derived terms require separate confirmation."
     },
     {
+      "id": "wespeaker-resnet34-lm",
+      "name": "WeSpeaker VoxCeleb ResNet34-LM",
+      "architecture": "WeSpeaker ResNet34-TSTP after large-margin fine-tuning",
+      "adapter": "wespeaker",
+      "filename": "wespeaker_en_voxceleb_resnet34_LM.onnx",
+      "sourceUrl": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx",
+      "downloadUrl": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/resolve/f0c48c298fd835726c27956a5d617bad7115627e/voxceleb_resnet34_LM.onnx?download=true",
+      "revision": "f0c48c298fd835726c27956a5d617bad7115627e",
+      "sha256": "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605",
+      "fileSizeBytes": 26530697,
+      "format": "ONNX",
+      "sampleRate": 16000,
+      "embeddingDimension": 256,
+      "codeLicense": "Apache-2.0",
+      "weightLicense": "CC-BY-4.0",
+      "commercialUse": "ALLOWED",
+      "licenseEvidence": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md",
+      "runtime": "sherpa-onnx 1.13.4 Android CPU",
+      "notes": "Optional explicit-selection candidate. The setup script adds only required sherpa-onnx metadata; no format conversion or CAM++ fallback is allowed. JVS threshold 0.5 is uncalibrated."
+    },
+    {
       "id": "speakernet-m",
       "name": "NeMo SpeakerNet-M",
       "architecture": "NeMo SpeakerNet-M",
@@ -333,11 +472,11 @@
       "sampleRate": 16000,
       "embeddingDimension": 256,
       "codeLicense": "Apache-2.0",
-      "weightLicense": "UNVERIFIED",
-      "commercialUse": "UNVERIFIED",
-      "licenseEvidence": "UNVERIFIED",
-      "runtime": "ONNX Runtime Java CPU",
-      "notes": "Optional speed candidate. Embedding dimension is validated from ONNX metadata at runtime."
+      "weightLicense": "Apache-2.0",
+      "commercialUse": "ALLOWED",
+      "licenseEvidence": "https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/speakerverification_speakernet",
+      "runtime": "sherpa-onnx 1.13.4 Android CPU",
+      "notes": "Exact framework=nemo Android candidate. VoxCeleb dataset terms and notices remain a separate deployment review item; JVS threshold 0.6 is uncalibrated."
     },
     {
       "id": "titanet-s",
@@ -347,18 +486,18 @@
       "filename": "nemo_en_titanet_small.onnx",
       "sourceUrl": "https://huggingface.co/csukuangfj/speaker-embedding-models/blob/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_titanet_small.onnx",
       "downloadUrl": "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/nemo_en_titanet_small.onnx?download=true",
-      "revision": "2b697b2295172ca9cfe4881d5d45beb721bc84fc",
+      "revision": "0743f301363dec56491a490f6d6cbc9d67f9a3bf",
       "sha256": "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e",
       "fileSizeBytes": 40257283,
       "format": "ONNX",
       "sampleRate": 16000,
       "embeddingDimension": 192,
       "codeLicense": "Apache-2.0",
-      "weightLicense": "UNVERIFIED",
-      "commercialUse": "UNVERIFIED",
-      "licenseEvidence": "UNVERIFIED",
-      "runtime": "ONNX Runtime Java CPU",
-      "notes": "Optional comparison model. Embedding dimension is validated from ONNX metadata at runtime."
+      "weightLicense": "Apache-2.0",
+      "commercialUse": "ALLOWED",
+      "licenseEvidence": "https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/titanet_small",
+      "runtime": "sherpa-onnx 1.13.4 Android CPU",
+      "notes": "Exact framework=nemo Android candidate. VoxCeleb dataset terms and notices remain a separate deployment review item; JVS threshold 0.6 is uncalibrated."
     }
   ]
 }

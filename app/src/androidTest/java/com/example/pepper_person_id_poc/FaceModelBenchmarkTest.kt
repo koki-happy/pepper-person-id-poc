@@ -6,7 +6,10 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngine
+import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineFactory
 import com.example.pepper_person_id_poc.infrastructure.face.FaceReidentificationRetail0095EmbeddingEngine
 import com.example.pepper_person_id_poc.infrastructure.face.SFaceEmbeddingEngine
 import java.io.File
@@ -37,6 +40,44 @@ class FaceModelBenchmarkTest {
             FaceReidentificationRetail0095EmbeddingEngine(context),
             expectedDimension = 256,
             threshold = 0.60f,
+        )
+    }
+
+    @Test
+    fun sfaceOnnxRuntime_benchmarkLombardGridFrames() {
+        benchmarkExactRuntime(
+            model = FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+            runtime = FaceEmbeddingRuntime.ONNX_RUNTIME,
+        )
+    }
+
+    @Test
+    fun sfaceNcnnArm64_benchmarkLombardGridFrames() {
+        benchmarkExactRuntime(
+            model = FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32,
+            runtime = FaceEmbeddingRuntime.NCNN,
+        )
+    }
+
+    @Test
+    fun sfaceMnnArm64_benchmarkLombardGridFrames() {
+        benchmarkExactRuntime(
+            model = FaceEmbeddingModelOption.SFACE_2021DEC_MNN_FP32,
+            runtime = FaceEmbeddingRuntime.MNN,
+        )
+    }
+
+    private fun benchmarkExactRuntime(
+        model: FaceEmbeddingModelOption,
+        runtime: FaceEmbeddingRuntime,
+    ) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val engine = FaceEmbeddingEngineFactory.create(context, model, runtime)
+        assertTrue("Factory changed the requested runtime", engine.modelName.contains(runtime.displayName))
+        benchmarkLombardGridFrames(
+            engine = engine,
+            expectedDimension = model.embeddingSize,
+            threshold = null,
         )
     }
 

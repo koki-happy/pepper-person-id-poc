@@ -21,7 +21,9 @@ class PocSettingsTest {
 
     @Test
     fun selectingSpeakerModelUpdatesJoinThreshold() {
-        val updated = PocSettings().withSpeakerModel(SpeakerModelOption.CAM_PLUS_PLUS)
-        assertThat(updated.speakerClusterJoinThreshold).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS.jvsCandidateThreshold)
+        val updated = PocSettings().withSpeakerModel(SpeakerModelOption.WESPEAKER_RESNET34_LM)
+        assertThat(updated.speakerModel).isEqualTo(SpeakerModelOption.WESPEAKER_RESNET34_LM)
+        assertThat(updated.speakerClusterJoinThreshold)
+            .isEqualTo(SpeakerModelOption.WESPEAKER_RESNET34_LM.jvsCandidateThreshold)
     }
 }

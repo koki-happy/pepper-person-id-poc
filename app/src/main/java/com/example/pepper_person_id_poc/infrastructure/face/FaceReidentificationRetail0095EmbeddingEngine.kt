@@ -23,7 +23,10 @@ class FaceReidentificationRetail0095EmbeddingEngine(
         getOrCreateNet()
     }
 
-    override fun extract(imageBgr: Mat, detectedFace: Mat): FloatArray {
+    override fun extract(imageBgr: Mat, detectedFace: Mat): FloatArray =
+        extractMeasured(imageBgr, detectedFace).embedding
+
+    override fun extractMeasured(imageBgr: Mat, detectedFace: Mat): FaceEmbeddingExtraction {
         val values = FloatArray(detectedFace.cols())
         detectedFace.get(0, 0, values)
         val transform = Mat(2, 3, CvType.CV_64F)
@@ -31,12 +34,17 @@ class FaceReidentificationRetail0095EmbeddingEngine(
         val blob: Mat
         val output: Mat
         try {
+            val alignmentStarted = System.nanoTime()
             transform.put(0, 0, *FaceLandmarkAlignment.similarityTransform(values))
             Imgproc.warpAffine(imageBgr, aligned, transform, INPUT_SIZE)
+            val alignmentMillis = (System.nanoTime() - alignmentStarted) / 1_000_000L
+            val preprocessingStarted = System.nanoTime()
             // The converted ONNX preserves the IR's embedded BGR-to-RGB and /255 preprocessing.
             blob = Dnn.blobFromImage(aligned, 1.0, INPUT_SIZE, Scalar(0.0), false, false, CvType.CV_32F)
+            val preprocessingMillis = (System.nanoTime() - preprocessingStarted) / 1_000_000L
             try {
                 getOrCreateNet().setInput(blob)
+                val embeddingStarted = System.nanoTime()
                 output = getOrCreateNet().forward()
                 try {
                     val embedding = FloatArray((output.total() * output.channels()).toInt())
@@ -49,7 +57,12 @@ class FaceReidentificationRetail0095EmbeddingEngine(
                     }
                     require(embedding.all(Float::isFinite)) { "0095 produced non-finite values" }
                     require(embedding.any { it != 0f }) { "0095 produced an all-zero embedding" }
-                    return embedding
+                    return FaceEmbeddingExtraction(
+                        embedding = embedding,
+                        preprocessingMillis = preprocessingMillis,
+                        alignmentMillis = alignmentMillis,
+                        embeddingMillis = (System.nanoTime() - embeddingStarted) / 1_000_000L,
+                    )
                 } finally {
                     output.release()
                 }

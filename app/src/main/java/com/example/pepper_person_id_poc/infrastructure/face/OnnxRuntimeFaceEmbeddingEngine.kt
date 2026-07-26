@@ -1,25 +1,42 @@
 package com.example.pepper_person_id_poc.infrastructure.face
 
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
 import android.content.Context
+import android.os.Build
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntimeCompatibility
 import java.io.File
 import java.nio.FloatBuffer
-import java.util.Collections
 import org.opencv.core.Mat
 
-/** Uses reflection so normal builds remain possible until the API-23/ARMv7 custom AAR is generated. */
+/** Exact ARM64 path for the packaged ONNX Runtime Android 1.20.0 dependency. */
 class OnnxRuntimeFaceEmbeddingEngine(
     context: Context,
     private val model: FaceEmbeddingModelOption,
 ) : FaceEmbeddingEngine {
+    init {
+        require(
+            FaceEmbeddingRuntimeCompatibility.supportsExactPair(
+                model,
+                FaceEmbeddingRuntime.ONNX_RUNTIME,
+                FaceEmbeddingRuntimeCompatibility.ARM64_ABI,
+            ),
+        ) {
+            "Unsupported ONNX Runtime face artifact=${model.artifactId}; no fallback"
+        }
+        requireSupportedAbi(Build.SUPPORTED_ABIS.toList())
+    }
     private val appContext = context.applicationContext
-    private var environment: Any? = null
-    private var sessionOptions: AutoCloseable? = null
-    private var session: AutoCloseable? = null
+    private var environment: OrtEnvironment? = null
+    private var sessionOptions: OrtSession.SessionOptions? = null
+    private var session: OrtSession? = null
     private var inputName: String? = null
     private var initializationFailure: Throwable? = null
 
-    override val modelName: String = "${model.displayName} / ONNX Runtime 1.27.0"
+    override val modelName: String = "${model.displayName} / ONNX Runtime Android 1.20.0"
 
     override fun prepare() {
         getOrCreateSession()
@@ -29,24 +46,11 @@ class OnnxRuntimeFaceEmbeddingEngine(
         val activeSession = getOrCreateSession()
         val env = checkNotNull(environment)
         val input = prepareFaceModelInput(model, imageBgr, detectedFace)
-        val tensorClass = Class.forName("ai.onnxruntime.OnnxTensor")
-        val envClass = Class.forName("ai.onnxruntime.OrtEnvironment")
-        val tensor = tensorClass
-            .getMethod("createTensor", envClass, FloatBuffer::class.java, LongArray::class.java)
-            .invoke(null, env, FloatBuffer.wrap(input.values), input.shape) as AutoCloseable
-        try {
-            val result = activeSession.javaClass
-                .getMethod("run", Map::class.java)
-                .invoke(activeSession, Collections.singletonMap(checkNotNull(inputName), tensor)) as AutoCloseable
-            try {
-                val value = result.javaClass.getMethod("get", Int::class.javaPrimitiveType).invoke(result, 0)
-                val rawValue = value.javaClass.getMethod("getValue").invoke(value)
+        OnnxTensor.createTensor(env, FloatBuffer.wrap(input.values), input.shape).use { tensor ->
+            activeSession.run(mapOf(checkNotNull(inputName) to tensor)).use { result ->
+                val rawValue = result[0].value
                 return flattenFloats(rawValue).also(::validateEmbedding)
-            } finally {
-                result.close()
             }
-        } finally {
-            tensor.close()
         }
     }
 
@@ -58,20 +62,15 @@ class OnnxRuntimeFaceEmbeddingEngine(
         environment = null
     }
 
-    private fun getOrCreateSession(): AutoCloseable {
+    private fun getOrCreateSession(): OrtSession {
         session?.let { return it }
         initializationFailure?.let { throw IllegalStateException("ONNX Runtime initialization failed", it) }
         return runCatching {
-            val environmentClass = Class.forName("ai.onnxruntime.OrtEnvironment")
-            val sessionOptionsClass = Class.forName("ai.onnxruntime.OrtSession\$SessionOptions")
-            val env = environmentClass.getMethod("getEnvironment").invoke(null)
-            val options = sessionOptionsClass.getConstructor().newInstance() as AutoCloseable
+            val env = OrtEnvironment.getEnvironment()
+            val options = OrtSession.SessionOptions()
             val modelFile = copyModelToInternalStorage(model.modelFileName)
-            val created = environmentClass
-                .getMethod("createSession", String::class.java, sessionOptionsClass)
-                .invoke(env, modelFile.absolutePath, options) as AutoCloseable
-            @Suppress("UNCHECKED_CAST")
-            val names = created.javaClass.getMethod("getInputNames").invoke(created) as Set<String>
+            val created = env.createSession(modelFile.absolutePath, options)
+            val names = created.inputNames
             environment = env
             sessionOptions = options
             inputName = names.singleOrNull() ?: names.firstOrNull()
@@ -109,5 +108,16 @@ class OnnxRuntimeFaceEmbeddingEngine(
         require(embedding.size == expected) { "${model.displayName} produced ${embedding.size} values instead of $expected" }
         require(embedding.all(Float::isFinite)) { "${model.displayName} produced non-finite values" }
         require(embedding.any { it != 0f }) { "${model.displayName} produced an all-zero embedding" }
+    }
+
+    companion object {
+        const val RUNTIME_ID = "onnxruntime-android-1.20.0-cpu"
+
+        fun requireSupportedAbi(abis: Collection<String>) {
+            require(FaceEmbeddingRuntimeCompatibility.ARM64_ABI in abis) {
+                "ONNX Runtime face embedding is BLOCKED for ABIs=${abis.joinToString()}; " +
+                    "required=${FaceEmbeddingRuntimeCompatibility.ARM64_ABI}; no fallback"
+            }
+        }
     }
 }

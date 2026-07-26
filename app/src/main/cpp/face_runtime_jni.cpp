@@ -6,9 +6,13 @@
 #include <string>
 #include <vector>
 
+#if INCLUDE_MNN
 #include <MNN/Interpreter.hpp>
 #include <MNN/Tensor.hpp>
+#endif
+#if INCLUDE_NCNN
 #include <ncnn/net.h>
+#endif
 
 namespace {
 
@@ -18,6 +22,7 @@ public:
     virtual std::vector<float> run(const float* input, int width, int height, int channels) = 0;
 };
 
+#if INCLUDE_NCNN
 class NcnnHandle final : public RuntimeHandle {
 public:
     NcnnHandle(const char* param_path, const char* bin_path) {
@@ -53,7 +58,9 @@ private:
     std::string input_name_;
     std::string output_name_;
 };
+#endif
 
+#if INCLUDE_MNN
 class MnnHandle final : public RuntimeHandle {
 public:
     explicit MnnHandle(const char* model_path)
@@ -92,6 +99,7 @@ private:
     MNN::Interpreter* interpreter_ = nullptr;
     MNN::Session* session_ = nullptr;
 };
+#endif
 
 void throw_java(JNIEnv* env, const std::string& message) {
     jclass exception = env->FindClass("java/lang/IllegalStateException");
@@ -111,8 +119,12 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_example_pepper_1person_1id_1poc_infrastructure_face_NativeFaceEmbeddingEngine_00024NativeBridge_createNcnn(
     JNIEnv* env, jobject, jstring param_path, jstring bin_path) {
     try {
+#if INCLUDE_NCNN
         return reinterpret_cast<jlong>(
             new NcnnHandle(to_string(env, param_path).c_str(), to_string(env, bin_path).c_str()));
+#else
+        throw std::runtime_error("ncnn was not selected for this distribution");
+#endif
     } catch (const std::exception& error) {
         throw_java(env, error.what());
         return 0;
@@ -123,7 +135,11 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_example_pepper_1person_1id_1poc_infrastructure_face_NativeFaceEmbeddingEngine_00024NativeBridge_createMnn(
     JNIEnv* env, jobject, jstring model_path) {
     try {
+#if INCLUDE_MNN
         return reinterpret_cast<jlong>(new MnnHandle(to_string(env, model_path).c_str()));
+#else
+        throw std::runtime_error("MNN was not selected for this distribution");
+#endif
     } catch (const std::exception& error) {
         throw_java(env, error.what());
         return 0;

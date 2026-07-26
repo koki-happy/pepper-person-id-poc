@@ -7,4 +7,8 @@ data class FaceFeatureObservation(
     val embedding: FloatArray,
     val embeddingTimeMillis: Long,
     val qualityAssessment: FaceQualityAssessment?,
+    val preprocessingTimeMillis: Long? = null,
+    val detectionTimeMillis: Long? = null,
+    val qualityTimeMillis: Long? = null,
+    val alignmentTimeMillis: Long? = null,
 )

@@ -45,6 +45,7 @@ class YuNetFaceDetector(
     private val onEmbeddingReady: () -> Unit = {},
     private val onEmbeddingError: (Throwable) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
+    private val detectionBackendProvider: ((Int, Int) -> YuNetDetectionBackend)? = null,
 ) : FaceDetectorPipeline {
     init {
         require(analysisIntervalMillis > 0L)
@@ -56,8 +57,7 @@ class YuNetFaceDetector(
     private val qualityAnalyzer = FaceImageQualityAnalyzer()
     private val qualityPolicy = FaceQualityPolicy(FaceQualityThresholds.DEFAULT)
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = detectorOption.displayName))
-    private var detector: FaceDetectorYN? = null
-    private var detectorInputSize: Size? = null
+    private var detector: YuNetDetectionBackend? = null
     private var nextAnalysisAtMillis = 0L
     private var closed = false
     private var initializationAttempted = false
@@ -86,6 +86,7 @@ class YuNetFaceDetector(
         val analysisFps = analysisRateMeter.record(now)
         runCatching {
             val activeDetector = getOrCreateDetector(image.width, image.height) ?: return
+            val preprocessingStartedAtNanos = SystemClock.elapsedRealtimeNanos()
             val rgba = image.toRgbaMat()
             val rawBgr = Mat()
             val bgr = Mat()
@@ -93,17 +94,17 @@ class YuNetFaceDetector(
             try {
                 Imgproc.cvtColor(rgba, rawBgr, Imgproc.COLOR_RGBA2BGR)
                 rawBgr.rotateInto(bgr, image.imageInfo.rotationDegrees)
-                val requestedSize = Size(bgr.cols().toDouble(), bgr.rows().toDouble())
-                if (detectorInputSize != requestedSize) {
-                    activeDetector.setInputSize(requestedSize)
-                    detectorInputSize = requestedSize
-                }
+                val preprocessingMillis =
+                    (SystemClock.elapsedRealtimeNanos() - preprocessingStartedAtNanos) / 1_000_000L
+                val detectionStartedAtNanos = SystemClock.elapsedRealtimeNanos()
                 activeDetector.detect(bgr, faces)
                 val rawFaces = faces.toRawFaces(bgr.cols(), bgr.rows())
                 val tracked = tracker.update(
                     detections = rawFaces.map { it.boundingBox },
                     landmarkCounts = rawFaces.map { it.landmarks.size / 2 },
                 )
+                val detectionMillis =
+                    (SystemClock.elapsedRealtimeNanos() - detectionStartedAtNanos) / 1_000_000L
                 val processingMillis = (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
                 val rawDetectedFaces = rawFaces.zip(tracked).map { (raw, track) ->
                     DetectedFace(
@@ -118,6 +119,7 @@ class YuNetFaceDetector(
                     )
                 }
                 val poseStartedAtNanos = SystemClock.elapsedRealtimeNanos()
+                val qualityStartedAtNanos = poseStartedAtNanos
                 val poseObservations = rawFaces.zip(tracked).map { (raw, track) ->
                     FacePoseObservation(
                         trackId = track.trackId,
@@ -159,6 +161,8 @@ class YuNetFaceDetector(
                     )
                 }
                 val poseMillis = (SystemClock.elapsedRealtimeNanos() - poseStartedAtNanos) / 1_000_000L
+                val qualityMillis =
+                    (SystemClock.elapsedRealtimeNanos() - qualityStartedAtNanos) / 1_000_000L
                 onBenchmarkEvent(
                     BenchmarkEvent(
                         event = "face_pose",
@@ -210,11 +214,10 @@ class YuNetFaceDetector(
                 } else {
                     tracked.mapIndexedNotNull { index, track ->
                         if (track.trackId !in embeddingTrackIds) return@mapIndexedNotNull null
-                        val embeddingStartedAtNanos = SystemClock.elapsedRealtimeNanos()
                         val detectedFace = faces.row(index)
                         try {
                             runCatching {
-                                activeEmbeddingEngine.extract(bgr, detectedFace)
+                                activeEmbeddingEngine.extractMeasured(bgr, detectedFace)
                             }.onFailure { throwable ->
                                 onEmbeddingError(throwable)
                                 onBenchmarkEvent(
@@ -226,9 +229,9 @@ class YuNetFaceDetector(
                                         error = throwable.message ?: throwable::class.java.simpleName,
                                     ),
                                 )
-                            }.getOrNull()?.let { embedding ->
-                                val embeddingMillis =
-                                    (SystemClock.elapsedRealtimeNanos() - embeddingStartedAtNanos) / 1_000_000L
+                            }.getOrNull()?.let { extraction ->
+                                val embedding = extraction.embedding
+                                val embeddingMillis = extraction.embeddingMillis
                                 onBenchmarkEvent(
                                     BenchmarkEvent(
                                         event = "face_embedding",
@@ -246,6 +249,11 @@ class YuNetFaceDetector(
                                     embedding = embedding,
                                     embeddingTimeMillis = embeddingMillis,
                                     qualityAssessment = detectedFaces[index].qualityAssessment,
+                                    preprocessingTimeMillis = preprocessingMillis +
+                                        (extraction.preprocessingMillis ?: 0L),
+                                    detectionTimeMillis = detectionMillis,
+                                    qualityTimeMillis = qualityMillis,
+                                    alignmentTimeMillis = extraction.alignmentMillis,
                                 )
                             }
                         } finally {
@@ -350,11 +358,12 @@ class YuNetFaceDetector(
     override fun close() {
         if (closed) return
         closed = true
+        detector?.close()
         detector = null
         embeddingEngine?.close()
     }
 
-    private fun getOrCreateDetector(width: Int, height: Int): FaceDetectorYN? {
+    private fun getOrCreateDetector(width: Int, height: Int): YuNetDetectionBackend? {
         detector?.let { return it }
         if (initializationAttempted) return null
         initializationAttempted = true
@@ -362,17 +371,21 @@ class YuNetFaceDetector(
             reportModelUnavailable("OpenCV 5.0.0 native runtime could not be loaded")
             return null
         }
+        detectionBackendProvider?.let { provider ->
+            return provider(width, height).also { detector = it }
+        }
         val modelFile = copyModelToInternalStorage()
-        return FaceDetectorYN.create(
-            modelFile.absolutePath,
-            "",
-            Size(width.toDouble(), height.toDouble()),
-            SCORE_THRESHOLD,
-            NMS_THRESHOLD,
-            TOP_K,
+        return OpenCvYuNetDetectionBackend(
+            FaceDetectorYN.create(
+                modelFile.absolutePath,
+                "",
+                Size(width.toDouble(), height.toDouble()),
+                SCORE_THRESHOLD,
+                NMS_THRESHOLD,
+                TOP_K,
+            ),
         ).also {
             detector = it
-            detectorInputSize = Size(width.toDouble(), height.toDouble())
         }
     }
 

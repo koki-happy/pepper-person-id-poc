@@ -10,16 +10,16 @@
 - License: MIT（OpenCV Zooの`models/face_detection_yunet/LICENSE`）
 - Size: 229,738 bytes
 - SHA-256: `EBAFCE4E3C118D6554634BE5C27AB333B4C047A9A8C3FAF1D7CF93101C22F0F0`
-- Local path: `app/src/main/assets/models/face_detection_yunet_2026may.onnx`
+- Local path: `app/src/benchmark/assets/models/face_detection_yunet_2026may.onnx`
 
 PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force app/src/main/assets/models | Out-Null
+New-Item -ItemType Directory -Force app/src/benchmark/assets/models | Out-Null
 Invoke-WebRequest -UseBasicParsing `
   'https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_detection_yunet/face_detection_yunet_2026may.onnx' `
-  -OutFile app/src/main/assets/models/face_detection_yunet_2026may.onnx
-Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_detection_yunet_2026may.onnx
+  -OutFile app/src/benchmark/assets/models/face_detection_yunet_2026may.onnx
+Get-FileHash -Algorithm SHA256 app/src/benchmark/assets/models/face_detection_yunet_2026may.onnx
 ```
 
 ### YuNet 2023mar INT8
@@ -29,7 +29,7 @@ Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_detection_yunet_2
 - License: MIT
 - Size: 100,416 bytes
 - SHA-256: `321AA5A6AFABF7ECC46A3D06BFAB2B579DC96EB5C3BE7EDD365FA04502AD9294`
-- Local path: `app/src/main/assets/models/face_detection_yunet_2023mar_int8.onnx`
+- Local path: `app/src/benchmark/assets/models/face_detection_yunet_2023mar_int8.onnx`
 - Runtime: OpenCV `FaceDetectorYN`
 
 ## OpenCV Android runtime
@@ -52,15 +52,15 @@ OpenCV 5.0.0とYuNet `2026may`が旧Pepperでロードまたは推論できな�
 - Architecture: MobileFaceNet trained with SFace loss
 - Size: 38,696,353 bytes
 - SHA-256: `0BA9FBFA01B5270C96627C4EF784DA859931E02F04419C829E83484087C34E79`
-- Local path: `app/src/main/assets/models/face_recognition_sface_2021dec.onnx`
+- Local path: `app/src/benchmark/assets/models/face_recognition_sface_2021dec.onnx`
 
 PowerShell:
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing `
   'https://github.com/opencv/opencv_zoo/raw/refs/heads/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx' `
-  -OutFile app/src/main/assets/models/face_recognition_sface_2021dec.onnx
-Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface_2021dec.onnx
+  -OutFile app/src/benchmark/assets/models/face_recognition_sface_2021dec.onnx
+Get-FileHash -Algorithm SHA256 app/src/benchmark/assets/models/face_recognition_sface_2021dec.onnx
 ```
 
 ### SFace 2021dec INT8
@@ -73,9 +73,9 @@ Get-FileHash -Algorithm SHA256 app/src/main/assets/models/face_recognition_sface
 - Output: float 128 dimensions
 - Size: 9,896,933 bytes
 - SHA-256: `2B0E941E6F16CC048C20AEE0C8E31F569118F65D702914540F7BFDC14048D78A`
-- Local path: `app/src/main/assets/models/face_recognition_sface_2021dec_int8.onnx`
+- Local path: `app/src/benchmark/assets/models/face_recognition_sface_2021dec_int8.onnx`
 
-登録時に保存するのはSFace特徴量、モデル名、personId、表示名、登録日時、サンプル数だけとし、生の顔画像や切り出し画像は保存しない。
+匿名SFace特徴量はアプリセッション中のメモリだけで扱い、生の顔画像、切り出し画像、特徴量をファイルへ保存しない。
 
 ## face-reidentification-retail-0095
 
@@ -123,6 +123,71 @@ x86用AARには別の`libonnxruntime.so`が含まれ、API 23に存在しない`
 - Size: 643,854 bytes
 - SHA-256: `9E2449E1087496D8D4CABA907F23E0BD3F78D91FA552479BB9C23AC09CBB1FD6`
 
+## pyannote segmentation 3.0
+
+- Runtime artifact: `pyannote-segmentation-3.0.onnx`
+- Official sherpa-onnx distribution: https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2
+- Upstream: https://huggingface.co/pyannote/segmentation-3.0
+- Conversion scripts: https://github.com/k2-fsa/sherpa-onnx/tree/master/scripts/pyannote/segmentation
+- License: MIT（配布archive内`LICENSE`）
+- Archive SHA-256: `24615EE884C897D9D2BA09BB4D30DA6BB1B15E685065962DB5B02E76E4996488`
+- Model size: 5,992,913 bytes
+- Model SHA-256: `220AD67CA923BEF2FA91F2390C786097BF305BCEB5E261D4AF67B38E938E1079`
+- Input: 16 kHz mono float PCM, `[1, 1, 160000]`
+- Output: 589 frames × 7 powerset classes, receptive-field step 270 samples
+- Android runtime: ONNX Runtime 1.20.0 CPU、暗黙フォールバックなし
+- Pepper status: API 23 / ARMv7のnative symbol監査と実機推論が未完了のため`BLOCKED`
+
+モデル本体はGitへコミットせず、archiveとモデルの両SHA-256を照合して
+`app/src/benchmark/assets/models/pyannote-segmentation-3.0.onnx`へ配置する。
+
+## LiteRT変換済みYuNet / SFace / face-0095
+
+正本ONNXを変更せず、`scripts/litert/requirements.lock`と
+`scripts/litert/Dockerfile`で固定した`onnx2tf 1.28.2`環境から再生成する。
+生成物はGitへコミットせず、benchmark assetsへ配置する。
+
+```powershell
+py -3 scripts/litert/convert_models.py `
+  app/src/benchmark/assets/models/face_detection_yunet_2026may.onnx `
+  app/src/benchmark/assets/models/face_detection_yunet_2026may_320.tflite `
+  --source-sha256 ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0 `
+  --input-shape input:1,3,320,320 `
+  --manifest scripts/litert/manifests/yunet-2026may-320-litert.json
+
+py -3 scripts/litert/convert_models.py `
+  app/src/benchmark/assets/models/face_recognition_sface_2021dec.onnx `
+  app/src/benchmark/assets/models/face_recognition_sface_2021dec.tflite `
+  --source-sha256 0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79 `
+  --manifest scripts/litert/manifests/sface-2021dec-litert.json
+
+py -3 scripts/litert/convert_models.py `
+  app/src/benchmark/assets/models/face-reidentification-retail-0095.onnx `
+  app/src/benchmark/assets/models/face-reidentification-retail-0095.tflite `
+  --source-sha256 861d2edc47214f19fe973f97a05b2bd8ba61e103279fe232f0365534903dd589 `
+  --manifest scripts/litert/manifests/face-0095-litert.json
+```
+
+同じ固定環境で各変換を2回実行し、2回とも下表のsizeとSHA-256が一致した。
+公開する変換証跡は`scripts/litert/manifests/`の正規化manifestと本方針だけで、
+一時ディレクトリ、変換物、比較入力・出力はGitへ含めない。
+
+| Artifact | Tensor contract | Size | SHA-256 |
+|---|---|---:|---|
+| `yunet-2026may-litert-fp32-320` | `input [1,3,320,320]` → `Identity..Identity_11`; anchors 1600/400/100 | 238,836 | `E9EF1BEE56DB8D5AEA88EDBA67515FC182D56EEB36ACFBF8B1DFF7F77934885D` |
+| `sface-2021dec-litert-fp32` | `data [1,3,112,112]` → `Identity [1,128]` | 38,549,364 | `0859A63B74C8373CE47464D1834678193786282AAD35911491C0505F2CACBA1E` |
+| `face-0095-litert-fp32` | `0 [1,3,128,128]` raw BGR `0..255` → `Identity [1,1,1,256]` | 4,475,508 | `6AD2A160AB016B84A55442DCB2CD1D36B684AA9E8324357411B14A77756C68D8` |
+
+YuNetの`Identity_11`だけは変換時の`10x10x10` transpose `(2,0,1)`を含む。
+デコード前に`LiteRtYuNetFaceDetector`が逆置換`(1,2,0)`を行うことが契約であり、
+raw tensorのままONNX相当とは扱わない。逆置換後のkps32最大絶対誤差は
+`1.31e-5`、その他11出力は`6.8e-6`以下。SFaceの固定入力に対する正規化
+embedding cosineは`0.99999999988`。いずれもARM64 AndroidとPepperでの
+実機受入が終わるまでは`BUILDABLE`であり`VERIFIED`ではない。
+face-0095の固定入力に対する正規化embedding cosineは`0.99999994`、
+最大絶対誤差は`2.17e-7`であり、`LiteRt0095EmbeddingEngine`が出力を
+256要素へflattenしてL2正規化する。
+
 ## 3D-Speaker CAM++
 
 - Model: `3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx`
@@ -159,7 +224,9 @@ Windows用の正本は`config/models.json`である。配布リポジトリ全�
 | `campplus-zh-en` | `3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx` | `8be2a75c9ed7a590538b268e46fbb65e1aa9d208` | 28,281,164 | `AA3CFC16963A10586A9393F5035D6D6B57E98D358B347F80C2A30BF4F00CEBA2` | 192 |
 | `eres2net-en` | `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx` | `8be2a75c9ed7a590538b268e46fbb65e1aa9d208` | 26,485,263 | `C59158379255AD66E161679CCA6AF8D52D51E389E3224AB7D7A7BAAE295C2DB5` | 192 |
 | `speakernet-m` | `nemo_en_speakerverification_speakernet.onnx` | `0743f301363dec56491a490f6d6cbc9d67f9a3bf` | 23,411,863 | `D204DC8AAC0014B8543F05FC8E310510C7022BC65B6452C203EC205EF7A66B23` | 256 |
-| `titanet-s` | `nemo_en_titanet_small.onnx` | `2b697b2295172ca9cfe4881d5d45beb721bc84fc` | 40,257,283 | `AD4A1802485D8B34C722D2A9D04249662F2ECE5D28A7A039063CA22F515A789E` | 192 |
+| `titanet-s` | `nemo_en_titanet_small.onnx` | `0743f301363dec56491a490f6d6cbc9d67f9a3bf`（同一blobのfile revision: `2b697b2295172ca9cfe4881d5d45beb721bc84fc`） | 40,257,283 | `AD4A1802485D8B34C722D2A9D04249662F2ECE5D28A7A039063CA22F515A789E` | 192 |
+
+SpeakerNet-Mは16 kHz mono PCMから64-bin log-mel（20 ms窓、10 msシフト、Hann、per-feature正規化）を生成し、`audio_signal[B,64,T]`と`length[B]`を入力して`embs[B,256]`を得る。TitaNet-Sは80-bin log-mel（25 ms窓、10 msシフト、Hann、per-feature正規化）を使い、`audio_signal[B,80,T]`と`length[B]`から`embs[B,192]`を得る。両方ともONNX metadataの`framework=nemo`をsherpa-onnx 1.13.4が解釈し、Android benchmarkへ同一hashのONNXを同梱する。別モデルへのfallbackは行わない。
 
 3D-SpeakerとNeMoのコード／変換ツールのApache-2.0を、配布ONNX重みの個別ライセンスとして扱わない。5ファイルすべてについて`weightLicense`と`commercialUse`は`UNVERIFIED`を維持し、確認前は本番候補にしない。
 

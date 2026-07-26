@@ -1,12 +1,50 @@
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import java.security.MessageDigest
+import java.util.Properties
+import java.util.zip.ZipFile
+
+val liteRtVersion = "2.1.6"
+val requestedTargetAbi = providers.gradleProperty("targetAbi").getOrElse("armeabi-v7a")
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
+apply<ModelCatalogPlugin>()
+
+val candidateSelectionEvidencePath =
+    providers.gradleProperty("candidateSelectionEvidence").orNull
+val candidateSelectionEvidence = candidateSelectionEvidencePath?.let { path ->
+    val file = rootProject.file(path)
+    if (file.isFile) {
+        JsonSlurper().parse(file) as? Map<*, *>
+    } else {
+        null
+    }
+}
+val selectedCandidateArtifactIds = (candidateSelectionEvidence?.get("artifactIds") as? List<*>)
+    .orEmpty()
+    .mapNotNull { it as? String }
+    .filter(String::isNotBlank)
+    .toSet()
+val selectedCandidateRuntimeIds = (candidateSelectionEvidence?.get("runtimeIds") as? List<*>)
+    .orEmpty()
+    .mapNotNull { it as? String }
+    .filter(String::isNotBlank)
+    .toSet()
+
+extensions.configure<ModelCatalogDistributionExtension> {
+    candidateArtifactIds.set(selectedCandidateArtifactIds)
+    candidateRuntimeIds.set(selectedCandidateRuntimeIds)
+    candidateSelectionEvidencePath?.let { path ->
+        candidateSelectionEvidenceFile.set(rootProject.layout.projectDirectory.file(path))
+    }
+}
+
 val generatedModelCatalogAssets = layout.buildDirectory.dir("generated/modelCatalogAssets/main")
+val generatedCandidateAssets = layout.buildDirectory.dir("generated/candidateAssets")
 val generateModelCatalogAsset by tasks.registering(Copy::class) {
     from(rootProject.file("config/models.json"))
     into(generatedModelCatalogAssets.map { it.dir("model-catalog") })
@@ -28,13 +66,13 @@ android {
         versionName = "1.0"
 
         ndk {
-            // Pepper is the production target. The AAR's x86 libonnxruntime.so imports
-            // __write_chk, which Android API 23 does not provide, so x86 is opt-in only.
-            val requestedAbi = providers.gradleProperty("targetAbi").getOrElse("armeabi-v7a")
-            require(requestedAbi in setOf("armeabi-v7a", "arm64-v8a", "x86")) {
-                "Unsupported targetAbi=$requestedAbi. Use armeabi-v7a (default), arm64-v8a, or x86."
+            // Pepper is the production target. LiteRT 2.1.6 publishes ARMv7/ARM64/x86_64,
+            // while this app accepts only the two physical-device ABIs used for validation.
+            require(requestedTargetAbi in setOf("armeabi-v7a", "arm64-v8a")) {
+                "LiteRT 2.1.6 supports this app only for armeabi-v7a or arm64-v8a; " +
+                    "targetAbi=$requestedTargetAbi is not allowed."
             }
-            abiFilters += requestedAbi
+            abiFilters += requestedTargetAbi
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -58,14 +96,58 @@ android {
             )
         }
     }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("benchmark") {
+            dimension = "distribution"
+            applicationIdSuffix = ".benchmark"
+            buildConfigField("String", "DISTRIBUTION_FLAVOR", "\"benchmark\"")
+            buildConfigField("boolean", "PERSIST_METRICS_BY_DEFAULT", "true")
+            if (file("src/main/cpp/third_party/ready.marker").isFile) {
+                externalNativeBuild {
+                    cmake {
+                        arguments += listOf("-DINCLUDE_NCNN=ON", "-DINCLUDE_MNN=ON")
+                    }
+                }
+            }
+        }
+        create("candidate") {
+            dimension = "distribution"
+            applicationIdSuffix = ".candidate"
+            buildConfigField("String", "DISTRIBUTION_FLAVOR", "\"candidate\"")
+            buildConfigField("boolean", "PERSIST_METRICS_BY_DEFAULT", "false")
+            if (file("src/main/cpp/third_party/ready.marker").isFile) {
+                externalNativeBuild {
+                    cmake {
+                        arguments += listOf(
+                            "-DINCLUDE_NCNN=" +
+                                if ("ncnn-20260526-android-cpu" in selectedCandidateRuntimeIds) "ON" else "OFF",
+                            "-DINCLUDE_MNN=" +
+                                if ("mnn-3.5.0-android-cpu" in selectedCandidateRuntimeIds) "ON" else "OFF",
+                        )
+                    }
+                }
+            }
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    androidResources {
+        noCompress += "tflite"
+    }
+    packaging {
+        jniLibs {
+            excludes += setOf("lib/x86/**", "lib/x86_64/**")
+        }
     }
     sourceSets.getByName("main").assets.srcDir(generatedModelCatalogAssets.get().asFile)
+    sourceSets.getByName("candidate").assets.srcDir(generatedCandidateAssets.get().asFile)
     if (file("src/main/cpp/third_party/ready.marker").isFile) {
         externalNativeBuild {
             cmake {
@@ -84,7 +166,7 @@ val verifyModelArtifactHashes by tasks.registering {
     group = "verification"
     description = "Verifies cataloged model artifact sizes and SHA-256 hashes."
     val catalogFile = rootProject.file("config/models.json")
-    val modelAssetsDirectory = project.file("src/main/assets/models")
+    val modelAssetsDirectory = project.file("src/benchmark/assets/models")
     val localModelsDirectory = rootProject.file("models")
     inputs.file(catalogFile)
     inputs.dir(modelAssetsDirectory)
@@ -490,7 +572,7 @@ val verifyReleaseModelLicenses by tasks.registering {
     val modelOptionsFile = project.file(
         "src/main/java/com/example/pepper_person_id_poc/domain/config/PocSettings.kt"
     )
-    val modelAssetsDirectory = project.file("src/main/assets/models")
+    val modelAssetsDirectory = project.file("src/benchmark/assets/models")
     inputs.file(provenanceFile)
     inputs.file(modelOptionsFile)
 
@@ -499,6 +581,7 @@ val verifyReleaseModelLicenses by tasks.registering {
             "campplus-en",
             "campplus-zh-en",
             "eres2net-en",
+            "wespeaker-resnet34-lm",
             "speakernet-m",
             "titanet-s",
         )
@@ -506,6 +589,9 @@ val verifyReleaseModelLicenses by tasks.registering {
             "campplus-en" to "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
             "campplus-zh-en" to "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
             "eres2net-en" to "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
+            "wespeaker-resnet34-lm" to "wespeaker_en_voxceleb_resnet34_LM.onnx",
+            "speakernet-m" to "nemo_en_speakerverification_speakernet.onnx",
+            "titanet-s" to "nemo_en_titanet_small.onnx",
         )
         val allowedNonSpeakerOnnxAssets = setOf(
             "face-reidentification-retail-0095.onnx",
@@ -624,14 +710,16 @@ val verifyReleaseModelLicenses by tasks.registering {
 }
 
 tasks.configureEach {
-    if (name == "preReleaseBuild") {
-        dependsOn(verifyReleaseModelLicenses)
+    if (name.startsWith("preCandidate") && name.endsWith("Build")) {
+        dependsOn("prepareCandidateModelAssets")
+    }
+    if (name.startsWith("preBenchmark") && name.endsWith("Build")) {
+        dependsOn(generateModelCatalogAsset)
     }
 }
 
 dependencies {
     implementation(project(":speaker-core"))
-    implementation(files("libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
@@ -646,12 +734,42 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.compose)
-    implementation(libs.opencv)
-    implementation(libs.mlkit.face.detection)
     implementation(libs.kotlinx.serialization.json)
+
+    val sherpaAar = files("libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar")
+    compileOnly(sherpaAar)
+    compileOnly(libs.opencv)
+    compileOnly(libs.mlkit.face.detection)
+    compileOnly("com.google.ai.edge.litert:litert:$liteRtVersion")
+    add("benchmarkImplementation", sherpaAar)
+    add("benchmarkImplementation", libs.opencv)
+    add("benchmarkImplementation", libs.mlkit.face.detection)
+    add("benchmarkImplementation", "com.google.ai.edge.litert:litert:$liteRtVersion")
+    if ("sherpa-onnx-1.13.4-android-cpu" in selectedCandidateRuntimeIds) {
+        add("candidateImplementation", sherpaAar)
+    }
+    if ("opencv-5.0.0-android-cpu" in selectedCandidateRuntimeIds) {
+        add("candidateImplementation", libs.opencv)
+    }
+    if ("mlkit-face-16.1.7-bundled" in selectedCandidateRuntimeIds) {
+        add("candidateImplementation", libs.mlkit.face.detection)
+    }
+    if ("litert-2.1.6-android-cpu" in selectedCandidateRuntimeIds) {
+        add("candidateImplementation", "com.google.ai.edge.litert:litert:$liteRtVersion")
+    }
+
     val customOnnxRuntimeAar = file("libs/onnxruntime-mobile-1.27.0.aar")
+    val onnxRuntimeDependency: Any =
+        if (customOnnxRuntimeAar.isFile) files(customOnnxRuntimeAar)
+        else "com.microsoft.onnxruntime:onnxruntime-android:1.20.0"
+    compileOnly(onnxRuntimeDependency)
+    add("benchmarkImplementation", onnxRuntimeDependency)
     if (customOnnxRuntimeAar.isFile) {
-        implementation(files(customOnnxRuntimeAar))
+        if ("onnxruntime-mobile-1.27.0-android-cpu" in selectedCandidateRuntimeIds) {
+            add("candidateImplementation", onnxRuntimeDependency)
+        }
+    } else if ("onnxruntime-android-1.20.0-cpu" in selectedCandidateRuntimeIds) {
+        add("candidateImplementation", onnxRuntimeDependency)
     }
     testImplementation(libs.junit)
     testImplementation(libs.truth)
@@ -662,4 +780,219 @@ dependencies {
     androidTestImplementation(libs.truth)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+val verifyLiteRtRuntimeArtifact by tasks.registering {
+    group = "verification"
+    description = "Verifies the exact LiteRT version and requested Android ABI before packaging."
+    val runtimeClasspath = configurations.named("benchmarkDebugRuntimeClasspath")
+    inputs.property("liteRtVersion", liteRtVersion)
+    inputs.property("targetAbi", requestedTargetAbi)
+
+    doLast {
+        val artifacts = runtimeClasspath.get().resolvedConfiguration.resolvedArtifacts
+            .filter { it.moduleVersion.id.group == "com.google.ai.edge.litert" }
+        val expectedModules = setOf("litert", "litert-api")
+        val resolvedModules = artifacts.map { it.name }.toSet()
+        check(resolvedModules == expectedModules) {
+            "Expected only official LiteRT modules $expectedModules, resolved $resolvedModules"
+        }
+        artifacts.forEach { artifact ->
+            check(artifact.moduleVersion.id.version == liteRtVersion) {
+                "LiteRT module ${artifact.name} resolved unexpected version " +
+                    artifact.moduleVersion.id.version
+            }
+            check(artifact.file.extension == "aar") {
+                "LiteRT module ${artifact.name} must resolve to an AAR"
+            }
+            ZipFile(artifact.file).use { archive ->
+                val hasRequestedAbi = archive.entries().asSequence().any { entry ->
+                    entry.name.startsWith("jni/$requestedTargetAbi/") &&
+                        entry.name.endsWith(".so")
+                }
+                check(hasRequestedAbi) {
+                    "${artifact.file.name} does not contain native libraries for $requestedTargetAbi"
+                }
+            }
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name.startsWith("preBenchmark") && name.endsWith("Build")) {
+        dependsOn(verifyLiteRtRuntimeArtifact)
+    }
+}
+
+val verifyCandidateRuntimeDependencies by tasks.registering {
+    group = "verification"
+    description = "Rejects candidate AAR dependencies that are not selected by approved evidence."
+    dependsOn("verifyCandidateSelectionEvidence")
+    val runtimeClasspath = configurations.named("candidateDebugRuntimeClasspath")
+    inputs.property("candidateRuntimeIds", selectedCandidateRuntimeIds.sorted())
+
+    doLast {
+        val supportedAndroidRuntimeIds = setOf(
+            "mlkit-face-16.1.7-bundled",
+            "opencv-5.0.0-android-cpu",
+            "litert-2.1.6-android-cpu",
+            "onnxruntime-android-1.20.0-cpu",
+            "onnxruntime-mobile-1.27.0-android-cpu",
+            "ncnn-20260526-android-cpu",
+            "mnn-3.5.0-android-cpu",
+            "sherpa-onnx-1.13.4-android-cpu",
+        )
+        check(selectedCandidateRuntimeIds.all { it in supportedAndroidRuntimeIds }) {
+            "Candidate contains a runtime that cannot be packaged for Android: " +
+                (selectedCandidateRuntimeIds - supportedAndroidRuntimeIds)
+        }
+        val artifacts = runtimeClasspath.get().resolvedConfiguration.resolvedArtifacts
+        val coordinates = artifacts.map { artifact ->
+            "${artifact.moduleVersion.id.group}:${artifact.name}:${artifact.file.name}"
+        }
+        val files = runtimeClasspath.get().files.map(File::getName)
+        val presence = mapOf(
+            "mlkit-face-16.1.7-bundled" to
+                coordinates.any { it.startsWith("com.google.mlkit:face-detection:") },
+            "opencv-5.0.0-android-cpu" to
+                coordinates.any { it.startsWith("org.opencv:opencv:") },
+            "litert-2.1.6-android-cpu" to
+                coordinates.any { it.startsWith("com.google.ai.edge.litert:litert:") },
+            "onnxruntime-android-1.20.0-cpu" to
+                coordinates.any { it.startsWith("com.microsoft.onnxruntime:onnxruntime-android:") },
+            "onnxruntime-mobile-1.27.0-android-cpu" to
+                files.any { it == "onnxruntime-mobile-1.27.0.aar" },
+            "sherpa-onnx-1.13.4-android-cpu" to
+                files.any { it == "sherpa-onnx-static-link-onnxruntime-1.13.4.aar" },
+        )
+        presence.forEach { (runtimeId, isPresent) ->
+            check(isPresent == (runtimeId in selectedCandidateRuntimeIds)) {
+                "$runtimeId dependency presence=$isPresent does not match the candidate allowlist"
+            }
+        }
+    }
+}
+
+fun locateLlvmReadElf(): File {
+    val explicitNdk = System.getenv("ANDROID_NDK_HOME")
+        ?.takeIf(String::isNotBlank)
+        ?.let(::file)
+    val localProperties = rootProject.file("local.properties")
+    val sdkDirectory = localProperties.takeIf(File::isFile)?.let { propertiesFile ->
+        Properties().apply {
+            propertiesFile.inputStream().use(::load)
+        }.getProperty("sdk.dir")?.let(::file)
+    }
+    val ndkRoots = buildList {
+        explicitNdk?.let(::add)
+        sdkDirectory?.resolve("ndk")?.listFiles()
+            .orEmpty()
+            .filter(File::isDirectory)
+            .sortedByDescending(File::getName)
+            .let(::addAll)
+    }
+    return ndkRoots.asSequence()
+        .flatMap { it.walkTopDown().asSequence() }
+        .firstOrNull { it.isFile && it.name == "llvm-readelf.exe" }
+        ?: error(
+            "llvm-readelf.exe was not found. Set ANDROID_NDK_HOME or sdk.dir before APK audit.",
+        )
+}
+
+fun registerDistributionAudit(
+    taskName: String,
+    variant: String,
+    assembleTask: String,
+    apkRelativePath: String,
+    candidate: Boolean,
+) = tasks.register<Exec>(taskName) {
+    group = "verification"
+    description = "Builds and audits the $variant APK contents, ABI, native symbols, and licenses."
+    dependsOn(assembleTask)
+    if (candidate) {
+        dependsOn(verifyCandidateRuntimeDependencies)
+        dependsOn("prepareCandidateModelAssets")
+    }
+    val outputDirectory = layout.buildDirectory.dir("reports/apk-audit/$variant")
+    outputs.dir(outputDirectory)
+    doFirst {
+        val arguments = mutableListOf(
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("scripts/apk-audit/Invoke-DistributionAudit.ps1").absolutePath,
+            "-ApkPath",
+            layout.buildDirectory.file(apkRelativePath).get().asFile.absolutePath,
+            "-Variant",
+            variant,
+            "-OutputDirectory",
+            outputDirectory.get().asFile.absolutePath,
+            "-CatalogPath",
+            rootProject.file("config/models.json").absolutePath,
+            "-ReadElfPath",
+            locateLlvmReadElf().absolutePath,
+            "-AllowedAbis",
+            requestedTargetAbi,
+        )
+        if (candidate) {
+            arguments += listOf(
+                "-AllowlistPath",
+                layout.buildDirectory.file("generated/candidate/model-allowlist.json")
+                    .get().asFile.absolutePath,
+            )
+        }
+        commandLine(arguments)
+    }
+}
+
+val auditBenchmarkDebugApk = registerDistributionAudit(
+    taskName = "auditBenchmarkDebugApk",
+    variant = "benchmarkDebug",
+    assembleTask = "assembleBenchmarkDebug",
+    apkRelativePath = "outputs/apk/benchmark/debug/app-benchmark-debug.apk",
+    candidate = false,
+)
+val auditCandidateDebugApk = registerDistributionAudit(
+    taskName = "auditCandidateDebugApk",
+    variant = "candidateDebug",
+    assembleTask = "assembleCandidateDebug",
+    apkRelativePath = "outputs/apk/candidate/debug/app-candidate-debug.apk",
+    candidate = true,
+)
+
+tasks.register("compareDistributionApkSizes") {
+    group = "verification"
+    description = "Writes the benchmark/candidate APK size delta after both audits pass."
+    dependsOn(auditBenchmarkDebugApk, auditCandidateDebugApk)
+    val outputFile = layout.buildDirectory.file("reports/apk-audit/size-comparison.json")
+    outputs.file(outputFile)
+    doLast {
+        val benchmarkApk =
+            layout.buildDirectory.file("outputs/apk/benchmark/debug/app-benchmark-debug.apk")
+                .get().asFile
+        val candidateApk =
+            layout.buildDirectory.file("outputs/apk/candidate/debug/app-candidate-debug.apk")
+                .get().asFile
+        val benchmarkBytes = benchmarkApk.length()
+        val candidateBytes = candidateApk.length()
+        val output = outputFile.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(
+            JsonOutput.prettyPrint(
+                JsonOutput.toJson(
+                    linkedMapOf(
+                        "schemaVersion" to 1,
+                        "benchmarkApkSizeBytes" to benchmarkBytes,
+                        "candidateApkSizeBytes" to candidateBytes,
+                        "candidateReductionBytes" to benchmarkBytes - candidateBytes,
+                        "candidatePercentOfBenchmark" to
+                            if (benchmarkBytes == 0L) null
+                            else candidateBytes.toDouble() * 100.0 / benchmarkBytes,
+                    ),
+                ),
+            ) + System.lineSeparator(),
+        )
+    }
 }

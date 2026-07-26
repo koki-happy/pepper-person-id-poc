@@ -46,6 +46,7 @@ class NativeFaceEmbeddingEngine(
         if (handle != 0L) return handle
         initializationFailure?.let { throw IllegalStateException("$modelName initialization failed", it) }
         return runCatching {
+            NativeBridge.ensureLoaded()
             val modelDirectory = File(appContext.filesDir, "models").apply { mkdirs() }
             when (backend) {
                 FaceEmbeddingRuntime.NCNN -> {
@@ -76,8 +77,12 @@ class NativeFaceEmbeddingEngine(
     }
 
     private object NativeBridge {
-        init {
-            runCatching { System.loadLibrary("face_runtime_jni") }
+        private val loadResult = runCatching { System.loadLibrary("face_runtime_jni") }
+
+        fun ensureLoaded() {
+            loadResult.getOrElse {
+                throw IllegalStateException("face_runtime_jni is unavailable for this ABI", it)
+            }
         }
 
         external fun createNcnn(paramPath: String, binPath: String): Long

@@ -28,11 +28,23 @@ class InferenceRuntimeFailureTest {
     }
 
     @Test
-    fun embeddingFactoryRejectsBlockedRuntimeWithoutFallback() {
+    fun embeddingFactoryAcceptsExactArm64OnnxPairsButBlocksPepperArmv7WithoutFallback() {
+        listOf(
+            FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+            FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32,
+        ).forEach { model ->
+            FaceEmbeddingEngineFactory.requireExactPair(
+                model,
+                FaceEmbeddingRuntime.ONNX_RUNTIME,
+                "arm64-v8a",
+            )
+        }
+
         val error = assertThrows(UnsupportedModelRuntimePairException::class.java) {
             FaceEmbeddingEngineFactory.requireExactPair(
                 FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
                 FaceEmbeddingRuntime.ONNX_RUNTIME,
+                "armeabi-v7a",
             )
         }
 

@@ -40,7 +40,45 @@ class PocSettingsCompatibilityTest {
     fun artifactEnumsExposeExactCatalogIds() {
         assertThat(FaceDetectorModelOption.entries.map { it.artifactId }).containsNoDuplicates()
         assertThat(FaceEmbeddingModelOption.entries.map { it.artifactId }).containsNoDuplicates()
+        assertThat(SpeakerModelOption.entries.map { it.artifactId }).containsNoDuplicates()
+        assertThat(SpeakerModelOption.WESPEAKER_RESNET34_LM.modelFileName)
+            .isEqualTo("wespeaker_en_voxceleb_resnet34_LM.onnx")
+        assertThat(SpeakerModelOption.WESPEAKER_RESNET34_LM.embeddingSize).isEqualTo(256)
+        assertThat(SpeakerModelOption.SPEAKERNET_M.configModelId).isEqualTo("speakernet-m")
+        assertThat(SpeakerModelOption.SPEAKERNET_M.embeddingSize).isEqualTo(256)
+        assertThat(SpeakerModelOption.TITANET_S.configModelId).isEqualTo("titanet-s")
+        assertThat(SpeakerModelOption.TITANET_S.embeddingSize).isEqualTo(192)
         assertThat(FaceDetectorRuntime.entries.map { it.runtimeId }).containsNoDuplicates()
         assertThat(FaceEmbeddingRuntime.entries.map { it.runtimeId }).containsNoDuplicates()
+    }
+
+    @Test
+    fun liteRtOptionsExposeOnlyConvertedArtifacts() {
+        assertThat(FaceDetectorModelOption.YUNET_2026MAY_LITERT_FP32.artifactId)
+            .isEqualTo("yunet-2026may-litert-fp32-320")
+        assertThat(FaceDetectorRuntime.LITERT.runtimeId)
+            .isEqualTo("litert-2.1.6-android-cpu")
+        assertThat(FaceEmbeddingModelOption.SFACE_2021DEC_LITERT_FP32.format)
+            .isEqualTo(FaceModelFormat.TFLITE)
+        assertThat(
+            FaceEmbeddingRuntimeCompatibility.supportsExactPair(
+                FaceEmbeddingModelOption.SFACE_2021DEC_LITERT_FP32,
+                FaceEmbeddingRuntime.LITERT,
+                "armeabi-v7a",
+            ),
+        ).isTrue()
+        assertThat(
+            FaceEmbeddingRuntimeCompatibility.supportsExactPair(
+                FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+                FaceEmbeddingRuntime.LITERT,
+                "armeabi-v7a",
+            ),
+        ).isTrue()
+        assertThat(
+            FaceEmbeddingArtifactResolver.resolve(
+                FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+                FaceEmbeddingRuntime.LITERT,
+            ),
+        ).isEqualTo(FaceEmbeddingModelOption.SFACE_2021DEC_LITERT_FP32)
     }
 }

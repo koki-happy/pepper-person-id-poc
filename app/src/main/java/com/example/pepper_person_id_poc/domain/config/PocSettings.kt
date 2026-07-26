@@ -60,6 +60,24 @@ enum class FaceDetectorModelOption(
         modelFileName = "face_detection_yunet_2023mar_int8.onnx",
         description = "YuNet INT8 ONNX",
     ),
+    YUNET_2026MAY_LITERT_FP32(
+        artifactId = "yunet-2026may-litert-fp32-320",
+        displayName = "YuNet 2026may LiteRT FP32 320",
+        modelFileName = "face_detection_yunet_2026may_320.tflite",
+        description = "固定320x320 NCHW / LiteRT 2.1.6 CPU",
+    ),
+    YUNET_2026MAY_NCNN_FP32(
+        artifactId = "yunet-2026may-ncnn-fp32-320",
+        displayName = "YuNet 2026may ncnn FP32 320",
+        modelFileName = "face_detection_yunet_2026may_320.ncnn.param",
+        description = "固定320x320 NCHW / ncnn 20260526 CPU",
+    ),
+    YUNET_2026MAY_MNN_FP32(
+        artifactId = "yunet-2026may-mnn-fp32-320",
+        displayName = "YuNet 2026may MNN FP32 320",
+        modelFileName = "face_detection_yunet_2026may_320.mnn",
+        description = "固定320x320 NCHW / MNN 3.5.0 CPU",
+    ),
 }
 
 enum class FaceDetectorRuntime(
@@ -76,6 +94,26 @@ enum class FaceDetectorRuntime(
         runtimeId = "opencv-5.0.0-android-cpu",
         displayName = "OpenCV 5.0.0",
         description = "Android CPU / FaceDetectorYN",
+    ),
+    ONNX_RUNTIME(
+        runtimeId = "onnxruntime-android-1.20.0-cpu",
+        displayName = "ONNX Runtime Android 1.20.0",
+        description = "YuNet ONNX raw 12-head推論 / ARM64 Android / no fallback",
+    ),
+    NCNN(
+        runtimeId = "ncnn-20260526-android-cpu",
+        displayName = "ncnn 20260526",
+        description = "YuNet固定320変換 / Android CPU / no fallback",
+    ),
+    MNN(
+        runtimeId = "mnn-3.5.0-android-cpu",
+        displayName = "MNN 3.5.0",
+        description = "YuNet固定320変換 / Android CPU / no fallback",
+    ),
+    LITERT(
+        runtimeId = "litert-2.1.6-android-cpu",
+        displayName = "LiteRT 2.1.6 CPU",
+        description = "変換済みTFLite / Android CPU / no fallback",
     ),
 }
 
@@ -133,6 +171,24 @@ enum class FaceEmbeddingModelOption(
         embeddingSize = 128,
         inputSize = 112,
     ),
+    SFACE_2021DEC_LITERT_FP32(
+        artifactId = "sface-2021dec-litert-fp32",
+        modelSpaceId = "face-sface-fp32-litert-128-l2-unverified",
+        displayName = "SFace 2021dec LiteRT FP32",
+        modelFileName = "face_recognition_sface_2021dec.tflite",
+        format = FaceModelFormat.TFLITE,
+        embeddingSize = 128,
+        inputSize = 112,
+    ),
+    FACE_0095_LITERT_FP32(
+        artifactId = "face-0095-litert-fp32",
+        modelSpaceId = "face-0095-256-l2-v1",
+        displayName = "face-reidentification-retail-0095 LiteRT FP32",
+        modelFileName = "face-reidentification-retail-0095.tflite",
+        format = FaceModelFormat.TFLITE,
+        embeddingSize = 256,
+        inputSize = 128,
+    ),
     FACE_0095_NCNN_FP32(
         artifactId = "face-0095-ncnn-fp32",
         modelSpaceId = "face-0095-ncnn-256-l2-unverified",
@@ -161,6 +217,7 @@ enum class FaceModelFormat {
     ONNX,
     NCNN,
     MNN,
+    TFLITE,
 }
 
 enum class FaceEmbeddingRuntime(
@@ -174,19 +231,24 @@ enum class FaceEmbeddingRuntime(
         description = "基準実装 / Android CPU推論",
     ),
     ONNX_RUNTIME(
-        runtimeId = "onnxruntime-mobile-1.27.0-android-cpu",
-        displayName = "ONNX Runtime 1.27.0",
-        description = "API 23 / ARMv7 AARが未配置の場合はBLOCKED",
+        runtimeId = "onnxruntime-android-1.20.0-cpu",
+        displayName = "ONNX Runtime Android 1.20.0",
+        description = "ARM64 Androidのみ。Pepper API 23 / ARMv7はBLOCKED",
     ),
     NCNN(
         runtimeId = "ncnn-20260526-android-cpu",
         displayName = "ncnn 20260526",
-        description = "armeabi-v7a CPU版 / Vulkan・OpenMP無効",
+        description = "armeabi-v7a / arm64-v8a CPU版 / Vulkan・OpenMP無効",
     ),
     MNN(
         runtimeId = "mnn-3.5.0-android-cpu",
         displayName = "MNN 3.5.0",
-        description = "Android ARMv7a CPU版 / CPUバックエンド",
+        description = "Android ARMv7a / ARM64 CPU版 / CPUバックエンド",
+    ),
+    LITERT(
+        runtimeId = "litert-2.1.6-android-cpu",
+        displayName = "LiteRT 2.1.6 CPU",
+        description = "Android ARMv7a / ARM64 CPU版 / no fallback",
     ),
 }
 
@@ -210,6 +272,7 @@ enum class SpeakerModelOption(
     val modelSpaceId: String,
     val displayName: String,
     val modelFileName: String,
+    val embeddingSize: Int,
     val jvsCandidateThreshold: Float,
     val jvsCandidateMargin: Float,
 ) {
@@ -219,6 +282,7 @@ enum class SpeakerModelOption(
         modelSpaceId = "speaker-campplus-en-512-l2-v1",
         displayName = "3D-Speaker CAM++ English",
         modelFileName = "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+        embeddingSize = 512,
         jvsCandidateThreshold = 0.3625838f,
         jvsCandidateMargin = 0.1168099f,
     ),
@@ -228,6 +292,7 @@ enum class SpeakerModelOption(
         modelSpaceId = "speaker-campplus-zh-en-192-l2-v1",
         displayName = "3D-Speaker CAM++ Chinese-English",
         modelFileName = "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
+        embeddingSize = 192,
         jvsCandidateThreshold = 0.7508543f,
         jvsCandidateMargin = 0.0f,
     ),
@@ -237,7 +302,38 @@ enum class SpeakerModelOption(
         modelSpaceId = "speaker-eres2net-en-192-l2-v1",
         displayName = "3D-Speaker ERes2Net",
         modelFileName = "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
+        embeddingSize = 192,
         jvsCandidateThreshold = 0.70323396f,
+        jvsCandidateMargin = 0.0f,
+    ),
+    WESPEAKER_RESNET34_LM(
+        configModelId = "wespeaker-resnet34-lm",
+        artifactId = "wespeaker-resnet34-lm-onnx-fp32-sherpa",
+        modelSpaceId = "speaker-wespeaker-resnet34-lm-256-l2-v1",
+        displayName = "WeSpeaker VoxCeleb ResNet34-LM",
+        modelFileName = "wespeaker_en_voxceleb_resnet34_LM.onnx",
+        embeddingSize = 256,
+        jvsCandidateThreshold = 0.5f,
+        jvsCandidateMargin = 0.0f,
+    ),
+    SPEAKERNET_M(
+        configModelId = "speakernet-m",
+        artifactId = "speakernet-m-onnx-fp32",
+        modelSpaceId = "speaker-speakernet-m-256-l2-v1",
+        displayName = "NeMo SpeakerNet-M",
+        modelFileName = "nemo_en_speakerverification_speakernet.onnx",
+        embeddingSize = 256,
+        jvsCandidateThreshold = 0.6f,
+        jvsCandidateMargin = 0.0f,
+    ),
+    TITANET_S(
+        configModelId = "titanet-s",
+        artifactId = "titanet-s-onnx-fp32",
+        modelSpaceId = "speaker-titanet-s-192-l2-v1",
+        displayName = "NeMo TitaNet-S",
+        modelFileName = "nemo_en_titanet_small.onnx",
+        embeddingSize = 192,
+        jvsCandidateThreshold = 0.6f,
         jvsCandidateMargin = 0.0f,
     ),
     ;
@@ -248,6 +344,9 @@ enum class SpeakerModelOption(
             "campplus-en" -> setOf("3D-Speaker CAM++", "3D-Speaker CAM++ English")
             "campplus-zh-en" -> setOf("3D-Speaker CAM++ Chinese-English")
             "eres2net-en" -> setOf("3D-Speaker ERes2Net")
+            "wespeaker-resnet34-lm" -> setOf("WeSpeaker VoxCeleb ResNet34-LM")
+            "speakernet-m" -> setOf("NeMo SpeakerNet-M")
+            "titanet-s" -> setOf("NeMo TitaNet-S")
             else -> emptySet()
         }
     }

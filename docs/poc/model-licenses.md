@@ -6,9 +6,9 @@
 
 ## 現時点の結論
 
-5モデルはいずれも、関連する学習コードのライセンスとして `Apache-2.0` が記録されています。しかし、現在の配布元 `csukuangfj/speaker-embedding-models` にはモデルカードがなく、この5個の ONNX 重みに適用される明示的なライセンスと商用利用条件を現在の証拠から確定できません。
+CAM++ 2種とERes2Netは、関連する学習コードが`Apache-2.0`でも、現在の配布元に重みへ適用される明示的な許諾証拠がないため未確認です。SpeakerNet-MとTitaNet-Sは、NVIDIA NGCの公式モデルカードがNeMo Toolkitの`Apache-2.0`を適用すると明示しているため、重みの利用許諾を確認済みとします。学習データ（VoxCeleb）の利用条件・表示要件は別途確認します。
 
-したがって、**内部PoC評価は継続しても、重みの再配布・APK同梱・商用利用の可否は未確認**として扱います。コードが Apache-2.0 であることを、重みの許諾根拠へ流用してはいけません。
+したがって、SpeakerNet-MとTitaNet-Sは内部benchmark APKへ同梱できますが、CAM++ 2種とERes2Netを含むcandidate配布は引き続き許諾ゲートで停止します。関連コードがApache-2.0であることを、未確認の重みの許諾根拠へ流用してはいけません。
 
 ## 5モデルの重み
 
@@ -19,8 +19,8 @@
 | `3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx` | `357a834f702b80161e5b981182c038e18553c1f2ca752ed6cec2052365d4129b` | 3D-Speaker、Apache-2.0 | **未確認** | **未確認** |
 | `3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx` | `aa3cfc16963a10586a9393f5035d6d6b57e98d358b347f80c2a30bf4f00ceba2` | 3D-Speaker、Apache-2.0 | **未確認** | **未確認** |
 | `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx` | `c59158379255ad66e161679cca6af8d52d51e389e3224ab7d7a7baae295c2db5` | 3D-Speaker、Apache-2.0 | **未確認** | **未確認** |
-| `nemo_en_speakerverification_speakernet.onnx` | `d204dc8aac0014b8543f05fc8e310510c7022bc65b6452c203ec205ef7a66b23` | NVIDIA NeMo、Apache-2.0 | **未確認** | **未確認** |
-| `nemo_en_titanet_small.onnx` | `ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e` | NVIDIA NeMo、Apache-2.0 | **未確認** | **未確認** |
+| `nemo_en_speakerverification_speakernet.onnx` | `d204dc8aac0014b8543f05fc8e310510c7022bc65b6452c203ec205ef7a66b23` | NVIDIA NeMo、Apache-2.0 | Apache-2.0（[NGC model card](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/speakerverification_speakernet)） | **許可** |
+| `nemo_en_titanet_small.onnx` | `ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e` | NVIDIA NeMo、Apache-2.0 | Apache-2.0（[NGC model card](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/titanet_small)） | **許可** |
 
 配布元は [`csukuangfj/speaker-embedding-models`](https://huggingface.co/csukuangfj/speaker-embedding-models) の revision `0743f301363dec56491a490f6d6cbc9d67f9a3bf` です。配布ページがファイルを公開している事実だけでは、利用・改変・再配布・商用利用の許諾になりません。
 
@@ -59,4 +59,4 @@ RyuseiNetは今回の5モデル本比較の対象外で、重み取得、追加�
 5. 使用する実ファイルの SHA-256 と、許諾証拠が指す版の一致
 6. APK/AAR/JAR を含む第三者ライセンス一覧と SBOM のレビュー
 
-このゲートを満たすまでは、[`config/models.json`](../../config/models.json) の `weightLicense`、`commercialUse`、`licenseEvidence` を `UNVERIFIED` のまま維持します。releaseビルドでは目録5件の欠落・重複、Android列挙3件との対応、同梱assetのサイズとSHA-256、未審査ONNXの混入も検査します。
+このゲートを満たしていないモデルだけ、[`config/models.json`](../../config/models.json) の `weightLicense`、`commercialUse`、`licenseEvidence` を `UNVERIFIED` のまま維持します。配布ゲートは目録6件の欠落・重複、Android列挙6件との対応、同梱assetのサイズとSHA-256、未審査ONNXの混入を検査します。

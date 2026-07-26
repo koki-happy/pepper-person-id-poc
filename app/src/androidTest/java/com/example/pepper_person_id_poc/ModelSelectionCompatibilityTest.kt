@@ -3,8 +3,10 @@ package com.example.pepper_person_id_poc
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToNode
 import com.example.pepper_person_id_poc.application.config.ModelSelectionCoordinator
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.infrastructure.model.ParsedCatalogArtifact
@@ -39,6 +41,8 @@ class ModelSelectionCompatibilityTest {
             }
         }
 
+        composeRule.onNodeWithTag("model-selection-screen")
+            .performScrollToNode(hasTestTag("selection-blocked"))
         composeRule.onNodeWithTag("selection-blocked").assertIsDisplayed()
         composeRule.onNodeWithTag("save-model-selection").assertIsNotEnabled()
     }
