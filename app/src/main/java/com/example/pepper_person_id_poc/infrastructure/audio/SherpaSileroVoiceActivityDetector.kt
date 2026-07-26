@@ -8,7 +8,7 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
 
 class SherpaSileroVoiceActivityDetector(
     context: Context,
-    threshold: Float = 0.5f,
+    threshold: Float = 0.35f,
 ) : VoiceActivityDetector {
     private val vad = Vad(
         assetManager = context.applicationContext.assets,
@@ -16,8 +16,8 @@ class SherpaSileroVoiceActivityDetector(
             sileroVadModelConfig = SileroVadModelConfig(
                 model = MODEL_ASSET_PATH,
                 threshold = threshold,
-                minSilenceDuration = 0.6f,
-                minSpeechDuration = 1.0f,
+                minSilenceDuration = 0.4f,
+                minSpeechDuration = 0.3f,
                 windowSize = 512,
                 maxSpeechDuration = 10.0f,
             ),

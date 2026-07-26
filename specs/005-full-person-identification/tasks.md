@@ -400,3 +400,4 @@ Phase 1 Source of truth
 - [x] T199 [US3] Restrict speaker model selection to WeSpeaker ResNet34-LM ONNX and CAM++ Chinese-English ONNX on sherpa-onnx CPU in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/ModelSelectionScreen.kt`
 - [x] T200 [US2] Keep live speaker identification on Silero VAD and sherpa-onnx by replacing the conflicting Pyannote ONNX Runtime segmentation session with VAD-gated single-speaker segmentation
 - [x] T201 [US1] Remove the retired YuNet 2023mar INT8 detector option and migrate persisted selections to YuNet 2026may FP32
+- [x] T202 [US2] Tune live Silero VAD for faster response with threshold 0.35, 0.3-second minimum speech, 0.4-second silence, and 0.8-second speaker-identification eligibility

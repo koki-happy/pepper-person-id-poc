@@ -8,5 +8,5 @@ data class PcmUtterance(
     val voicedDurationMillis: Long,
 ) {
     val durationMillis: Long get() = endedAtMillis - startedAtMillis
-    val sufficientForSpeakerIdentification: Boolean get() = voicedDurationMillis >= 1_000L
+    val sufficientForSpeakerIdentification: Boolean get() = voicedDurationMillis >= 800L
 }
