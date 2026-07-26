@@ -44,6 +44,32 @@ class FaceTrackerTest {
         assertThat(reappeared.single().trackId).isEqualTo("face-002")
     }
 
+    @Test
+    fun matchedTrack_preservesFirstSeenDurationAndCurrentLandmarkCount() {
+        var now = 1_000L
+        val timedTracker = FaceTracker(
+            minimumIntersectionOverUnion = 0.3f,
+            maximumMissedFrames = 1,
+            elapsedRealtimeMillis = { now },
+        )
+        val first = timedTracker.update(
+            detections = listOf(box(0.10f, 0.10f, 0.40f, 0.40f)),
+            landmarkCounts = listOf(4),
+        ).single()
+        now = 1_750L
+        val second = timedTracker.update(
+            detections = listOf(box(0.12f, 0.11f, 0.42f, 0.41f)),
+            landmarkCounts = listOf(5),
+        ).single()
+
+        assertThat(first.firstSeenElapsedRealtimeMillis).isEqualTo(1_000L)
+        assertThat(first.trackDurationMillis).isEqualTo(0L)
+        assertThat(first.landmarkCount).isEqualTo(4)
+        assertThat(second.firstSeenElapsedRealtimeMillis).isEqualTo(1_000L)
+        assertThat(second.trackDurationMillis).isEqualTo(750L)
+        assertThat(second.landmarkCount).isEqualTo(5)
+    }
+
     private fun box(left: Float, top: Float, right: Float, bottom: Float) =
         NormalizedBoundingBox(left, top, right, bottom)
 }

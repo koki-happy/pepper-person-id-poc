@@ -13,7 +13,12 @@ import com.example.pepper_person_id_poc.domain.face.FaceLandmark
 import com.example.pepper_person_id_poc.domain.face.FaceLandmarkType
 import com.example.pepper_person_id_poc.domain.face.FaceTracker
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
+import com.example.pepper_person_id_poc.domain.face.FaceQualityInput
+import com.example.pepper_person_id_poc.domain.face.FaceQualityPolicy
+import com.example.pepper_person_id_poc.domain.face.FaceQualityThresholds
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
+import com.example.pepper_person_id_poc.domain.face.PixelBoundingBox
+import com.example.pepper_person_id_poc.domain.face.PixelFaceLandmark
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorOption
 import com.example.pepper_person_id_poc.infrastructure.camera.CameraFrameProcessor
 import java.io.Closeable
@@ -48,6 +53,8 @@ class YuNetFaceDetector(
     private val appContext = context.applicationContext
     private val tracker = FaceTracker()
     private val headPoseEstimator = HeadPoseEstimator()
+    private val qualityAnalyzer = FaceImageQualityAnalyzer()
+    private val qualityPolicy = FaceQualityPolicy(FaceQualityThresholds.DEFAULT)
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = detectorOption.displayName))
     private var detector: FaceDetectorYN? = null
     private var detectorInputSize: Size? = null
@@ -93,14 +100,21 @@ class YuNetFaceDetector(
                 }
                 activeDetector.detect(bgr, faces)
                 val rawFaces = faces.toRawFaces(bgr.cols(), bgr.rows())
-                val tracked = tracker.update(rawFaces.map { it.boundingBox })
+                val tracked = tracker.update(
+                    detections = rawFaces.map { it.boundingBox },
+                    landmarkCounts = rawFaces.map { it.landmarks.size / 2 },
+                )
                 val processingMillis = (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
-                val detectedFaces = rawFaces.zip(tracked).map { (raw, track) ->
+                val rawDetectedFaces = rawFaces.zip(tracked).map { (raw, track) ->
                     DetectedFace(
                         trackId = track.trackId,
                         boundingBox = track.boundingBox,
                         detectionScore = raw.score,
                         landmarks = raw.normalizedLandmarks(bgr.cols(), bgr.rows()),
+                        inputBoundingBox = raw.inputBoundingBox,
+                        inputLandmarks = raw.inputLandmarks(),
+                        trackDurationMillis = track.trackDurationMillis,
+                        detectedLandmarkCount = track.landmarkCount,
                     )
                 }
                 val poseStartedAtNanos = SystemClock.elapsedRealtimeNanos()
@@ -112,6 +126,36 @@ class YuNetFaceDetector(
                         } else {
                             null
                         },
+                    )
+                }
+                val detectedFaces = rawDetectedFaces.mapIndexed { index, detectedFace ->
+                    val raw = rawFaces[index]
+                    val track = tracked[index]
+                    val pose = poseObservations[index].headPose
+                    val pixelBounds = FacePixelBounds(
+                        left = raw.inputBoundingBox.left.toInt(),
+                        top = raw.inputBoundingBox.top.toInt(),
+                        right = raw.inputBoundingBox.right.toInt(),
+                        bottom = raw.inputBoundingBox.bottom.toInt(),
+                    )
+                    val metrics = qualityAnalyzer.analyzeBgr(bgr, pixelBounds)
+                    detectedFace.copy(
+                        qualityAssessment = qualityPolicy.assess(
+                            FaceQualityInput(
+                                faceWidthPixels = pixelBounds.width,
+                                faceHeightPixels = pixelBounds.height,
+                                detectionConfidence = raw.score,
+                                landmarkCount = track.landmarkCount,
+                                blurScore = metrics.blurScore,
+                                brightnessMean = metrics.brightnessMean,
+                                clippedRatio = metrics.clippedRatio,
+                                yawDegrees = pose?.yawDegrees ?: 0f,
+                                pitchDegrees = pose?.pitchDegrees ?: 0f,
+                                rollDegrees = pose?.rollDegrees ?: 0f,
+                                edgeTruncationRatio = metrics.edgeTruncationRatio,
+                                trackDurationMillis = track.trackDurationMillis,
+                            ),
+                        ),
                     )
                 }
                 val poseMillis = (SystemClock.elapsedRealtimeNanos() - poseStartedAtNanos) / 1_000_000L
@@ -197,7 +241,12 @@ class YuNetFaceDetector(
                                         ),
                                     ),
                                 )
-                                FaceFeatureObservation(track.trackId, embedding, embeddingMillis)
+                                FaceFeatureObservation(
+                                    trackId = track.trackId,
+                                    embedding = embedding,
+                                    embeddingTimeMillis = embeddingMillis,
+                                    qualityAssessment = detectedFaces[index].qualityAssessment,
+                                )
                             }
                         } finally {
                             detectedFace.release()
@@ -388,12 +437,19 @@ class YuNetFaceDetector(
     ): List<RawFace> = (0 until rows()).map { row ->
         val values = FloatArray(FACE_RESULT_COLUMN_COUNT)
         get(row, 0, values)
-        val left = (values[0] / imageWidth).coerceIn(0f, 1f)
-        val top = (values[1] / imageHeight).coerceIn(0f, 1f)
-        val right = ((values[0] + values[2]) / imageWidth).coerceIn(0f, 1f)
-        val bottom = ((values[1] + values[3]) / imageHeight).coerceIn(0f, 1f)
+        val inputBoundingBox = PixelBoundingBox(
+            left = values[0],
+            top = values[1],
+            right = values[0] + values[2],
+            bottom = values[1] + values[3],
+        )
+        val left = (inputBoundingBox.left / imageWidth).coerceIn(0f, 1f)
+        val top = (inputBoundingBox.top / imageHeight).coerceIn(0f, 1f)
+        val right = (inputBoundingBox.right / imageWidth).coerceIn(0f, 1f)
+        val bottom = (inputBoundingBox.bottom / imageHeight).coerceIn(0f, 1f)
         RawFace(
             boundingBox = NormalizedBoundingBox(left, top, right, bottom),
+            inputBoundingBox = inputBoundingBox,
             score = values[14],
             landmarks = values.copyOfRange(4, 14),
         )
@@ -411,6 +467,7 @@ class YuNetFaceDetector(
 
     private data class RawFace(
         val boundingBox: NormalizedBoundingBox,
+        val inputBoundingBox: PixelBoundingBox,
         val score: Float,
         val landmarks: FloatArray,
     ) {
@@ -420,6 +477,15 @@ class YuNetFaceDetector(
                     type = type,
                     x = (landmarks[index * 2] / imageWidth).coerceIn(0f, 1f),
                     y = (landmarks[index * 2 + 1] / imageHeight).coerceIn(0f, 1f),
+                )
+            }
+
+        fun inputLandmarks(): List<PixelFaceLandmark> =
+            FaceLandmarkType.entries.mapIndexed { index, type ->
+                PixelFaceLandmark(
+                    type = type,
+                    x = landmarks[index * 2],
+                    y = landmarks[index * 2 + 1],
                 )
             }
     }

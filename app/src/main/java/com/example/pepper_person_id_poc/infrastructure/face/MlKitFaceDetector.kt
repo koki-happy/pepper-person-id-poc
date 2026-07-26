@@ -13,6 +13,10 @@ import com.example.pepper_person_id_poc.domain.face.FaceDetectionStatus
 import com.example.pepper_person_id_poc.domain.face.FaceLandmark
 import com.example.pepper_person_id_poc.domain.face.FaceLandmarkType
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
+import com.example.pepper_person_id_poc.domain.face.FaceQualityAssessment
+import com.example.pepper_person_id_poc.domain.face.FaceQualityInput
+import com.example.pepper_person_id_poc.domain.face.FaceQualityPolicy
+import com.example.pepper_person_id_poc.domain.face.FaceQualityThresholds
 import com.example.pepper_person_id_poc.domain.face.FaceTracker
 import com.example.pepper_person_id_poc.domain.face.HeadPose
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
@@ -57,6 +61,8 @@ class MlKitFaceDetector(
             .build(),
     )
     private val fallbackTracker = FaceTracker()
+    private val qualityAnalyzer = FaceImageQualityAnalyzer()
+    private val qualityPolicy = FaceQualityPolicy(FaceQualityThresholds.DEFAULT)
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = MODEL_NAME))
     private val analysisRateMeter = RateMeter(minimumWindowMillis = 1_500L)
     private var nextAnalysisAtMillis = 0L
@@ -116,7 +122,8 @@ class MlKitFaceDetector(
         startedAtNanos: Long,
     ) {
         val boxes = faces.map { it.normalizedBoundingBox(bgr.cols(), bgr.rows()) }
-        val fallbackTracks = fallbackTracker.update(boxes)
+        val detectedLandmarkCounts = faces.map { it.availableFiveLandmarkCount() }
+        val fallbackTracks = fallbackTracker.update(boxes, detectedLandmarkCounts)
         val observations = faces.mapIndexed { index, face ->
             val trackId = face.trackingId?.let { "mlkit-face-${it.toString().padStart(3, '0')}" }
                 ?: fallbackTracks[index].trackId
@@ -124,6 +131,8 @@ class MlKitFaceDetector(
                 trackId = trackId,
                 boundingBox = boxes[index],
                 landmarks = face.fiveLandmarks(bgr.cols(), bgr.rows()),
+                detectedLandmarkCount = detectedLandmarkCounts[index],
+                trackDurationMillis = fallbackTracks[index].trackDurationMillis,
                 headPose = if (estimateHeadPose) {
                     HeadPose(
                         yawDegrees = face.headEulerAngleY,
@@ -133,7 +142,7 @@ class MlKitFaceDetector(
                 } else {
                     null
                 },
-            )
+            ).withQuality(qualityAssessment(bgr, boxes[index], fallbackTracks[index], face))
         }
         val processingMillis = (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000L
         val detectedFaces = observations.map { observation ->
@@ -141,8 +150,11 @@ class MlKitFaceDetector(
                 trackId = observation.trackId,
                 boundingBox = observation.boundingBox,
                 // ML Kit does not expose face-detection confidence. The overlay labels this as N/A.
-                detectionScore = 1f,
+                detectionScore = null,
                 landmarks = observation.landmarks,
+                trackDurationMillis = observation.trackDurationMillis,
+                detectedLandmarkCount = observation.detectedLandmarkCount,
+                qualityAssessment = observation.qualityAssessment,
             )
         }
         val embeddingTrackIds = onPoseObservations(
@@ -176,7 +188,12 @@ class MlKitFaceDetector(
                                     ),
                                 ),
                             )
-                            FaceFeatureObservation(observation.trackId, embedding, elapsed)
+                            FaceFeatureObservation(
+                                trackId = observation.trackId,
+                                embedding = embedding,
+                                embeddingTimeMillis = elapsed,
+                                qualityAssessment = observation.qualityAssessment,
+                            )
                         }
                 } finally {
                     row.release()
@@ -333,12 +350,66 @@ class MlKitFaceDetector(
         }
     }
 
+    private fun Face.availableFiveLandmarkCount(): Int = listOf(
+        MlKitLandmark.RIGHT_EYE,
+        MlKitLandmark.LEFT_EYE,
+        MlKitLandmark.NOSE_BASE,
+        MlKitLandmark.MOUTH_RIGHT,
+        MlKitLandmark.MOUTH_LEFT,
+    ).count { getLandmark(it) != null }
+
+    private fun qualityAssessment(
+        bgr: Mat,
+        boundingBox: NormalizedBoundingBox,
+        track: com.example.pepper_person_id_poc.domain.face.TrackedBoundingBox,
+        face: Face,
+    ): FaceQualityAssessment {
+        val pixelBounds = FacePixelBounds(
+            left = (boundingBox.left * bgr.cols()).toInt(),
+            top = (boundingBox.top * bgr.rows()).toInt(),
+            right = (boundingBox.right * bgr.cols()).toInt(),
+            bottom = (boundingBox.bottom * bgr.rows()).toInt(),
+        )
+        val metrics = qualityAnalyzer.analyzeBgr(bgr, pixelBounds)
+        val pose = if (estimateHeadPose) {
+            HeadPose(
+                yawDegrees = face.headEulerAngleY,
+                pitchDegrees = -face.headEulerAngleX,
+                rollDegrees = face.headEulerAngleZ,
+            )
+        } else {
+            null
+        }
+        return qualityPolicy.assess(
+            FaceQualityInput(
+                faceWidthPixels = pixelBounds.width,
+                faceHeightPixels = pixelBounds.height,
+                detectionConfidence = null,
+                landmarkCount = track.landmarkCount,
+                blurScore = metrics.blurScore,
+                brightnessMean = metrics.brightnessMean,
+                clippedRatio = metrics.clippedRatio,
+                yawDegrees = pose?.yawDegrees ?: 0f,
+                pitchDegrees = pose?.pitchDegrees ?: 0f,
+                rollDegrees = pose?.rollDegrees ?: 0f,
+                edgeTruncationRatio = metrics.edgeTruncationRatio,
+                trackDurationMillis = track.trackDurationMillis,
+            ),
+        )
+    }
+
     private data class MlKitFaceObservation(
         val trackId: String,
         val boundingBox: NormalizedBoundingBox,
         val landmarks: List<FaceLandmark>,
+        val detectedLandmarkCount: Int,
+        val trackDurationMillis: Long,
         val headPose: HeadPose?,
+        val qualityAssessment: FaceQualityAssessment? = null,
     ) {
+        fun withQuality(value: FaceQualityAssessment): MlKitFaceObservation =
+            copy(qualityAssessment = value)
+
         fun toDetectorRow(width: Int, height: Int): Mat {
             val values = FloatArray(15)
             values[0] = boundingBox.left * width

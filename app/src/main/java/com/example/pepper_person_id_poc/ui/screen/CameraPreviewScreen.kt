@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.compose.CameraXViewfinder
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +16,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -229,47 +230,137 @@ fun CameraPreviewScreen(
                 }
             }
             Card(Modifier.fillMaxWidth().weight(1f)) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(12.dp).verticalScroll(rememberScrollState()),
-                ) {
-                    TableHeader("Item", "Value")
-                    DetailRow("顔モデル", identity.modelId)
-                    DetailRow("検出時間", detection.processingTimeMillis?.let { "$it ms" } ?: "未計測")
-                    DetailRow("特徴抽出時間", identity.lastEmbeddingAverageTimeMillis?.let { "$it ms" } ?: "未計測")
-                    DetailRow("参加閾値", settings.faceClusterJoinThreshold.score())
-                    DetailRow("現在モデル", identity.currentModelClusterCount.toString())
-                    DetailRow("全体クラスタ", identity.totalClusterCount.toString())
-                    identity.results.forEach { (trackId, result) ->
-                        HorizontalDivider()
-                        DetailRow("Detection ID", trackId)
-                        DetailRow("Feature ID", result.anonymousId)
-                        DetailRow(
-                            if (result.isNewCluster) "最高既存類似度" else "類似度",
-                            result.bestExistingScore?.score() ?: "比較対象なし",
-                        )
-                        DetailRow("更新", "${result.updateCount}/${result.maximumUpdateCount}")
-                        Text("類似度一覧", style = MaterialTheme.typography.titleSmall)
-                        TableHeader("Feature ID", "Similarity", firstColumnWeight = 0.72f)
-                        result.candidateScores.forEach { candidate ->
-                            Row(Modifier.fillMaxWidth()) {
-                                Text(
-                                    "${if (candidate.selected) "✓ " else ""}${candidate.anonymousId}",
-                                    modifier = Modifier.weight(0.72f),
-                                )
-                                Text(
-                                    candidate.score.score(),
-                                    textAlign = TextAlign.End,
-                                    modifier = Modifier.weight(0.28f),
-                                )
-                            }
+                FacePreviewContractDetails(
+                    identity = identity,
+                    detectionProcessingTimeMillis = detection.processingTimeMillis,
+                    faceClusterJoinThreshold = settings.faceClusterJoinThreshold,
+                    modelSpaceId = identity.results.values.firstOrNull()
+                        ?.evaluation?.candidates?.firstOrNull()?.modelSpaceId?.value
+                        ?: engine.modelName,
+                    artifactId = settings.faceModel.modelFileName,
+                    runtimeId = settings.faceInferenceBackend.name,
+                    qualityByTrackId = detection.faces.mapNotNull { face ->
+                        face.qualityAssessment?.let { quality ->
+                            val input = quality.input
+                            face.trackId to FaceQualityUiState(
+                                summary = if (input == null) {
+                                    "N/A"
+                                } else {
+                                    "blur=${input.blurScore.score()}, brightness=${input.brightnessMean.score()}, " +
+                                        "clipped=${input.clippedRatio.score()}, landmarks=${input.landmarkCount}, " +
+                                        "track=${input.trackDurationMillis}ms, confidence=" +
+                                        (input.detectionConfidence?.score() ?: "N/A")
+                                },
+                                createEligible = quality.createEligible,
+                                updateEligible = quality.updateEligible,
+                                rejectionReasons = quality.rejectionReasons,
+                            )
                         }
-                    }
-                    identity.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    DeviceLoadPanel()
+                    }.toMap(),
+                )
+            }
+        }
+    }
+}
+
+data class FaceQualityUiState(
+    val summary: String,
+    val createEligible: Boolean,
+    val updateEligible: Boolean,
+    val rejectionReasons: List<String>,
+)
+
+@Composable
+fun FacePreviewContractDetails(
+    identity: com.example.pepper_person_id_poc.application.face.FaceIdentityUiState,
+    detectionProcessingTimeMillis: Long?,
+    faceClusterJoinThreshold: Float,
+    qualityByTrackId: Map<String, FaceQualityUiState> = emptyMap(),
+    modelSpaceId: String = "N/A",
+    artifactId: String = "N/A",
+    runtimeId: String = "N/A",
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(12.dp)
+            .testTag("face-preview-contract"),
+    ) {
+        item {
+            TableHeader("Item", "Value")
+            DetailRow("顔モデル", identity.modelId)
+            DetailRow("Model Space ID", modelSpaceId)
+            DetailRow("Artifact ID", artifactId)
+            DetailRow("Runtime ID", runtimeId)
+            DetailRow("検出時間", detectionProcessingTimeMillis?.let { "$it ms" } ?: "未計測")
+            DetailRow(
+                "特徴抽出時間",
+                identity.lastEmbeddingAverageTimeMillis?.let { "$it ms" } ?: "未計測",
+            )
+            DetailRow("参加閾値", faceClusterJoinThreshold.score())
+            DetailRow("現在モデル", identity.currentModelClusterCount.toString())
+            DetailRow("全体クラスタ", identity.totalClusterCount.toString())
+        }
+        identity.results.forEach { (trackId, result) ->
+            item(key = "identity-$trackId") {
+                val quality = qualityByTrackId[trackId]
+                HorizontalDivider()
+                DetailRow("Detection ID", trackId)
+                DetailRow("Feature ID", result.anonymousId)
+                DetailRow("品質", quality?.summary ?: "N/A")
+                DetailRow(
+                    "品質保存可否",
+                    quality?.let {
+                        "create=${it.createEligible}, update=${it.updateEligible}"
+                    } ?: "N/A",
+                )
+                DetailRow(
+                    "品質理由",
+                    quality?.rejectionReasons?.takeIf(List<String>::isNotEmpty)?.joinToString()
+                        ?: quality?.let { "なし" }
+                        ?: "N/A",
+                )
+                DetailRow(
+                    if (result.isNewCluster) "最高既存類似度" else "類似度",
+                    result.bestExistingScore?.score() ?: "比較対象なし",
+                )
+                DetailRow("更新", "${result.updateCount}/${result.maximumUpdateCount}")
+                DetailRow("判定", result.evaluation?.decision?.name ?: "N/A")
+                DetailRow(
+                    "1位-2位リード",
+                    result.evaluation?.highestCandidateLead?.score() ?: "N/A",
+                )
+                DetailRow("保存操作", result.persistenceOperation?.name ?: "N/A")
+                Text("類似度一覧", style = MaterialTheme.typography.titleSmall)
+                TableHeader("Feature ID", "Similarity", firstColumnWeight = 0.72f)
+            }
+            itemsIndexed(
+                items = result.candidateScores,
+                key = { _, candidate -> "$trackId-${candidate.anonymousId}" },
+            ) { index, candidate ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag("face-candidate-$trackId-${candidate.anonymousId}"),
+                ) {
+                    Text(
+                        "#${index + 1} ${if (candidate.selected) "✓ " else ""}${candidate.anonymousId}",
+                        modifier = Modifier.weight(0.72f),
+                    )
+                    Text(
+                        candidate.score.score(),
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.weight(0.28f),
+                    )
                 }
             }
         }
+        identity.error?.let { error ->
+            item { Text(error, color = MaterialTheme.colorScheme.error) }
+        }
+        item { DeviceLoadPanel() }
     }
 }
 

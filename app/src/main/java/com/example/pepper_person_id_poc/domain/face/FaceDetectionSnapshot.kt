@@ -14,8 +14,26 @@ data class FaceDetectionSnapshot(
 data class DetectedFace(
     val trackId: String,
     val boundingBox: NormalizedBoundingBox,
-    val detectionScore: Float,
+    val detectionScore: Float?,
     val landmarks: List<FaceLandmark> = emptyList(),
+    val inputBoundingBox: PixelBoundingBox? = null,
+    val inputLandmarks: List<PixelFaceLandmark> = emptyList(),
+    val trackDurationMillis: Long = 0L,
+    val detectedLandmarkCount: Int = inputLandmarks.size,
+    val qualityAssessment: FaceQualityAssessment? = null,
+)
+
+data class PixelBoundingBox(
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float,
+)
+
+data class PixelFaceLandmark(
+    val type: FaceLandmarkType,
+    val x: Float,
+    val y: Float,
 )
 
 data class FaceLandmark(

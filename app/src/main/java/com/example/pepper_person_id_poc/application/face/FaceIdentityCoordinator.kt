@@ -59,8 +59,10 @@ class FaceIdentityCoordinator(
                 }
                 val (policy, operation) = AnonymousPersistencePolicy.evaluate(
                     decision = evaluation.decision,
-                    createEligible = true,
-                    updateEligible = true,
+                    createEligible = observation.qualityAssessment?.createEligible == true,
+                    updateEligible = observation.qualityAssessment?.updateEligible == true,
+                    reasons = observation.qualityAssessment?.rejectionReasons
+                        ?: listOf("QUALITY_UNAVAILABLE"),
                 )
                 val cluster = repository.apply(
                     operation = operation,
