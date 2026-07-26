@@ -13,9 +13,6 @@ import com.example.pepper_person_id_poc.domain.face.FaceLandmark
 import com.example.pepper_person_id_poc.domain.face.FaceLandmarkType
 import com.example.pepper_person_id_poc.domain.face.FaceTracker
 import com.example.pepper_person_id_poc.domain.face.FacePoseObservation
-import com.example.pepper_person_id_poc.domain.face.FaceQualityInput
-import com.example.pepper_person_id_poc.domain.face.FaceQualityPolicy
-import com.example.pepper_person_id_poc.domain.face.FaceQualityThresholds
 import com.example.pepper_person_id_poc.domain.face.NormalizedBoundingBox
 import com.example.pepper_person_id_poc.domain.face.PixelBoundingBox
 import com.example.pepper_person_id_poc.domain.face.PixelFaceLandmark
@@ -54,8 +51,6 @@ class YuNetFaceDetector(
     private val appContext = context.applicationContext
     private val tracker = FaceTracker()
     private val headPoseEstimator = HeadPoseEstimator()
-    private val qualityAnalyzer = FaceImageQualityAnalyzer()
-    private val qualityPolicy = FaceQualityPolicy(FaceQualityThresholds.DEFAULT)
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = detectorOption.displayName))
     private var detector: YuNetDetectionBackend? = null
     private var nextAnalysisAtMillis = 0L
@@ -119,7 +114,6 @@ class YuNetFaceDetector(
                     )
                 }
                 val poseStartedAtNanos = SystemClock.elapsedRealtimeNanos()
-                val qualityStartedAtNanos = poseStartedAtNanos
                 val poseObservations = rawFaces.zip(tracked).map { (raw, track) ->
                     FacePoseObservation(
                         trackId = track.trackId,
@@ -130,39 +124,8 @@ class YuNetFaceDetector(
                         },
                     )
                 }
-                val detectedFaces = rawDetectedFaces.mapIndexed { index, detectedFace ->
-                    val raw = rawFaces[index]
-                    val track = tracked[index]
-                    val pose = poseObservations[index].headPose
-                    val pixelBounds = FacePixelBounds(
-                        left = raw.inputBoundingBox.left.toInt(),
-                        top = raw.inputBoundingBox.top.toInt(),
-                        right = raw.inputBoundingBox.right.toInt(),
-                        bottom = raw.inputBoundingBox.bottom.toInt(),
-                    )
-                    val metrics = qualityAnalyzer.analyzeBgr(bgr, pixelBounds)
-                    detectedFace.copy(
-                        qualityAssessment = qualityPolicy.assess(
-                            FaceQualityInput(
-                                faceWidthPixels = pixelBounds.width,
-                                faceHeightPixels = pixelBounds.height,
-                                detectionConfidence = raw.score,
-                                landmarkCount = track.landmarkCount,
-                                blurScore = metrics.blurScore,
-                                brightnessMean = metrics.brightnessMean,
-                                clippedRatio = metrics.clippedRatio,
-                                yawDegrees = pose?.yawDegrees ?: 0f,
-                                pitchDegrees = pose?.pitchDegrees ?: 0f,
-                                rollDegrees = pose?.rollDegrees ?: 0f,
-                                edgeTruncationRatio = metrics.edgeTruncationRatio,
-                                trackDurationMillis = track.trackDurationMillis,
-                            ),
-                        ),
-                    )
-                }
+                val detectedFaces = rawDetectedFaces
                 val poseMillis = (SystemClock.elapsedRealtimeNanos() - poseStartedAtNanos) / 1_000_000L
-                val qualityMillis =
-                    (SystemClock.elapsedRealtimeNanos() - qualityStartedAtNanos) / 1_000_000L
                 onBenchmarkEvent(
                     BenchmarkEvent(
                         event = "face_pose",
@@ -248,11 +211,11 @@ class YuNetFaceDetector(
                                     trackId = track.trackId,
                                     embedding = embedding,
                                     embeddingTimeMillis = embeddingMillis,
-                                    qualityAssessment = detectedFaces[index].qualityAssessment,
+                                    qualityAssessment = null,
                                     preprocessingTimeMillis = preprocessingMillis +
                                         (extraction.preprocessingMillis ?: 0L),
                                     detectionTimeMillis = detectionMillis,
-                                    qualityTimeMillis = qualityMillis,
+                                    qualityTimeMillis = null,
                                     alignmentTimeMillis = extraction.alignmentMillis,
                                 )
                             }

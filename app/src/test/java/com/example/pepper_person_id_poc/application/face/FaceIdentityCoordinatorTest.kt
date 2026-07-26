@@ -90,7 +90,7 @@ class FaceIdentityCoordinatorTest {
     }
 
     @Test
-    fun lowQualityFace_retainsCandidatesButHoldsRepositoryState() {
+    fun qualityAssessment_doesNotBlockFaceUpdate() {
         val repository = InMemoryAnonymousFaceRepository()
         repository.apply(
             operation = PersistenceOperation.CREATE,
@@ -100,7 +100,6 @@ class FaceIdentityCoordinatorTest {
             maximumUpdateCount = 20,
             nowElapsedRealtime = 1L,
         )
-        val before = repository.getAll()
         val coordinator = FaceIdentityCoordinator(repository, "face-model", 0.8f, 20)
 
         coordinator.onFeatureObservations(
@@ -121,14 +120,9 @@ class FaceIdentityCoordinatorTest {
 
         val result = coordinator.state.value.results.getValue("track-low-quality")
         assertThat(result.evaluation!!.candidates).hasSize(1)
-        assertThat(result.persistenceOperation).isEqualTo(PersistenceOperation.HOLD)
-        assertThat(result.persistencePolicy!!.reasons).contains("INSUFFICIENT_SHARPNESS")
-        val after = repository.getAll()
-        assertThat(after.map { it.anonymousId }).isEqualTo(before.map { it.anonymousId })
-        assertThat(after.map { it.updateCount }).isEqualTo(before.map { it.updateCount })
-        assertThat(after.single().centroid.asList()).isEqualTo(before.single().centroid.asList())
-        assertThat(after.single().normalizedEmbeddingSum.asList())
-            .isEqualTo(before.single().normalizedEmbeddingSum.asList())
+        assertThat(result.persistenceOperation).isEqualTo(PersistenceOperation.UPDATE)
+        assertThat(result.persistencePolicy!!.reasons).isEmpty()
+        assertThat(repository.getAll().single().updateCount).isEqualTo(2)
     }
 
     @Test
@@ -152,7 +146,6 @@ class FaceIdentityCoordinatorTest {
                 feature("track-1", floatArrayOf(1f, 0f), 7L).copy(
                     preprocessingTimeMillis = 2L,
                     detectionTimeMillis = 3L,
-                    qualityTimeMillis = 4L,
                     alignmentTimeMillis = 5L,
                 ),
             ),
@@ -161,7 +154,7 @@ class FaceIdentityCoordinatorTest {
         val metrics = coordinator.state.value.pipelineMetrics!!
         assertThat(metrics.preprocessingMillis).isEqualTo(2.0)
         assertThat(metrics.detectionMillis).isEqualTo(3.0)
-        assertThat(metrics.qualityMillis).isEqualTo(4.0)
+        assertThat(metrics.qualityMillis).isNull()
         assertThat(metrics.alignmentMillis).isEqualTo(5.0)
         assertThat(metrics.embeddingMillis).isEqualTo(7.0)
         assertThat(metrics.scoringMillis).isGreaterThan(0.0)

@@ -70,10 +70,9 @@ class FaceIdentityCoordinator(
                 val policyStartedNanos = nanoTime()
                 val (policy, operation) = AnonymousPersistencePolicy.evaluate(
                     decision = evaluation.decision,
-                    createEligible = observation.qualityAssessment?.createEligible == true,
-                    updateEligible = observation.qualityAssessment?.updateEligible == true,
-                    reasons = observation.qualityAssessment?.rejectionReasons
-                        ?: listOf("QUALITY_UNAVAILABLE"),
+                    createEligible = true,
+                    updateEligible = true,
+                    reasons = emptyList(),
                 )
                 policyNanos += nanoTime() - policyStartedNanos
                 val repositoryStartedNanos = nanoTime()
@@ -131,9 +130,6 @@ class FaceIdentityCoordinator(
                 detectionMillis = observations.mapNotNull {
                     it.detectionTimeMillis
                 }.maxOrNull()?.toDouble(),
-                qualityMillis = observations.mapNotNull {
-                    it.qualityTimeMillis
-                }.maxOrNull()?.toDouble(),
                 alignmentMillis = observations.mapNotNull {
                     it.alignmentTimeMillis
                 }.sum().toDouble().takeIf { observations.any { it.alignmentTimeMillis != null } },
@@ -171,9 +167,6 @@ class FaceIdentityCoordinator(
                 }.maxOrNull()?.toDouble(),
                 detectionMillis = observations.mapNotNull {
                     it.detectionTimeMillis
-                }.maxOrNull()?.toDouble(),
-                qualityMillis = observations.mapNotNull {
-                    it.qualityTimeMillis
                 }.maxOrNull()?.toDouble(),
                 alignmentMillis = observations.mapNotNull {
                     it.alignmentTimeMillis

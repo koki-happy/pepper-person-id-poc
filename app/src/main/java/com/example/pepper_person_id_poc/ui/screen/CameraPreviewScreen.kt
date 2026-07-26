@@ -243,24 +243,6 @@ fun CameraPreviewScreen(
                         settings.faceEmbeddingRuntime,
                     )?.artifactId ?: "MISSING_EXACT_ARTIFACT",
                     runtimeId = settings.faceEmbeddingRuntime.runtimeId,
-                    qualityByTrackId = detection.faces.mapNotNull { face ->
-                        face.qualityAssessment?.let { quality ->
-                            val input = quality.input
-                            face.trackId to FaceQualityUiState(
-                                summary = if (input == null) {
-                                    "N/A"
-                                } else {
-                                    "blur=${input.blurScore.score()}, brightness=${input.brightnessMean.score()}, " +
-                                        "clipped=${input.clippedRatio.score()}, landmarks=${input.landmarkCount}, " +
-                                        "track=${input.trackDurationMillis}ms, confidence=" +
-                                        (input.detectionConfidence?.score() ?: "N/A")
-                                },
-                                createEligible = quality.createEligible,
-                                updateEligible = quality.updateEligible,
-                                rejectionReasons = quality.rejectionReasons,
-                            )
-                        }
-                    }.toMap(),
                     modifier = Modifier.heightIn(min = 240.dp, max = 480.dp),
                 )
             }
@@ -268,20 +250,12 @@ fun CameraPreviewScreen(
     }
 }
 
-data class FaceQualityUiState(
-    val summary: String,
-    val createEligible: Boolean,
-    val updateEligible: Boolean,
-    val rejectionReasons: List<String>,
-)
-
 @Composable
 fun FacePreviewContractDetails(
     identity: com.example.pepper_person_id_poc.application.face.FaceIdentityUiState,
     detectionProcessingTimeMillis: Long?,
     analysisFramesPerSecond: Float = 0f,
     faceClusterJoinThreshold: Float,
-    qualityByTrackId: Map<String, FaceQualityUiState> = emptyMap(),
     modelSpaceId: String = "N/A",
     artifactId: String = "N/A",
     runtimeId: String = "N/A",
@@ -296,26 +270,15 @@ fun FacePreviewContractDetails(
     ) {
         identity.results.forEach { (trackId, result) ->
             item(key = "identity-$trackId") {
-                val quality = qualityByTrackId[trackId]
                 DetailRow("Feature ID", result.anonymousId)
                 DetailRow(
                     "判定",
-                    when {
-                        quality != null && !quality.createEligible && !quality.updateEligible -> "品質不足"
-                        result.isNewCluster -> "新規Feature"
-                        else -> "既存Feature"
-                    },
+                    if (result.isNewCluster) "新規Feature" else "既存Feature",
                 )
                 DetailRow(
                     "類似度",
                     result.bestExistingScore?.score() ?: "比較対象なし",
                 )
-                quality?.rejectionReasons?.takeIf(List<String>::isNotEmpty)?.let { reasons ->
-                    DetailRow(
-                        "理由",
-                        reasons.joinToString(),
-                    )
-                }
             }
         }
         identity.error?.let { error ->
@@ -327,7 +290,6 @@ fun FacePreviewContractDetails(
                 stageMetrics = listOf(
                     metrics?.preprocessingMillis.stage("face-preprocessing", "Preprocessing"),
                     metrics?.detectionMillis.stage("face-detection", "Detection"),
-                    metrics?.qualityMillis.stage("face-quality", "Quality"),
                     metrics?.alignmentMillis.stage("face-alignment", "Alignment"),
                     metrics?.embeddingMillis.stage("face-embedding", "Embedding"),
                     metrics?.scoringMillis.stage("face-scoring", "Scoring"),

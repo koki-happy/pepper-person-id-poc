@@ -15,7 +15,6 @@ import com.example.pepper_person_id_poc.application.face.FaceIdentityUiState
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousClusterScore
 import com.example.pepper_person_id_poc.domain.anonymous.AnonymousIdentificationResult
 import com.example.pepper_person_id_poc.ui.screen.FacePreviewContractDetails
-import com.example.pepper_person_id_poc.ui.screen.FaceQualityUiState
 import org.junit.Rule
 import org.junit.Test
 
@@ -54,7 +53,7 @@ class AnonymousFaceUiTest {
     }
 
     @Test
-    fun faceContract_rendersOnlyIdentificationQualityAndLoadSummary() {
+    fun faceContract_rendersOnlyIdentificationAndLoadSummary() {
         val state = faceState(
             result = faceResult(
                 anonymousId = "anonymous-face-009",
@@ -70,14 +69,6 @@ class AnonymousFaceUiTest {
                         identity = state,
                         detectionProcessingTimeMillis = 12L,
                         faceClusterJoinThreshold = 0.8f,
-                        qualityByTrackId = mapOf(
-                            "track-17" to FaceQualityUiState(
-                                summary = "blur=0.18, brightness=44.0",
-                                createEligible = false,
-                                updateEligible = false,
-                                rejectionReasons = listOf("FACE_BLURRED"),
-                            ),
-                        ),
                     )
                 }
             }
@@ -85,9 +76,8 @@ class AnonymousFaceUiTest {
 
         listOf(
             "anonymous-face-009",
-            "品質不足",
+            "既存Feature",
             "0.93",
-            "FACE_BLURRED",
         ).forEach(::assertTextCanBeDisplayed)
     }
 

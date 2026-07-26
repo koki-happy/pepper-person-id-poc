@@ -402,3 +402,4 @@ Phase 1 Source of truth
 - [x] T201 [US1] Remove the retired YuNet 2023mar INT8 detector option and migrate persisted selections to YuNet 2026may FP32
 - [x] T202 [US2] Tune live Silero VAD for faster response with threshold 0.35, 0.3-second minimum speech, 0.4-second silence, and 0.8-second speaker-identification eligibility
 - [x] T203 [US1] Make the complete face-identification screen vertically scrollable and bound the nested result list for Pepper landscape displays
+- [x] T204 [US1] Remove face quality analysis, persistence gating, quality UI, and quality timing from the live face-identification path
