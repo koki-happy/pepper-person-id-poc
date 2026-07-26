@@ -41,6 +41,67 @@ function Test-NativeInventory {
     }
 }
 
+function Invoke-NativeCompatibilityAudit {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ApkPath,
+        [Parameter(Mandatory)][string[]]$AllowedAbis,
+        [Parameter(Mandatory)][string]$ReadElfPath,
+        [string[]]$ForbiddenApi23Symbols = @('__write_chk')
+    )
+    $readElf = (Resolve-Path -LiteralPath $ReadElfPath -ErrorAction Stop).Path
+    $apk = (Resolve-Path -LiteralPath $ApkPath -ErrorAction Stop).Path
+    $inventoryScript = Join-Path $PSScriptRoot 'Invoke-ApkAudit.ps1'
+    . $inventoryScript
+    $inventory = Get-ApkInventory -ApkPath $apk
+    $inventoryResult = Test-NativeInventory -Inventory $inventory -AllowedAbis $AllowedAbis
+    $symbolFailures = @()
+    $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) (
+        'pepper-apk-audit-' + [guid]::NewGuid().ToString('N')
+    )
+    [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [IO.Compression.ZipFile]::OpenRead($apk)
+    try {
+        foreach ($library in @($inventory.nativeLibraries)) {
+            if ($library.abi -notin $AllowedAbis) { continue }
+            $entry = $archive.GetEntry($library.path)
+            if ($null -eq $entry) {
+                $symbolFailures += "MISSING_ZIP_ENTRY:$($library.path)"
+                continue
+            }
+            $destination = Join-Path $temporaryRoot (
+                $library.abi + '-' + ([IO.Path]::GetFileName($library.path))
+            )
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destination, $true)
+            $readElfOutput = & $readElf --dyn-syms --wide $destination 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0) {
+                $symbolFailures += "READELF_FAILED:$($library.path)"
+                continue
+            }
+            $symbolResult = Test-Api23UndefinedSymbols `
+                -ReadElfOutput $readElfOutput `
+                -ForbiddenSymbols $ForbiddenApi23Symbols
+            foreach ($symbol in $symbolResult.forbiddenSymbols) {
+                $symbolFailures += "API23_SYMBOL:$($library.path):$symbol"
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+        if ($temporaryRoot.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase)) {
+            [IO.Directory]::Delete($temporaryRoot, $true)
+        }
+    }
+    $errors = @($inventoryResult.errors) + $symbolFailures
+    [pscustomobject]@{
+        passed = $errors.Count -eq 0
+        errors = $errors
+        inventory = $inventoryResult
+        symbolFailures = $symbolFailures
+    }
+}
+
 if ($MyInvocation.InvocationName -ne '.') {
-    throw 'Dot-source this script and call Test-NativeInventory or Test-Api23UndefinedSymbols.'
+    Invoke-NativeCompatibilityAudit @args
 }
