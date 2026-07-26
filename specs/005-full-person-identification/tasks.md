@@ -403,3 +403,4 @@ Phase 1 Source of truth
 - [x] T202 [US2] Tune live Silero VAD for faster response with threshold 0.35, 0.3-second minimum speech, 0.4-second silence, and 0.8-second speaker-identification eligibility
 - [x] T203 [US1] Make the complete face-identification screen vertically scrollable and bound the nested result list for Pepper landscape displays
 - [x] T204 [US1] Remove face quality analysis, persistence gating, quality UI, and quality timing from the live face-identification path
+- [ ] T205 [US3] Allow exact YuNet 2026, SFace, and face-reidentification-0095 ONNX Runtime Android 1.20.0 pairs on packaged ARMv7 and cover the Pepper ABI path with host and device smoke tests; implementation and host checks pass, Pepper rerun is pending device reconnection

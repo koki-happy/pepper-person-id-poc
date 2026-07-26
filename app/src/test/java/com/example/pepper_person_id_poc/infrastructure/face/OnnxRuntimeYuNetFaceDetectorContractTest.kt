@@ -39,11 +39,12 @@ class OnnxRuntimeYuNetFaceDetectorContractTest {
     }
 
     @Test
-    fun requiresPackagedArm64RuntimeWithoutAbiFallback() {
+    fun requiresPackagedAndroidAbiWithoutFallback() {
         OnnxRuntimeYuNetFaceDetector.requireSupportedAbi(listOf("x86_64", "arm64-v8a"))
+        OnnxRuntimeYuNetFaceDetector.requireSupportedAbi(listOf("armeabi-v7a"))
 
         assertThrows(IllegalArgumentException::class.java) {
-            OnnxRuntimeYuNetFaceDetector.requireSupportedAbi(listOf("armeabi-v7a"))
+            OnnxRuntimeYuNetFaceDetector.requireSupportedAbi(listOf("x86_64"))
         }
     }
 

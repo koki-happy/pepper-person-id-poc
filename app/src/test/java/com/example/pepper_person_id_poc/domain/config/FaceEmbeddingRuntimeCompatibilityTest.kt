@@ -5,18 +5,20 @@ import org.junit.Test
 
 class FaceEmbeddingRuntimeCompatibilityTest {
     @Test
-    fun onnxRuntime_allowsOnlyExactFp32PairsOnArm64() {
-        listOf(
-            FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
-            FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32,
-        ).forEach { model ->
-            assertThat(
-                FaceEmbeddingRuntimeCompatibility.supportsExactPair(
-                    model,
-                    FaceEmbeddingRuntime.ONNX_RUNTIME,
-                    "arm64-v8a",
-                ),
-            ).isTrue()
+    fun onnxRuntime_allowsExactFp32PairsOnPackagedAndroidAbis() {
+        listOf("arm64-v8a", "armeabi-v7a").forEach { abi ->
+            listOf(
+                FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+                FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32,
+            ).forEach { model ->
+                assertThat(
+                    FaceEmbeddingRuntimeCompatibility.supportsExactPair(
+                        model,
+                        FaceEmbeddingRuntime.ONNX_RUNTIME,
+                        abi,
+                    ),
+                ).isTrue()
+            }
         }
         assertThat(
             FaceEmbeddingRuntimeCompatibility.supportsExactPair(
@@ -28,19 +30,14 @@ class FaceEmbeddingRuntimeCompatibilityTest {
     }
 
     @Test
-    fun onnxRuntime_blocksPepperArmv7WithoutFallback() {
-        listOf(
-            FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
-            FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32,
-        ).forEach { model ->
-            assertThat(
-                FaceEmbeddingRuntimeCompatibility.supportsExactPair(
-                    model,
-                    FaceEmbeddingRuntime.ONNX_RUNTIME,
-                    "armeabi-v7a",
-                ),
-            ).isFalse()
-        }
+    fun onnxRuntime_blocksUnknownAbiWithoutFallback() {
+        assertThat(
+            FaceEmbeddingRuntimeCompatibility.supportsExactPair(
+                FaceEmbeddingModelOption.SFACE_2021DEC_FP32,
+                FaceEmbeddingRuntime.ONNX_RUNTIME,
+                "x86",
+            ),
+        ).isFalse()
     }
 
     @Test

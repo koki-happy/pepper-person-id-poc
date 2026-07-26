@@ -181,7 +181,7 @@ class OnnxRuntimeYuNetFaceDetector(
         private const val NMS_THRESHOLD = 0.30f
         private const val TOP_K = 5_000
         private const val FACE_RESULT_COLUMN_COUNT = 15
-        private const val ARM64_ABI = "arm64-v8a"
+        private val SUPPORTED_ABIS = setOf("armeabi-v7a", "arm64-v8a")
 
         val FP32_2026_CONTRACT = YuNetOnnxContract(
             artifactId = "yunet-2026may-onnx-fp32",
@@ -204,9 +204,9 @@ class OnnxRuntimeYuNetFaceDetector(
         }
 
         fun requireSupportedAbi(abis: Collection<String>) {
-            require(ARM64_ABI in abis) {
+            require(abis.any(SUPPORTED_ABIS::contains)) {
                 "YuNet ONNX Runtime is BLOCKED for ABIs=${abis.joinToString()}; " +
-                    "required=$ARM64_ABI; no fallback"
+                    "required=${SUPPORTED_ABIS.joinToString()}; no fallback"
             }
         }
 

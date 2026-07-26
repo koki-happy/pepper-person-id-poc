@@ -114,9 +114,13 @@ class OnnxRuntimeFaceEmbeddingEngine(
         const val RUNTIME_ID = "onnxruntime-android-1.20.0-cpu"
 
         fun requireSupportedAbi(abis: Collection<String>) {
-            require(FaceEmbeddingRuntimeCompatibility.ARM64_ABI in abis) {
+            val supportedAbis = setOf(
+                FaceEmbeddingRuntimeCompatibility.ARMV7_ABI,
+                FaceEmbeddingRuntimeCompatibility.ARM64_ABI,
+            )
+            require(abis.any(supportedAbis::contains)) {
                 "ONNX Runtime face embedding is BLOCKED for ABIs=${abis.joinToString()}; " +
-                    "required=${FaceEmbeddingRuntimeCompatibility.ARM64_ABI}; no fallback"
+                    "required=${supportedAbis.joinToString()}; no fallback"
             }
         }
     }

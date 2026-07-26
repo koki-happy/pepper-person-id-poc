@@ -72,12 +72,6 @@
 - **Rationale**: ユーザーが不要と明示し、Constitution 3.0.0の匿名・モダリティ分離・セッション限定方針と一致する。
 - **Alternatives considered**: 外部改訂計画の該当項目を維持する案はユーザーの最新指示に反する。
 
-## Decision 13: NeMo話者モデルを同一ONNXのままAndroidへ統合する
-
-- **Decision**: SpeakerNet-MとTitaNet-Sは固定snapshot `0743f301363dec56491a490f6d6cbc9d67f9a3bf`のONNXをbenchmark APKへ同梱し、sherpa-onnx 1.13.4の`framework=nemo`経路だけで実行する。
-- **Rationale**: 両モデルは必要なNeMo前処理metadata、`audio_signal`、`length`、`embs`、出力次元を既に持ち、ARM64/ARMv7の同一runtimeで暗黙変換なしに実行できる。
-- **Alternatives considered**: CAM++やERes2Netへfallbackする案、Androidだけ別変換物を使う案は、選択内容と実行モデルを不一致にするため不採用。
-
 ## User Story 3 supported matrix
 
 設定schema v2は検出モデル、検出runtime、特徴量モデル、特徴量runtimeを別キーで保存する。
@@ -88,9 +82,7 @@
 |---|---|---|---|
 | Detection | `mlkit-face-detection-16.1.7-bundled` | `mlkit-face-16.1.7-bundled` | BUILDABLE: ARM64, ARMv7 |
 | Detection | `yunet-2026may-onnx-fp32` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
-| Detection | `yunet-2023mar-onnx-int8` | `opencv-5.0.0-android-cpu` | BUILDABLE: ARM64, ARMv7 |
-| Detection | `yunet-2026may-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64; ARMv7 BLOCKED pending Pepper acceptance |
-| Detection | `yunet-2023mar-onnx-int8` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64; ARMv7 BLOCKED pending Pepper acceptance |
+| Detection | `yunet-2026may-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64, ARMv7; packaged AAR ABI confirmed, Pepper parity pending |
 | Detection | `yunet-2026may-ncnn-fp32-320` | `ncnn-20260526-android-cpu` | BUILDABLE: ARM64, ARMv7; 12-head host parity max abs <= 3.34e-6 |
 | Detection | `yunet-2026may-mnn-fp32-320` | `mnn-3.5.0-android-cpu` | BUILDABLE: ARM64, ARMv7; 12-head host parity max abs <= 3.6e-6 |
 | Detection | `yunet-2026may-litert-fp32-320` | `litert-2.1.6-android-cpu` | BUILDABLE: ARM64, ARMv7; converted-output adapter parity complete |
@@ -103,10 +95,8 @@
 | Embedding | `face-0095-mnn-fp32` | `mnn-3.5.0-android-cpu` | BUILDABLE: ARM64, ARMv7; device inference pending |
 | Embedding | `sface-2021dec-litert-fp32` | `litert-2.1.6-android-cpu` | BUILDABLE: ARM64, ARMv7; device inference pending |
 | Embedding | `face-0095-litert-fp32` | `litert-2.1.6-android-cpu` | BUILDABLE: ARM64, ARMv7; fixed-input cosine 0.99999994 |
-| Embedding | `sface-2021dec-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64 only; device smoke pending. ARMv7 BLOCKED |
-| Embedding | `face-0095-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64 only; device smoke pending. ARMv7 BLOCKED |
-| Speaker embedding | `speakernet-m-onnx-fp32` | `sherpa-onnx-1.13.4-android-cpu` | BUILDABLE: ARM64, ARMv7; Android fixed-PCM smoke pending |
-| Speaker embedding | `titanet-s-onnx-fp32` | `sherpa-onnx-1.13.4-android-cpu` | BUILDABLE: ARM64, ARMv7; Android fixed-PCM smoke pending |
+| Embedding | `sface-2021dec-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64, ARMv7; packaged AAR ABI confirmed, Pepper smoke pending |
+| Embedding | `face-0095-onnx-fp32` | `onnxruntime-android-1.20.0-cpu` | BUILDABLE: ARM64, ARMv7; packaged AAR ABI confirmed, Pepper smoke pending |
 
 上表にない組合せ、対象ABIのレコードがない組合せ、またはAPK内に資産がない組合せは
 `UNSUPPORTED`または`BLOCKED`として保存・実行を禁止する。factoryも同じ正確な組合せだけを

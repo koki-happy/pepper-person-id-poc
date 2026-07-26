@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
+import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntimeCompatibility
 import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineFactory
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assume.assumeTrue
@@ -18,8 +19,13 @@ import org.opencv.core.Scalar
 @RunWith(AndroidJUnit4::class)
 class OnnxRuntimeFaceEmbeddingSmokeTest {
     @Test
-    fun exactSFaceAnd0095Pairs_executeOnArm64WithoutFallback() {
-        assumeTrue(Build.SUPPORTED_ABIS.contains("arm64-v8a"))
+    fun exactSFaceAnd0095Pairs_executeOnSupportedAndroidAbiWithoutFallback() {
+        assumeTrue(
+            Build.SUPPORTED_ABIS.any {
+                it == FaceEmbeddingRuntimeCompatibility.ARM64_ABI ||
+                    it == FaceEmbeddingRuntimeCompatibility.ARMV7_ABI
+            },
+        )
         assertThat(OpenCVLoader.initLocal()).isTrue()
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val image = Mat(160, 160, CvType.CV_8UC3, Scalar(128.0, 128.0, 128.0))

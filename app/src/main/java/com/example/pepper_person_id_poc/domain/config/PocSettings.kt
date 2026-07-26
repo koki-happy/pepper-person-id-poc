@@ -92,7 +92,7 @@ enum class FaceDetectorRuntime(
     ONNX_RUNTIME(
         runtimeId = "onnxruntime-android-1.20.0-cpu",
         displayName = "ONNX Runtime Android 1.20.0",
-        description = "YuNet ONNX raw 12-head推論 / ARM64 Android / no fallback",
+        description = "YuNet ONNX raw 12-head推論 / ARMv7・ARM64 Android / no fallback",
     ),
     NCNN(
         runtimeId = "ncnn-20260526-android-cpu",
@@ -227,7 +227,7 @@ enum class FaceEmbeddingRuntime(
     ONNX_RUNTIME(
         runtimeId = "onnxruntime-android-1.20.0-cpu",
         displayName = "ONNX Runtime Android 1.20.0",
-        description = "ARM64 Androidのみ。Pepper API 23 / ARMv7はBLOCKED",
+        description = "armeabi-v7a / arm64-v8a CPU版 / no fallback",
     ),
     NCNN(
         runtimeId = "ncnn-20260526-android-cpu",

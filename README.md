@@ -21,11 +21,11 @@ Pepper（Android 6.0 / API 23 / armeabi-v7a）向けの、顔識別と話者識�
 
 | 分類 | 選択肢 | 初期選択 |
 |---|---|---|
-| 顔検出 | ML Kit Face Detection 16.1.7 Bundled / YuNet 2026may / YuNet 2023mar INT8 | YuNet 2026may |
+| 顔検出 | ML Kit Face Detection 16.1.7 Bundled / YuNet 2026may | YuNet 2026may |
 | 顔検出の推論基盤 | ML Kit 16.1.7 Bundled / OpenCV 5.0.0 / ONNX Runtime Android 1.20.0 / ncnn 20260526 / MNN 3.5.0 / LiteRT 2.1.6 | OpenCV 5.0.0 |
 | 顔特徴量 | SFace 2021dec / SFace 2021dec INT8 / face-reidentification-retail-0095 | SFace 2021dec |
-| 顔特徴量の推論基盤 | OpenCV 5.0.0 DNN / ONNX Runtime Android 1.20.0（ARM64のみ） / ncnn 20260526 / MNN 3.5.0 / LiteRT 2.1.6 | OpenCV 5.0.0 DNN |
-| 話者特徴量 | CAM++ English / CAM++ Chinese-English / ERes2Net / WeSpeaker ResNet34-LM / NeMo SpeakerNet-M / NeMo TitaNet-S（すべてONNX） | CAM++ Chinese-English |
+| 顔特徴量の推論基盤 | OpenCV 5.0.0 DNN / ONNX Runtime Android 1.20.0 / ncnn 20260526 / MNN 3.5.0 / LiteRT 2.1.6 | OpenCV 5.0.0 DNN |
+| 話者特徴量 | WeSpeaker ResNet34-LM / CAM++ Chinese-English（どちらもONNX＋sherpa-onnx CPU） | CAM++ Chinese-English |
 
 ## ビルドとPepperへの導入
 

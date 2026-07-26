@@ -48,7 +48,7 @@ class Arm64FaceRuntimeContractTest {
     }
 
     @Test
-    fun catalogAllowsExactOnnxFp32PairsOnlyOnArm64() {
+    fun catalogAllowsExactOnnxFp32PairsOnPackagedAndroidAbis() {
         val catalog = File(repositoryRoot, "config/models.json").readText()
         listOf(
             "sface-2021dec-onnx-fp32",
@@ -59,23 +59,25 @@ class Arm64FaceRuntimeContractTest {
                     """\{\s*"artifactId":\s*"$artifactId",\s*"runtimeId":\s*"onnxruntime-android-1.20.0-cpu",\s*"abi":\s*"$abi",\s*"minApi":\s*23,\s*"status":\s*"([^"]+)"""",
                 ).find(catalog)?.groupValues?.get(1)
             }
-            assertThat(statuses["armeabi-v7a"]).isEqualTo("BLOCKED")
+            assertThat(statuses["armeabi-v7a"]).isEqualTo("BUILDABLE")
             assertThat(statuses["arm64-v8a"]).isEqualTo("BUILDABLE")
         }
     }
 
     @Test
     fun factoryAcceptsExactOnnxNcnnAndMnnPairsAndStillRejectsCrossFormatPairs() {
-        listOf(
-            FaceEmbeddingModelOption.SFACE_2021DEC_FP32 to FaceEmbeddingRuntime.ONNX_RUNTIME,
-            FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32 to
-                FaceEmbeddingRuntime.ONNX_RUNTIME,
-            FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32 to FaceEmbeddingRuntime.NCNN,
-            FaceEmbeddingModelOption.SFACE_2021DEC_MNN_FP32 to FaceEmbeddingRuntime.MNN,
-            FaceEmbeddingModelOption.FACE_0095_NCNN_FP32 to FaceEmbeddingRuntime.NCNN,
-            FaceEmbeddingModelOption.FACE_0095_MNN_FP32 to FaceEmbeddingRuntime.MNN,
-        ).forEach { (model, runtime) ->
-            FaceEmbeddingEngineFactory.requireExactPair(model, runtime, "arm64-v8a")
+        listOf("armeabi-v7a", "arm64-v8a").forEach { abi ->
+            listOf(
+                FaceEmbeddingModelOption.SFACE_2021DEC_FP32 to FaceEmbeddingRuntime.ONNX_RUNTIME,
+                FaceEmbeddingModelOption.FACE_REIDENTIFICATION_RETAIL_0095_ONNX_FP32 to
+                    FaceEmbeddingRuntime.ONNX_RUNTIME,
+                FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32 to FaceEmbeddingRuntime.NCNN,
+                FaceEmbeddingModelOption.SFACE_2021DEC_MNN_FP32 to FaceEmbeddingRuntime.MNN,
+                FaceEmbeddingModelOption.FACE_0095_NCNN_FP32 to FaceEmbeddingRuntime.NCNN,
+                FaceEmbeddingModelOption.FACE_0095_MNN_FP32 to FaceEmbeddingRuntime.MNN,
+            ).forEach { (model, runtime) ->
+                FaceEmbeddingEngineFactory.requireExactPair(model, runtime, abi)
+            }
         }
 
         val failure = runCatching {
