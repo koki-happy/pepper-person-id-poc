@@ -1,6 +1,7 @@
 package com.example.pepper_person_id_poc.application.contract
 
 import com.example.pepper_person_id_poc.domain.audio.PcmUtterance
+import com.example.pepper_person_id_poc.domain.speaker.AudioCaptureInitialization
 import java.io.Closeable
 import kotlinx.coroutines.flow.StateFlow
 
@@ -18,6 +19,7 @@ data class AudioRecordingState(
     val levelDbFs: Float = -90f,
     val speechActive: Boolean = false,
     val lastUtterance: PcmUtteranceMetadata? = null,
+    val captureInitialization: AudioCaptureInitialization? = null,
     val error: String? = null,
 )
 

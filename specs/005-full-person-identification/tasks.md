@@ -77,23 +77,23 @@
 
 ### Tests first
 
-- [ ] T032 [P] [US1] Add face quality boundary tests for size, blur, brightness, clipping, edge truncation, pose, landmarks, and track duration in `app/src/test/java/com/example/pepper_person_id_poc/domain/face/FaceQualityPolicyTest.kt`
-- [ ] T033 [P] [US1] Add nullable ML Kit confidence tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/face/FaceQualityAssessmentTest.kt`
-- [ ] T034 [P] [US1] Add multi-face all-candidate and reserved-track behavior tests in `app/src/test/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinatorTest.kt`
-- [ ] T035 [P] [US1] Add low-quality HOLD repository-invariance instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousFaceQualityTest.kt`
-- [ ] T036 [P] [US1] Add face preview contract tests for complete candidate virtualization, IDs, quality, and timings in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousFaceUiTest.kt`
+- [x] T032 [P] [US1] Add face quality boundary tests for size, blur, brightness, clipping, edge truncation, pose, landmarks, and track duration in `app/src/test/java/com/example/pepper_person_id_poc/domain/face/FaceQualityPolicyTest.kt`
+- [x] T033 [P] [US1] Add nullable ML Kit confidence tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/face/FaceQualityAssessmentTest.kt`
+- [x] T034 [P] [US1] Add multi-face all-candidate and reserved-track behavior tests in `app/src/test/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinatorTest.kt`
+- [x] T035 [P] [US1] Add low-quality HOLD repository-invariance instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousFaceQualityTest.kt`
+- [x] T036 [P] [US1] Add face preview contract tests for complete candidate virtualization, IDs, quality, and timings in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousFaceUiTest.kt`
 
 ### Implementation
 
-- [ ] T037 [P] [US1] Add `FaceQualityAssessment` and thresholds in `app/src/main/java/com/example/pepper_person_id_poc/domain/face/FaceQualityAssessment.kt`
-- [ ] T038 [P] [US1] Add blur, brightness, clipping, and edge measurements in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceImageQualityAnalyzer.kt`
-- [ ] T039 [US1] Track face duration and landmark completeness in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceTracker.kt`
-- [ ] T040 [US1] Replace fabricated ML Kit confidence with null/N/A in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/MlKitFaceDetector.kt`
-- [ ] T041 [US1] Preserve detector-provided confidence and input coordinates in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/YuNetFaceDetector.kt`
-- [ ] T042 [US1] Integrate face quality before persistence while retaining candidate display in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
-- [ ] T043 [US1] Remove same-frame candidate omission and return every compatible cluster in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
-- [ ] T044 [US1] Add virtualized complete candidate rows, rank, lead, quality, decision, and operation in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/CameraPreviewScreen.kt`
-- [ ] T045 [US1] Add model-space/artifact/runtime IDs and N/A measurement rendering in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/CameraPreviewScreen.kt`
+- [x] T037 [P] [US1] Add `FaceQualityAssessment` and thresholds in `app/src/main/java/com/example/pepper_person_id_poc/domain/face/FaceQualityAssessment.kt`
+- [x] T038 [P] [US1] Add blur, brightness, clipping, and edge measurements in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceImageQualityAnalyzer.kt`
+- [x] T039 [US1] Track face duration and landmark completeness in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/FaceTracker.kt`
+- [x] T040 [US1] Replace fabricated ML Kit confidence with null/N/A in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/MlKitFaceDetector.kt`
+- [x] T041 [US1] Preserve detector-provided confidence and input coordinates in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/face/YuNetFaceDetector.kt`
+- [x] T042 [US1] Integrate face quality before persistence while retaining candidate display in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
+- [x] T043 [US1] Remove same-frame candidate omission and return every compatible cluster in `app/src/main/java/com/example/pepper_person_id_poc/application/face/FaceIdentityCoordinator.kt`
+- [x] T044 [US1] Add virtualized complete candidate rows, rank, lead, quality, decision, and operation in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/CameraPreviewScreen.kt`
+- [x] T045 [US1] Add model-space/artifact/runtime IDs and N/A measurement rendering in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/CameraPreviewScreen.kt`
 - [ ] T046 [US1] Run JVM, UI, and fixed-image instrumentation tests for US1 and record evidence in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: OpenCV/ML Kitの現行顔フローが新契約で動作し、低品質入力がクラスタを汚染しない。
@@ -108,28 +108,28 @@
 
 ### Tests first
 
-- [ ] T047 [P] [US2] Add strict 16 kHz initialization and no-fallback tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/audio/AndroidPcmAudioRecorderTest.kt`
-- [ ] T048 [P] [US2] Add audio quality boundary tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityPolicyTest.kt`
-- [ ] T049 [P] [US2] Add speaker activity output decoding tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessorTest.kt`
-- [ ] T050 [P] [US2] Add local track linking tests for swaps, disappearance, reappearance, overlap, and ties in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinkerTest.kt`
-- [ ] T051 [P] [US2] Add solo-segment extraction and fail-closed overlap tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelectorTest.kt`
-- [ ] T052 [P] [US2] Add local-speaker aggregation and all-candidate tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinatorTest.kt`
+- [x] T047 [P] [US2] Add strict 16 kHz initialization and no-fallback tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/audio/AndroidPcmAudioRecorderTest.kt`
+- [x] T048 [P] [US2] Add audio quality boundary tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityPolicyTest.kt`
+- [x] T049 [P] [US2] Add speaker activity output decoding tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessorTest.kt`
+- [x] T050 [P] [US2] Add local track linking tests for swaps, disappearance, reappearance, overlap, and ties in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinkerTest.kt`
+- [x] T051 [P] [US2] Add solo-segment extraction and fail-closed overlap tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelectorTest.kt`
+- [x] T052 [P] [US2] Add local-speaker aggregation and all-candidate tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinatorTest.kt`
 - [ ] T053 [P] [US2] Add live 16 kHz recorder/VAD instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/StrictSpeakerAudioPipelineTest.kt`
 - [ ] T054 [P] [US2] Add fixed alternating/partial-overlap/full-overlap instrumentation assets and tests in `app/src/androidTest/java/com/example/pepper_person_id_poc/SpeakerActivityPipelineTest.kt`
 - [ ] T055 [P] [US2] Add speaker UI contract tests for activity, overlap, quality, candidates, RTF, and HOLD in `app/src/androidTest/java/com/example/pepper_person_id_poc/AnonymousSpeakerUiTest.kt`
 
 ### Implementation
 
-- [ ] T056 [US2] Remove 44.1 kHz and Energy VAD fallback from `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/audio/AndroidPcmAudioRecorder.kt`
-- [ ] T057 [P] [US2] Add structured 16 kHz initialization diagnostics in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/AudioCaptureInitialization.kt`
-- [ ] T058 [P] [US2] Add `SpeakerAudioQualityAssessment` and policy in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityAssessment.kt`
-- [ ] T059 [P] [US2] Add activity/window/segment/track entities in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerActivityModels.kt`
-- [ ] T060 [US2] Add speaker segmentation runtime interface in `app/src/main/java/com/example/pepper_person_id_poc/application/contract/SpeakerSegmentationEngine.kt`
+- [x] T056 [US2] Remove 44.1 kHz and Energy VAD fallback from `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/audio/AndroidPcmAudioRecorder.kt`
+- [x] T057 [P] [US2] Add structured 16 kHz initialization diagnostics in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/AudioCaptureInitialization.kt`
+- [x] T058 [P] [US2] Add `SpeakerAudioQualityAssessment` and policy in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityAssessment.kt`
+- [x] T059 [P] [US2] Add activity/window/segment/track entities in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerActivityModels.kt`
+- [x] T060 [US2] Add speaker segmentation runtime interface in `app/src/main/java/com/example/pepper_person_id_poc/application/contract/SpeakerSegmentationEngine.kt`
 - [ ] T061 [US2] Implement pyannote ONNX CPU inference without fallback in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationOnnxEngine.kt`
-- [ ] T062 [US2] Implement powerset/activity/overlap postprocessing in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessor.kt`
-- [ ] T063 [US2] Implement cross-window local speaker tracking in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinker.kt`
-- [ ] T064 [US2] Implement solo-segment selection and unsupported-state HOLD in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelector.kt`
-- [ ] T065 [US2] Implement segment-level embedding aggregation in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerEmbeddingAggregator.kt`
+- [x] T062 [US2] Implement powerset/activity/overlap postprocessing in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessor.kt`
+- [x] T063 [US2] Implement cross-window local speaker tracking in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinker.kt`
+- [x] T064 [US2] Implement solo-segment selection and unsupported-state HOLD in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelector.kt`
+- [x] T065 [US2] Implement segment-level embedding aggregation in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerEmbeddingAggregator.kt`
 - [ ] T066 [US2] Integrate VAD, activity, tracking, quality, aggregation, evaluation, and policy in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`
 - [ ] T067 [US2] Render capture diagnostics, activity, overlap, local tracks, quality, candidates, RTF, and HOLD reasons in `app/src/main/java/com/example/pepper_person_id_poc/ui/screen/AudioRecordingScreen.kt`
 - [ ] T068 [US2] Add pyannote asset/provenance/license/compatibility records to `config/models.json`

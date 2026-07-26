@@ -10,11 +10,13 @@ import com.example.pepper_person_id_poc.application.contract.AudioRecordingStatu
 import com.example.pepper_person_id_poc.application.contract.PcmAudioRecorder
 import com.example.pepper_person_id_poc.application.contract.PcmUtteranceMetadata
 import com.example.pepper_person_id_poc.domain.audio.AudioLevel
-import com.example.pepper_person_id_poc.domain.audio.EnergyVoiceActivityDetector
 import com.example.pepper_person_id_poc.application.contract.VoiceActivityDetector
 import com.example.pepper_person_id_poc.domain.audio.PcmUtterance
 import com.example.pepper_person_id_poc.domain.audio.PcmUtteranceSegmenter
 import com.example.pepper_person_id_poc.domain.benchmark.BenchmarkEvent
+import com.example.pepper_person_id_poc.domain.speaker.AudioCaptureInitialization
+import com.example.pepper_person_id_poc.domain.speaker.AudioCaptureInitializationFailure
+import com.example.pepper_person_id_poc.domain.speaker.AudioCaptureInitializationStage
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +48,7 @@ class AndroidPcmAudioRecorder(
         if (!running.compareAndSet(false, true)) return
         mutableState.value = mutableState.value.copy(
             status = AudioRecordingStatus.STARTING,
+            captureInitialization = null,
             error = null,
         )
         recordingJob = scope.launch { recordLoop() }
@@ -73,34 +76,57 @@ class AndroidPcmAudioRecorder(
             recorder = initialized.audioRecord
             audioRecord = recorder
             segmenter = PcmUtteranceSegmenter(initialized.sampleRate)
-            voiceActivityDetector = if (initialized.sampleRate == 16_000) {
-                SherpaSileroVoiceActivityDetector(appContext)
-            } else {
-                EnergyVoiceActivityDetector()
-            }
+            voiceActivityDetector = SherpaSileroVoiceActivityDetector(appContext)
             val buffer = ShortArray(initialized.readBufferSamples)
-            recorder.startRecording()
-            check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                "AudioRecord did not enter RECORDSTATE_RECORDING"
+            try {
+                recorder.startRecording()
+            } catch (throwable: Throwable) {
+                throw AudioCaptureInitializationException(
+                    diagnostics = AudioCaptureInitialization.failure(
+                        stage = AudioCaptureInitializationStage.START_RECORDING,
+                        failure = AudioCaptureInitializationFailure.START_RECORDING_FAILED,
+                        minBufferSizeBytes = initialized.minBufferSizeBytes,
+                        recorderBufferSizeBytes = initialized.recorderBufferSizeBytes,
+                        audioRecordState = recorder.state,
+                        recordingState = recorder.recordingState,
+                        message = throwable.message,
+                    ),
+                    cause = throwable,
+                )
             }
+            if (recorder.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                throw AudioCaptureInitializationException(
+                    AudioCaptureInitialization.failure(
+                        stage = AudioCaptureInitializationStage.START_RECORDING,
+                        failure = AudioCaptureInitializationFailure.RECORDING_STATE_NOT_RECORDING,
+                        minBufferSizeBytes = initialized.minBufferSizeBytes,
+                        recorderBufferSizeBytes = initialized.recorderBufferSizeBytes,
+                        audioRecordState = recorder.state,
+                        recordingState = recorder.recordingState,
+                        message = "AudioRecord did not enter RECORDSTATE_RECORDING",
+                    ),
+                )
+            }
+            val captureInitialization = AudioCaptureInitialization.success(
+                minBufferSizeBytes = initialized.minBufferSizeBytes,
+                recorderBufferSizeBytes = initialized.recorderBufferSizeBytes,
+                audioRecordState = recorder.state,
+                recordingState = recorder.recordingState,
+            )
             mutableState.value = AudioRecordingState(
                 status = AudioRecordingStatus.RECORDING,
                 sampleRate = initialized.sampleRate,
                 minBufferSizeBytes = initialized.minBufferSizeBytes,
                 vadModelName = voiceActivityDetector.modelName,
+                captureInitialization = captureInitialization,
             )
             onBenchmarkEvent(
                 BenchmarkEvent(
                     event = "pcm_recording_start",
                     timestampMillis = System.currentTimeMillis(),
                     status = "SUCCESS",
-                    attributes = mapOf(
-                        "sampleRate" to initialized.sampleRate.toString(),
-                        "channels" to "1",
-                        "encoding" to "PCM_16BIT",
-                        "minBufferSizeBytes" to initialized.minBufferSizeBytes.toString(),
-                        "vadModel" to voiceActivityDetector.modelName,
-                    ),
+                    attributes = captureInitialization.diagnosticAttributes() +
+                        ("vadModel" to voiceActivityDetector.modelName),
                 ),
             )
 
@@ -123,17 +149,24 @@ class AndroidPcmAudioRecorder(
             }
         } catch (throwable: Throwable) {
             if (running.get()) {
+                val initialization = (throwable as? AudioCaptureInitializationException)?.diagnostics
                 mutableState.value = mutableState.value.copy(
                     status = AudioRecordingStatus.ERROR,
                     speechActive = false,
+                    captureInitialization = initialization,
                     error = throwable.message ?: throwable::class.java.simpleName,
                 )
                 onBenchmarkEvent(
                     BenchmarkEvent(
-                        event = "pcm_recording",
+                        event = if (initialization == null) {
+                            "pcm_recording"
+                        } else {
+                            "pcm_capture_initialization"
+                        },
                         timestampMillis = System.currentTimeMillis(),
                         status = "ERROR",
                         error = throwable.message ?: throwable::class.java.simpleName,
+                        attributes = initialization?.diagnosticAttributes().orEmpty(),
                     ),
                 )
             }
@@ -178,44 +211,96 @@ class AndroidPcmAudioRecorder(
 
     @SuppressLint("MissingPermission")
     private fun createInitializedAudioRecord(): InitializedAudioRecord {
-        val errors = mutableListOf<String>()
         SAMPLE_RATE_CANDIDATES.forEach { sampleRate ->
-            val minBufferSize = AudioRecord.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-            )
+            val minBufferSize = try {
+                AudioRecord.getMinBufferSize(
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                )
+            } catch (throwable: Throwable) {
+                throw AudioCaptureInitializationException(
+                    diagnostics = AudioCaptureInitialization.failure(
+                        stage = AudioCaptureInitializationStage.MIN_BUFFER_QUERY,
+                        failure = AudioCaptureInitializationFailure.MIN_BUFFER_QUERY_FAILED,
+                        message = throwable.message,
+                    ),
+                    cause = throwable,
+                )
+            }
             if (minBufferSize <= 0) {
-                errors += "$sampleRate Hz getMinBufferSize=$minBufferSize"
-                return@forEach
+                throw AudioCaptureInitializationException(
+                    AudioCaptureInitialization.failure(
+                        stage = AudioCaptureInitializationStage.MIN_BUFFER_QUERY,
+                        failure = AudioCaptureInitializationFailure.MIN_BUFFER_QUERY_FAILED,
+                        platformCode = minBufferSize,
+                        message = "AudioRecord.getMinBufferSize failed: $minBufferSize",
+                    ),
+                )
             }
             val readBufferSamples = sampleRate / CHUNKS_PER_SECOND
             val recorderBufferBytes = maxOf(minBufferSize * 2, readBufferSamples * BYTES_PER_SAMPLE * 2)
-            val candidate = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                sampleRate,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                recorderBufferBytes,
-            )
-            if (candidate.state == AudioRecord.STATE_INITIALIZED) {
-                return InitializedAudioRecord(candidate, sampleRate, minBufferSize, readBufferSamples)
+            val candidate = try {
+                AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    recorderBufferBytes,
+                )
+            } catch (throwable: Throwable) {
+                throw AudioCaptureInitializationException(
+                    diagnostics = AudioCaptureInitialization.failure(
+                        stage = AudioCaptureInitializationStage.AUDIO_RECORD_CONSTRUCTION,
+                        failure = AudioCaptureInitializationFailure.AUDIO_RECORD_CONSTRUCTION_FAILED,
+                        minBufferSizeBytes = minBufferSize,
+                        recorderBufferSizeBytes = recorderBufferBytes,
+                        message = throwable.message,
+                    ),
+                    cause = throwable,
+                )
             }
-            errors += "$sampleRate Hz STATE_UNINITIALIZED"
+            if (candidate.state == AudioRecord.STATE_INITIALIZED) {
+                return InitializedAudioRecord(
+                    audioRecord = candidate,
+                    sampleRate = sampleRate,
+                    minBufferSizeBytes = minBufferSize,
+                    recorderBufferSizeBytes = recorderBufferBytes,
+                    readBufferSamples = readBufferSamples,
+                )
+            }
+            val initialization = AudioCaptureInitialization.failure(
+                stage = AudioCaptureInitializationStage.AUDIO_RECORD_INITIALIZATION,
+                failure = AudioCaptureInitializationFailure.AUDIO_RECORD_UNINITIALIZED,
+                minBufferSizeBytes = minBufferSize,
+                recorderBufferSizeBytes = recorderBufferBytes,
+                audioRecordState = candidate.state,
+                message = "AudioRecord remained uninitialized",
+            )
             candidate.release()
+            throw AudioCaptureInitializationException(initialization)
         }
-        error("No supported mono PCM16 AudioRecord configuration: ${errors.joinToString()}")
+        error("Strict 16 kHz mono PCM16 capture configuration is missing")
     }
 
     private data class InitializedAudioRecord(
         val audioRecord: AudioRecord,
         val sampleRate: Int,
         val minBufferSizeBytes: Int,
+        val recorderBufferSizeBytes: Int,
         val readBufferSamples: Int,
     )
 
+    private class AudioCaptureInitializationException(
+        val diagnostics: AudioCaptureInitialization,
+        cause: Throwable? = null,
+    ) : IllegalStateException(
+        diagnostics.message ?: diagnostics.failure?.name ?: "Audio capture initialization failed",
+        cause,
+    )
+
     private companion object {
-        val SAMPLE_RATE_CANDIDATES = listOf(16_000, 44_100)
+        val SAMPLE_RATE_CANDIDATES = listOf(16_000)
         const val CHUNKS_PER_SECOND = 10
         const val BYTES_PER_SAMPLE = 2
     }
