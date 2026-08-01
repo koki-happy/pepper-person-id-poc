@@ -9,6 +9,9 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
 class SherpaSileroVoiceActivityDetector(
     context: Context,
     threshold: Float = 0.35f,
+    minimumSilenceMillis: Long = 400L,
+    minimumSpeechMillis: Long = 300L,
+    maximumSpeechMillis: Long = 10_000L,
 ) : VoiceActivityDetector {
     private val vad = Vad(
         assetManager = context.applicationContext.assets,
@@ -16,10 +19,10 @@ class SherpaSileroVoiceActivityDetector(
             sileroVadModelConfig = SileroVadModelConfig(
                 model = MODEL_ASSET_PATH,
                 threshold = threshold,
-                minSilenceDuration = 0.4f,
-                minSpeechDuration = 0.3f,
+                minSilenceDuration = minimumSilenceMillis / 1_000f,
+                minSpeechDuration = minimumSpeechMillis / 1_000f,
                 windowSize = 512,
-                maxSpeechDuration = 10.0f,
+                maxSpeechDuration = maximumSpeechMillis / 1_000f,
             ),
             sampleRate = 16_000,
             numThreads = 1,

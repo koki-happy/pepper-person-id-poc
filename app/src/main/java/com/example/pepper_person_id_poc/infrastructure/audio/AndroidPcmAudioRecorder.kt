@@ -30,6 +30,12 @@ import kotlinx.coroutines.launch
 
 class AndroidPcmAudioRecorder(
     context: Context,
+    private val vadThreshold: Float = 0.35f,
+    private val vadMinimumSilenceMillis: Long = 400L,
+    private val vadMinimumSpeechMillis: Long = 300L,
+    private val vadMaximumSpeechMillis: Long = 30_000L,
+    private val utteranceEndSilenceMillis: Long = 600L,
+    private val maximumUtteranceMillis: Long = 30_000L,
     private val onUtterance: (PcmUtterance) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
 ) : PcmAudioRecorder {
@@ -75,8 +81,18 @@ class AndroidPcmAudioRecorder(
             val initialized = createInitializedAudioRecord()
             recorder = initialized.audioRecord
             audioRecord = recorder
-            segmenter = PcmUtteranceSegmenter(initialized.sampleRate)
-            voiceActivityDetector = SherpaSileroVoiceActivityDetector(appContext)
+            segmenter = PcmUtteranceSegmenter(
+                sampleRate = initialized.sampleRate,
+                endSilenceMillis = utteranceEndSilenceMillis,
+                maximumUtteranceMillis = maximumUtteranceMillis,
+            )
+            voiceActivityDetector = SherpaSileroVoiceActivityDetector(
+                context = appContext,
+                threshold = vadThreshold,
+                minimumSilenceMillis = vadMinimumSilenceMillis,
+                minimumSpeechMillis = vadMinimumSpeechMillis,
+                maximumSpeechMillis = vadMaximumSpeechMillis,
+            )
             val buffer = ShortArray(initialized.readBufferSamples)
             try {
                 recorder.startRecording()
@@ -113,17 +129,19 @@ class AndroidPcmAudioRecorder(
                 audioRecordState = recorder.state,
                 recordingState = recorder.recordingState,
             )
+            val recordingStartedAtMillis = System.currentTimeMillis()
             mutableState.value = AudioRecordingState(
                 status = AudioRecordingStatus.RECORDING,
                 sampleRate = initialized.sampleRate,
                 minBufferSizeBytes = initialized.minBufferSizeBytes,
                 vadModelName = voiceActivityDetector.modelName,
+                recordingStartedAtMillis = recordingStartedAtMillis,
                 captureInitialization = captureInitialization,
             )
             onBenchmarkEvent(
                 BenchmarkEvent(
                     event = "pcm_recording_start",
-                    timestampMillis = System.currentTimeMillis(),
+                    timestampMillis = recordingStartedAtMillis,
                     status = "SUCCESS",
                     attributes = captureInitialization.diagnosticAttributes() +
                         ("vadModel" to voiceActivityDetector.modelName),
@@ -180,10 +198,16 @@ class AndroidPcmAudioRecorder(
             voiceActivityDetector?.close()
             audioRecord = null
             if (mutableState.value.status != AudioRecordingStatus.ERROR) {
+                val recordingEndedAtMillis = System.currentTimeMillis()
+                val recordingStartedAtMillis = mutableState.value.recordingStartedAtMillis
                 mutableState.value = mutableState.value.copy(
                     status = AudioRecordingStatus.STOPPED,
                     levelDbFs = AudioLevel.MIN_DB_FS,
                     speechActive = false,
+                    recordingEndedAtMillis = recordingEndedAtMillis,
+                    inputDurationMillis = recordingStartedAtMillis?.let {
+                        (recordingEndedAtMillis - it).coerceAtLeast(0L)
+                    },
                 )
             }
         }
@@ -198,7 +222,7 @@ class AndroidPcmAudioRecorder(
                 event = "pcm_utterance",
                 timestampMillis = utterance.endedAtMillis,
                 durationMillis = utterance.durationMillis,
-                status = if (utterance.sufficientForSpeakerIdentification) "SUFFICIENT" else "INSUFFICIENT_AUDIO",
+                status = if (utterance.sufficientForSpeakerIdentification) "IDENTIFICATION_ELIGIBLE" else "SINGLE_SPEAKER_ONLY",
                 attributes = mapOf(
                     "sampleRate" to utterance.sampleRate.toString(),
                     "sampleCount" to utterance.pcm16.size.toString(),

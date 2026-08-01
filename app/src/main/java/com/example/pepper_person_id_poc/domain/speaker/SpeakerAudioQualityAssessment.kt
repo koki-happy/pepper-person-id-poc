@@ -19,8 +19,8 @@ data class SpeakerAudioQualityThresholds(
         require(maximumClippingRatio in 0f..1f)
         require(maximumOverlapRatio in 0f..1f)
         require(maximumActiveSpeakerCount >= 1)
-        require(updateMinimumDurationMillis >= minimumDurationMillis)
-        require(updateMinimumVoicedRatio in minimumVoicedRatio..1f)
+        require(updateMinimumDurationMillis > 0L)
+        require(updateMinimumVoicedRatio in 0f..1f)
     }
 }
 

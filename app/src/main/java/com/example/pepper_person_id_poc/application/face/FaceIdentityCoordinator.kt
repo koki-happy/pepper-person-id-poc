@@ -140,6 +140,7 @@ class FaceIdentityCoordinator(
             )
             val nextState = mutableState.value.copy(
                 results = results,
+                observationSequence = mutableState.value.observationSequence + 1,
                 currentModelClusterCount = latest?.currentModelClusterCount ?: 0,
                 totalClusterCount = latest?.totalClusterCount ?: repository.count(),
                 lastEmbeddingAverageTimeMillis = observations.map { it.embeddingTimeMillis }.average()
@@ -214,6 +215,7 @@ data class FaceIdentityUiState(
     val modelReady: Boolean = false,
     val visibleFaceCount: Int = 0,
     val results: Map<String, AnonymousIdentificationResult> = emptyMap(),
+    val observationSequence: Long = 0L,
     val currentModelClusterCount: Int = 0,
     val totalClusterCount: Int = 0,
     val lastEmbeddingAverageTimeMillis: Long? = null,

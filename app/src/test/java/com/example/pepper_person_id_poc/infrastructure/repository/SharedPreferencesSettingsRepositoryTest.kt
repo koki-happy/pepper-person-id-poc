@@ -4,12 +4,32 @@ import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
+import com.example.pepper_person_id_poc.domain.config.LoadTestVideoOption
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class SharedPreferencesSettingsRepositoryTest {
+    @Test
+    fun removedSpeakerModelSelectionFallsBackToCurrentDefault() {
+        val migrated = SettingsSchemaMigration.migrate(
+            mapOf(
+                "settings_schema_version" to 4,
+                "face_detector_model" to FaceDetectorModelOption.YUNET_2026MAY_FP32.name,
+                "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
+                "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_FP32.name,
+                "face_embedding_runtime" to FaceEmbeddingRuntime.OPEN_CV.name,
+                "speaker_model" to "REDIMNET2_B1",
+                "speaker_runtime" to "ONNX_RUNTIME",
+                "vad_model" to "SILERO_VAD",
+            ),
+        )
+
+        assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN)
+        assertThat(migrated.speakerRuntime.name).isEqualTo("SHERPA_ONNX")
+    }
+
     @Test
     fun legacyChoicesMigrateWithoutChangingTheirMeaning() {
         val migrated = SettingsSchemaMigration.migrate(
@@ -78,5 +98,35 @@ class SharedPreferencesSettingsRepositoryTest {
         assertThrows(SettingsMigrationException::class.java) {
             SettingsSchemaMigration.migrate(mapOf("settings_schema_version" to 99))
         }
+    }
+
+    @Test
+    fun missingMultipleSampleSettingMigratesToOff() {
+        val migrated = SettingsSchemaMigration.migrate(emptyMap<String, Any>())
+
+        assertThat(migrated.multipleSamplesEnabled).isFalse()
+    }
+
+    @Test
+    fun schemaTwoSettingsReceiveDetailedParameterDefaults() {
+        val migrated = SettingsSchemaMigration.migrate(
+            mapOf(
+                "settings_schema_version" to 2,
+                "face_detector_model" to FaceDetectorModelOption.YUNET_2026MAY_FP32.name,
+                "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
+                "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_FP32.name,
+                "face_embedding_runtime" to FaceEmbeddingRuntime.OPEN_CV.name,
+                "speaker_model" to SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.name,
+                "speaker_runtime" to "SHERPA_ONNX",
+                "vad_model" to "SILERO_VAD",
+            ),
+        )
+
+        assertThat(migrated.isValid()).isTrue()
+        assertThat(migrated.faceAnalysisIntervalMillis).isEqualTo(1_000L)
+        assertThat(migrated.vadThreshold).isEqualTo(0.35f)
+        assertThat(migrated.clippingAmplitudeThreshold).isEqualTo(0.999f)
+        assertThat(migrated.speakerLabelMaximumMissingSegments).isEqualTo(2)
+        assertThat(migrated.loadTestVideo).isEqualTo(LoadTestVideoOption.OFF)
     }
 }

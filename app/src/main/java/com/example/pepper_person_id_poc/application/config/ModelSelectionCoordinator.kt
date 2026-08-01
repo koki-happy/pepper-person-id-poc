@@ -99,7 +99,7 @@ class ModelSelectionCoordinator(
                 "No exact artifact exists for this logical face model/runtime pair",
             ),
         speaker = resolve(settings.speakerModel.artifactId, settings.speakerRuntime.runtimeId),
-        vad = resolve(settings.vadModel.artifactId, settings.speakerRuntime.runtimeId),
+        vad = resolve(settings.vadModel.artifactId, settings.vadRuntime.runtimeId),
     )
 
     private fun unavailable(

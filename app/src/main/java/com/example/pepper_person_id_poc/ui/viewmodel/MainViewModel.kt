@@ -12,6 +12,8 @@ import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
 import com.example.pepper_person_id_poc.domain.config.PocSettings
+import com.example.pepper_person_id_poc.domain.config.ModelRuntimeRole
+import com.example.pepper_person_id_poc.domain.config.ModelRuntimeSetOption
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
 import com.example.pepper_person_id_poc.ui.state.MainUiState
@@ -38,15 +40,37 @@ class MainViewModel(
     }
 
     fun returnToSettings() = showScreen(AppScreen.Settings)
+    fun updateSettings(value: PocSettings) = update { value }
     fun updateFaceClusterJoinThreshold(value: Float) = update { copy(faceClusterJoinThreshold = value.coerceIn(PocSettings.SCORE_RANGE)) }
     fun updateFaceClusterMaxUpdateCount(value: Int) = update { copy(faceClusterMaxUpdateCount = value.coerceIn(PocSettings.CLUSTER_MAX_UPDATE_COUNT_RANGE)) }
     fun updateSpeakerClusterJoinThreshold(value: Float) = update { copy(speakerClusterJoinThreshold = value.coerceIn(PocSettings.SCORE_RANGE)) }
     fun updateSpeakerClusterMaxUpdateCount(value: Int) = update { copy(speakerClusterMaxUpdateCount = value.coerceIn(PocSettings.CLUSTER_MAX_UPDATE_COUNT_RANGE)) }
+    fun updateMultipleSamplesEnabled(value: Boolean) = update { copy(multipleSamplesEnabled = value) }
+    fun updateShowFaceLandmarks(value: Boolean) = update { copy(showFaceLandmarks = value) }
     fun updateFaceDetectorModel(value: FaceDetectorModelOption) = update { copy(faceDetectorModel = value) }
     fun updateFaceDetectorRuntime(value: FaceDetectorRuntime) = update { copy(faceDetectorRuntime = value) }
     fun updateFaceEmbeddingModel(value: FaceEmbeddingModelOption) = update { copy(faceEmbeddingModel = value) }
     fun updateFaceEmbeddingRuntime(value: FaceEmbeddingRuntime) = update { copy(faceEmbeddingRuntime = value) }
     fun updateSpeakerModel(value: SpeakerModelOption) = update { withSpeakerModel(value) }
+    fun updateModelRuntimeSet(value: ModelRuntimeSetOption) = update {
+        when (value.role) {
+            ModelRuntimeRole.FACE_DETECTOR -> copy(
+                faceDetectorModel = requireNotNull(value.faceDetectorModel),
+                faceDetectorRuntime = requireNotNull(value.faceDetectorRuntime),
+            )
+            ModelRuntimeRole.FACE_EMBEDDING -> copy(
+                faceEmbeddingModel = requireNotNull(value.faceEmbeddingModel),
+                faceEmbeddingRuntime = requireNotNull(value.faceEmbeddingRuntime),
+            )
+            ModelRuntimeRole.SPEAKER_EMBEDDING -> withSpeakerModel(requireNotNull(value.speakerModel)).copy(
+                speakerRuntime = requireNotNull(value.speakerRuntime),
+            )
+            ModelRuntimeRole.VAD -> copy(
+                vadModel = requireNotNull(value.vadModel),
+                vadRuntime = requireNotNull(value.vadRuntime),
+            )
+        }
+    }
 
     fun saveSettings() {
         val settings = mutableUiState.value.settings

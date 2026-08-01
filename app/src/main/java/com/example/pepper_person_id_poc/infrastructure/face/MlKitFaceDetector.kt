@@ -37,6 +37,9 @@ class MlKitFaceDetector(
     context: Context,
     private val embeddingEngine: FaceEmbeddingEngine? = null,
     private val analysisIntervalMillis: Long,
+    private val minimumFaceSize: Float = MINIMUM_FACE_SIZE,
+    labelContinuationIou: Float = 0.30f,
+    labelMaximumMissingFrames: Int = 4,
     private val estimateHeadPose: Boolean = true,
     private val onPoseObservations: (Int, List<FacePoseObservation>) -> Set<String> = { _, _ -> emptySet() },
     private val onFeatureObservations: (List<FaceFeatureObservation>) -> Unit = {},
@@ -46,6 +49,7 @@ class MlKitFaceDetector(
 ) : FaceDetectorPipeline {
     init {
         require(analysisIntervalMillis > 0L)
+        require(minimumFaceSize in 0f..1f)
     }
 
     private val detector: FaceDetector = FaceDetection.getClient(
@@ -53,10 +57,10 @@ class MlKitFaceDetector(
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .enableTracking()
-            .setMinFaceSize(MINIMUM_FACE_SIZE)
+            .setMinFaceSize(minimumFaceSize)
             .build(),
     )
-    private val fallbackTracker = FaceTracker()
+    private val fallbackTracker = FaceTracker(labelContinuationIou, labelMaximumMissingFrames)
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = MODEL_NAME))
     private val analysisRateMeter = RateMeter(minimumWindowMillis = 1_500L)
     private var nextAnalysisAtMillis = 0L

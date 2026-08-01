@@ -14,6 +14,12 @@ object FaceDetectorFactory {
         runtime: FaceDetectorRuntime,
         embeddingEngine: FaceEmbeddingEngine,
         analysisIntervalMillis: Long,
+        scoreThreshold: Float,
+        nmsThreshold: Float,
+        maximumDetectionCandidates: Int,
+        minimumFaceSize: Float,
+        labelContinuationIou: Float,
+        labelMaximumMissingFrames: Int,
         estimateHeadPose: Boolean,
         onPoseObservations: (Int, List<FacePoseObservation>) -> Set<String>,
         onFeatureObservations: (List<FaceFeatureObservation>) -> Unit,
@@ -28,6 +34,9 @@ object FaceDetectorFactory {
                 context = context,
                 embeddingEngine = embeddingEngine,
                 analysisIntervalMillis = analysisIntervalMillis,
+                minimumFaceSize = minimumFaceSize,
+                labelContinuationIou = labelContinuationIou,
+                labelMaximumMissingFrames = labelMaximumMissingFrames,
                 estimateHeadPose = estimateHeadPose,
                 onPoseObservations = onPoseObservations,
                 onFeatureObservations = onFeatureObservations,
@@ -40,6 +49,11 @@ object FaceDetectorFactory {
                 detectorOption = artifact,
                 embeddingEngine = embeddingEngine,
                 analysisIntervalMillis = analysisIntervalMillis,
+                scoreThreshold = scoreThreshold,
+                nmsThreshold = nmsThreshold,
+                maximumDetectionCandidates = maximumDetectionCandidates,
+                labelContinuationIou = labelContinuationIou,
+                labelMaximumMissingFrames = labelMaximumMissingFrames,
                 estimateHeadPose = estimateHeadPose,
                 onPoseObservations = onPoseObservations,
                 onFeatureObservations = onFeatureObservations,
@@ -52,6 +66,11 @@ object FaceDetectorFactory {
                 detectorOption = artifact,
                 embeddingEngine = embeddingEngine,
                 analysisIntervalMillis = analysisIntervalMillis,
+                scoreThreshold = scoreThreshold,
+                nmsThreshold = nmsThreshold,
+                maximumDetectionCandidates = maximumDetectionCandidates,
+                labelContinuationIou = labelContinuationIou,
+                labelMaximumMissingFrames = labelMaximumMissingFrames,
                 estimateHeadPose = estimateHeadPose,
                 onPoseObservations = onPoseObservations,
                 onFeatureObservations = onFeatureObservations,
@@ -59,7 +78,7 @@ object FaceDetectorFactory {
                 onEmbeddingError = onEmbeddingError,
                 onBenchmarkEvent = onBenchmarkEvent,
                 detectionBackendProvider = { _, _ ->
-                    OnnxRuntimeYuNetFaceDetector(context, artifact)
+                    OnnxRuntimeYuNetFaceDetector(context, artifact, scoreThreshold, nmsThreshold, maximumDetectionCandidates)
                 },
             )
             FaceDetectorRuntime.NCNN,
@@ -69,6 +88,11 @@ object FaceDetectorFactory {
                 detectorOption = FaceDetectorArtifactResolver.logicalModel(artifact),
                 embeddingEngine = embeddingEngine,
                 analysisIntervalMillis = analysisIntervalMillis,
+                scoreThreshold = scoreThreshold,
+                nmsThreshold = nmsThreshold,
+                maximumDetectionCandidates = maximumDetectionCandidates,
+                labelContinuationIou = labelContinuationIou,
+                labelMaximumMissingFrames = labelMaximumMissingFrames,
                 estimateHeadPose = estimateHeadPose,
                 onPoseObservations = onPoseObservations,
                 onFeatureObservations = onFeatureObservations,
@@ -83,6 +107,9 @@ object FaceDetectorFactory {
                         } else {
                             YuNetNativeRuntime.MNN
                         },
+                        scoreThreshold,
+                        nmsThreshold,
+                        maximumDetectionCandidates,
                     )
                 },
             )
@@ -91,13 +118,25 @@ object FaceDetectorFactory {
                 detectorOption = FaceDetectorArtifactResolver.logicalModel(artifact),
                 embeddingEngine = embeddingEngine,
                 analysisIntervalMillis = analysisIntervalMillis,
+                scoreThreshold = scoreThreshold,
+                nmsThreshold = nmsThreshold,
+                maximumDetectionCandidates = maximumDetectionCandidates,
+                labelContinuationIou = labelContinuationIou,
+                labelMaximumMissingFrames = labelMaximumMissingFrames,
                 estimateHeadPose = estimateHeadPose,
                 onPoseObservations = onPoseObservations,
                 onFeatureObservations = onFeatureObservations,
                 onEmbeddingReady = onEmbeddingReady,
                 onEmbeddingError = onEmbeddingError,
                 onBenchmarkEvent = onBenchmarkEvent,
-                detectionBackendProvider = { _, _ -> LiteRtYuNetFaceDetector(context) },
+                detectionBackendProvider = { _, _ ->
+                    LiteRtYuNetFaceDetector(
+                        context = context,
+                        scoreThreshold = scoreThreshold,
+                        nmsThreshold = nmsThreshold,
+                        topK = maximumDetectionCandidates,
+                    )
+                },
             )
         }
     }

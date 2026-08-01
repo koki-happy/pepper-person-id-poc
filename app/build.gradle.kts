@@ -140,6 +140,7 @@ android {
     }
     androidResources {
         noCompress += "tflite"
+        noCompress += "mp4"
     }
     packaging {
         jniLibs {

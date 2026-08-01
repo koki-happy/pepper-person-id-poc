@@ -5,7 +5,7 @@ import android.content.pm.PackageManager
 import android.graphics.Paint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.compose.CameraXViewfinder
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -18,16 +18,19 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,6 +50,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -62,6 +67,11 @@ import com.example.pepper_person_id_poc.infrastructure.face.FaceEmbeddingEngineF
 import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorFactory
 import com.example.pepper_person_id_poc.infrastructure.face.FaceDetectorPipeline
 import com.example.pepper_person_id_poc.ui.component.DeviceLoadPanel
+import com.example.pepper_person_id_poc.ui.component.DataTableHeaderGroup
+import com.example.pepper_person_id_poc.ui.component.SampleVideoPlayer
+import com.example.pepper_person_id_poc.ui.component.IdentificationHistoryTable
+import com.example.pepper_person_id_poc.ui.component.IdentificationCandidateEntry
+import com.example.pepper_person_id_poc.ui.component.IdentificationTableEntry
 import com.example.pepper_person_id_poc.ui.component.StageMetricUiState
 import java.util.Locale
 
@@ -71,19 +81,22 @@ fun CameraPreviewScreen(
     settings: PocSettings,
     repository: AnonymousFaceClusterRepository,
     benchmarkLogger: BenchmarkLogger,
-    onBackToSettings: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenModels: () -> Unit,
+    onOpenSpeaker: () -> Unit,
+    onReset: () -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val engine = remember(settings.faceEmbeddingModel, settings.faceEmbeddingRuntime) {
         FaceEmbeddingEngineFactory.create(context, settings.faceEmbeddingModel, settings.faceEmbeddingRuntime)
     }
-    val coordinator = remember(repository, engine.modelName, settings.faceClusterJoinThreshold, settings.faceClusterMaxUpdateCount) {
+    val coordinator = remember(repository, engine.modelName, settings.faceClusterJoinThreshold, settings.effectiveFaceMaximumUpdateCount) {
         FaceIdentityCoordinator(
             repository = repository,
             modelId = engine.modelName,
             threshold = settings.faceClusterJoinThreshold,
-            maximumUpdateCount = settings.faceClusterMaxUpdateCount,
+            maximumUpdateCount = settings.effectiveFaceMaximumUpdateCount,
         )
     }
     val detector: FaceDetectorPipeline = remember(
@@ -91,13 +104,26 @@ fun CameraPreviewScreen(
         settings.faceDetectorModel,
         settings.faceDetectorRuntime,
         engine,
+        settings.faceAnalysisIntervalMillis,
+        settings.faceDetectionScoreThreshold,
+        settings.faceNmsThreshold,
+        settings.faceMaximumDetectionCandidates,
+        settings.mlKitMinimumFaceSize,
+        settings.faceLabelContinuationIou,
+        settings.faceLabelMaximumMissingFrames,
     ) {
         FaceDetectorFactory.create(
             context = context,
             model = settings.faceDetectorModel,
             runtime = settings.faceDetectorRuntime,
             embeddingEngine = engine,
-            analysisIntervalMillis = 1_000L,
+            analysisIntervalMillis = settings.faceAnalysisIntervalMillis,
+            scoreThreshold = settings.faceDetectionScoreThreshold,
+            nmsThreshold = settings.faceNmsThreshold,
+            maximumDetectionCandidates = settings.faceMaximumDetectionCandidates,
+            minimumFaceSize = settings.mlKitMinimumFaceSize,
+            labelContinuationIou = settings.faceLabelContinuationIou,
+            labelMaximumMissingFrames = settings.faceLabelMaximumMissingFrames,
             estimateHeadPose = false,
             onPoseObservations = coordinator::onFaceAnalysis,
             onFeatureObservations = coordinator::onFeatureObservations,
@@ -107,18 +133,20 @@ fun CameraPreviewScreen(
         )
     }
     val controller = remember(detector) { CameraXPreviewController(context, detector) }
-    val surfaceRequest by controller.surfaceRequest.collectAsState()
+    val previewFrame by controller.previewFrame.collectAsState()
     val detection by detector.snapshot.collectAsState()
     val identity by coordinator.state.collectAsState()
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
+    var running by remember { mutableStateOf(true) }
+    var confirmReset by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         permissionGranted = it
     }
 
-    LaunchedEffect(permissionGranted, lifecycleOwner) {
-        if (permissionGranted) controller.bind(lifecycleOwner) else controller.unbind()
+    LaunchedEffect(permissionGranted, lifecycleOwner, running) {
+        if (permissionGranted && running) controller.bind(lifecycleOwner) else controller.unbind()
     }
     DisposableEffect(controller) {
         onDispose {
@@ -127,28 +155,34 @@ fun CameraPreviewScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("未登録顔識別") },
-                navigationIcon = { Button(onClick = onBackToSettings) { Text("← 設定") } },
-            )
-        },
-    ) { padding ->
+    Scaffold { padding ->
         Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(12.dp),
+                .padding(8.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).background(Color.Black),
-            ) {
-                surfaceRequest?.let {
-                    CameraXViewfinder(surfaceRequest = it, modifier = Modifier.fillMaxSize())
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("顔識別", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Button(onClick = { running = !running }) { Text(if (running) "停止" else "開始") }
+                Button(onClick = { confirmReset = true }) { Text("初期化") }
+                Button(onClick = onOpenSettings) { Text("パラメータ") }
+                Button(onClick = onOpenModels) { Text("モデル") }
+                Button(onClick = onOpenSpeaker) { Text("音声識別") }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.weight(1.15f).fillMaxSize().background(Color.Black),
+                ) {
+                previewFrame?.let { frame ->
+                    Image(
+                        bitmap = frame.asImageBitmap(),
+                        contentDescription = "カメラ映像",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
                 Canvas(Modifier.fillMaxSize()) {
                     val labelPaint = Paint().apply {
@@ -175,10 +209,8 @@ fun CameraPreviewScreen(
                             ?.anonymousId
                             ?.substringAfterLast('-')
                             ?: "---"
-                        val labels = listOf(
-                            "Detection: $detectionNumber",
-                            "Feature: $featureNumber",
-                        )
+                        val similarity = identity.results[face.trackId]?.bestExistingScore?.score() ?: "---"
+                        val labels = listOf("顔ラベル:$detectionNumber", "顔ID:$featureNumber  類似度:$similarity")
                         val lineHeight = labelPaint.textSize * 1.2f
                         val labelWidth = labels.maxOf(labelPaint::measureText) + 8.dp.toPx()
                         val labelHeight = lineHeight * labels.size + 4.dp.toPx()
@@ -190,7 +222,7 @@ fun CameraPreviewScreen(
                             size = Size(right - left, bottom - top),
                             style = Stroke(3f),
                         )
-                        face.landmarks.forEach { landmark ->
+                        if (settings.showFaceLandmarks) face.landmarks.forEach { landmark ->
                             val landmarkCenter = Offset(
                                 x = offsetX + (1f - landmark.x) * sourceWidth * scale,
                                 y = offsetY + landmark.y * sourceHeight * scale,
@@ -228,25 +260,39 @@ fun CameraPreviewScreen(
                 if (!permissionGranted) {
                     Button(onClick = { launcher.launch(Manifest.permission.CAMERA) }) { Text("カメラ権限を許可") }
                 }
-            }
-            Card(Modifier.fillMaxWidth()) {
-                FacePreviewContractDetails(
-                    identity = identity,
-                    detectionProcessingTimeMillis = detection.processingTimeMillis,
-                    analysisFramesPerSecond = detection.analysisFramesPerSecond,
-                    faceClusterJoinThreshold = settings.faceClusterJoinThreshold,
-                    modelSpaceId = identity.results.values.firstOrNull()
-                        ?.evaluation?.candidates?.firstOrNull()?.modelSpaceId?.value
-                        ?: engine.modelName,
-                    artifactId = FaceEmbeddingArtifactResolver.resolve(
-                        settings.faceEmbeddingModel,
-                        settings.faceEmbeddingRuntime,
-                    )?.artifactId ?: "MISSING_EXACT_ARTIFACT",
-                    runtimeId = settings.faceEmbeddingRuntime.runtimeId,
-                    modifier = Modifier.heightIn(min = 240.dp, max = 480.dp),
-                )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(0.85f).fillMaxSize()) {
+                    Card(Modifier.fillMaxWidth().weight(1f)) {
+                        FacePreviewContractDetails(
+                            identity = identity,
+                            detectionProcessingTimeMillis = detection.processingTimeMillis,
+                            analysisFramesPerSecond = detection.analysisFramesPerSecond,
+                            faceClusterJoinThreshold = settings.faceClusterJoinThreshold,
+                            modelSpaceId = identity.results.values.firstOrNull()
+                                ?.evaluation?.candidates?.firstOrNull()?.modelSpaceId?.value ?: engine.modelName,
+                            artifactId = FaceEmbeddingArtifactResolver.resolve(
+                                settings.faceEmbeddingModel,
+                                settings.faceEmbeddingRuntime,
+                            )?.artifactId ?: "MISSING_EXACT_ARTIFACT",
+                            runtimeId = settings.faceEmbeddingRuntime.runtimeId,
+                        )
+                    }
+                    SampleVideoPlayer(
+                        selection = settings.loadTestVideo,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 40.dp),
+                    )
+                }
             }
         }
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("識別結果を初期化しますか？") },
+            text = { Text("顔・音声の匿名IDと識別結果を削除します。保存済み設定は残ります。") },
+            confirmButton = { TextButton(onClick = { confirmReset = false; onReset() }) { Text("初期化") } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("キャンセル") } },
+        )
     }
 }
 
@@ -262,24 +308,36 @@ fun FacePreviewContractDetails(
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
             .fillMaxSize()
             .padding(12.dp)
             .testTag("face-preview-contract"),
     ) {
-        identity.results.forEach { (trackId, result) ->
-            item(key = "identity-$trackId") {
-                DetailRow("Feature ID", result.anonymousId)
-                DetailRow(
-                    "判定",
-                    if (result.isNewCluster) "新規Feature" else "既存Feature",
-                )
-                DetailRow(
-                    "類似度",
-                    result.bestExistingScore?.score() ?: "比較対象なし",
-                )
-            }
+        item {
+            Text(
+                "識別結果表（直近50フレーム）",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            IdentificationHistoryTable(
+                entries = identity.results.map { (trackId, result) ->
+                    IdentificationTableEntry(
+                        label = trackId,
+                        id = result.anonymousId,
+                        similarity = result.bestExistingScore?.score() ?: "―",
+                        candidates = result.candidateScores
+                            .sortedByDescending { it.score }
+                            .take(3)
+                            .map { IdentificationCandidateEntry(it.anonymousId, it.score.score()) },
+                    )
+                },
+                observationSequence = identity.observationSequence,
+                labelHeader = "時間／顔ラベル",
+                similarityHeader = "顔IDの一致率",
+                labelPrefix = "顔ラベル",
+                idPrefix = "顔ID",
+            )
         }
         identity.error?.let { error ->
             item { Text(error, color = MaterialTheme.colorScheme.error) }
@@ -288,18 +346,21 @@ fun FacePreviewContractDetails(
             val metrics = identity.pipelineMetrics
             DeviceLoadPanel(
                 stageMetrics = listOf(
-                    metrics?.preprocessingMillis.stage("face-preprocessing", "Preprocessing"),
-                    metrics?.detectionMillis.stage("face-detection", "Detection"),
-                    metrics?.alignmentMillis.stage("face-alignment", "Alignment"),
-                    metrics?.embeddingMillis.stage("face-embedding", "Embedding"),
-                    metrics?.scoringMillis.stage("face-scoring", "Scoring"),
-                    metrics?.policyMillis.stage("face-policy", "Policy"),
-                    metrics?.repositoryMillis.stage("face-repository", "Repository"),
-                    metrics?.uiMillis.stage("face-ui", "UI"),
-                    metrics?.totalMillis.stage("face-total", "Total"),
+                    metrics?.detectionMillis.fpsStage("face-detection-fps", "顔検出"),
+                    metrics?.scoringMillis.fpsStage("face-scoring-fps", "顔照合"),
+                    StageMetricUiState(
+                        "face-total-fps",
+                        "合計",
+                        analysisFramesPerSecond.takeIf { it > 0f }?.toDouble(),
+                        emptyList(),
+                        "fps",
+                    ),
                 ),
-                rateLabel = "解析FPS",
-                rateValue = analysisFramesPerSecond,
+                headerGroups = listOf(
+                    DataTableHeaderGroup("", 1),
+                    DataTableHeaderGroup("計算負荷", 2),
+                    DataTableHeaderGroup("顔識別（fps）", 3),
+                ),
             )
         }
     }
@@ -307,6 +368,15 @@ fun FacePreviewContractDetails(
 
 private fun Double?.stage(id: String, label: String): StageMetricUiState =
     StageMetricUiState(id = id, label = label, currentMillis = this, samples = emptyList())
+
+private fun Double?.fpsStage(id: String, label: String): StageMetricUiState =
+    StageMetricUiState(
+        id = id,
+        label = label,
+        currentMillis = this?.takeIf { it > 0.0 }?.let { 1_000.0 / it },
+        samples = emptyList(),
+        unit = "fps",
+    )
 
 @Composable
 private fun TableHeader(

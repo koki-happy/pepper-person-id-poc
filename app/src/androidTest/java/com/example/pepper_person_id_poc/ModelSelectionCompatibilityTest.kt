@@ -1,12 +1,9 @@
 package com.example.pepper_person_id_poc
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performScrollToNode
 import com.example.pepper_person_id_poc.application.config.ModelSelectionCoordinator
 import com.example.pepper_person_id_poc.domain.config.PocSettings
 import com.example.pepper_person_id_poc.infrastructure.model.ParsedCatalogArtifact
@@ -30,20 +27,13 @@ class ModelSelectionCompatibilityTest {
                     settings = settings,
                     selectionCoordinator = coordinator,
                     settingsSaved = false,
-                    onFaceDetectorModelChanged = {},
-                    onFaceDetectorRuntimeChanged = {},
-                    onFaceEmbeddingModelChanged = {},
-                    onFaceEmbeddingRuntimeChanged = {},
-                    onSpeakerModelChanged = {},
+                    onModelRuntimeSetChanged = {},
                     onSave = {},
                     onBackToSettings = {},
                 )
             }
         }
 
-        composeRule.onNodeWithTag("model-selection-screen")
-            .performScrollToNode(hasTestTag("selection-blocked"))
-        composeRule.onNodeWithTag("selection-blocked").assertIsDisplayed()
         composeRule.onNodeWithTag("save-model-selection").assertIsNotEnabled()
     }
 
@@ -52,7 +42,7 @@ class ModelSelectionCompatibilityTest {
             Triple(settings.faceDetectorModel.artifactId, settings.faceDetectorModel.modelFileName, settings.faceDetectorRuntime.runtimeId),
             Triple(settings.faceEmbeddingModel.artifactId, settings.faceEmbeddingModel.modelFileName, settings.faceEmbeddingRuntime.runtimeId),
             Triple(settings.speakerModel.artifactId, settings.speakerModel.modelFileName, settings.speakerRuntime.runtimeId),
-            Triple(settings.vadModel.artifactId, "silero_vad.onnx", settings.speakerRuntime.runtimeId),
+            Triple(settings.vadModel.artifactId, "silero_vad.onnx", settings.vadRuntime.runtimeId),
         )
         val artifacts = pairs.map { (artifactId, filename, runtimeId) ->
             ParsedCatalogArtifact(

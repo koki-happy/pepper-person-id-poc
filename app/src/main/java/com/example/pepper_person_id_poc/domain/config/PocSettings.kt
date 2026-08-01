@@ -7,17 +7,66 @@ data class PocSettings(
     val faceEmbeddingRuntime: FaceEmbeddingRuntime = FaceEmbeddingRuntime.OPEN_CV,
     val speakerModel: SpeakerModelOption = SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN,
     val speakerRuntime: SpeakerRuntime = SpeakerRuntime.SHERPA_ONNX,
+    val vadRuntime: VadRuntime = VadRuntime.SHERPA_ONNX,
     val vadModel: VadModelOption = VadModelOption.SILERO_VAD,
     val faceClusterJoinThreshold: Float = DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD,
     val faceClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
     val speakerClusterJoinThreshold: Float = speakerModel.jvsCandidateThreshold,
     val speakerClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
+    val multipleSamplesEnabled: Boolean = false,
+    val showFaceLandmarks: Boolean = false,
+    val loadTestVideo: LoadTestVideoOption = LoadTestVideoOption.OFF,
+    val faceAnalysisIntervalMillis: Long = DEFAULT_FACE_ANALYSIS_INTERVAL_MILLIS,
+    val faceDetectionScoreThreshold: Float = DEFAULT_FACE_DETECTION_SCORE_THRESHOLD,
+    val faceNmsThreshold: Float = DEFAULT_FACE_NMS_THRESHOLD,
+    val faceMaximumDetectionCandidates: Int = DEFAULT_FACE_MAXIMUM_DETECTION_CANDIDATES,
+    val mlKitMinimumFaceSize: Float = DEFAULT_ML_KIT_MINIMUM_FACE_SIZE,
+    val faceLabelContinuationIou: Float = DEFAULT_FACE_LABEL_CONTINUATION_IOU,
+    val faceLabelMaximumMissingFrames: Int = DEFAULT_FACE_LABEL_MAXIMUM_MISSING_FRAMES,
+    val vadThreshold: Float = DEFAULT_VAD_THRESHOLD,
+    val vadMinimumSilenceMillis: Long = DEFAULT_VAD_MINIMUM_SILENCE_MILLIS,
+    val vadMinimumSpeechMillis: Long = DEFAULT_VAD_MINIMUM_SPEECH_MILLIS,
+    val vadMaximumSpeechMillis: Long = DEFAULT_VAD_MAXIMUM_SPEECH_MILLIS,
+    val utteranceEndSilenceMillis: Long = DEFAULT_UTTERANCE_END_SILENCE_MILLIS,
+    val maximumUtteranceMillis: Long = DEFAULT_MAXIMUM_UTTERANCE_MILLIS,
+    val speakerMinimumAudioMillis: Long = DEFAULT_SPEAKER_MINIMUM_AUDIO_MILLIS,
+    val speakerMinimumVoicedRatio: Float = DEFAULT_SPEAKER_MINIMUM_VOICED_RATIO,
+    val speakerMinimumRms: Float = DEFAULT_SPEAKER_MINIMUM_RMS,
+    val clippingAmplitudeThreshold: Float = DEFAULT_CLIPPING_AMPLITUDE_THRESHOLD,
+    val maximumClippingRatio: Float = DEFAULT_MAXIMUM_CLIPPING_RATIO,
+    val speakerUpdateMinimumAudioMillis: Long = DEFAULT_SPEAKER_UPDATE_MINIMUM_AUDIO_MILLIS,
+    val speakerUpdateMinimumVoicedRatio: Float = DEFAULT_SPEAKER_UPDATE_MINIMUM_VOICED_RATIO,
+    val speakerLabelContinuationSimilarity: Float = DEFAULT_SPEAKER_LABEL_CONTINUATION_SIMILARITY,
+    val speakerLabelMaximumMissingSegments: Int = DEFAULT_SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS,
 ) {
     fun isValid(): Boolean =
         faceClusterJoinThreshold in SCORE_RANGE &&
             speakerClusterJoinThreshold in SCORE_RANGE &&
             faceClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE &&
-            speakerClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE
+            speakerClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE &&
+            faceAnalysisIntervalMillis in FACE_ANALYSIS_INTERVAL_RANGE &&
+            faceDetectionScoreThreshold in SCORE_RANGE &&
+            faceNmsThreshold in SCORE_RANGE &&
+            faceMaximumDetectionCandidates in FACE_MAXIMUM_DETECTION_CANDIDATES_RANGE &&
+            mlKitMinimumFaceSize in ML_KIT_MINIMUM_FACE_SIZE_RANGE &&
+            faceLabelContinuationIou in SCORE_RANGE &&
+            faceLabelMaximumMissingFrames in FACE_LABEL_MAXIMUM_MISSING_FRAMES_RANGE &&
+            vadThreshold in SCORE_RANGE &&
+            vadMinimumSilenceMillis in VAD_MINIMUM_SILENCE_RANGE &&
+            vadMinimumSpeechMillis in VAD_MINIMUM_SPEECH_RANGE &&
+            vadMaximumSpeechMillis in VAD_MAXIMUM_SPEECH_RANGE &&
+            utteranceEndSilenceMillis in UTTERANCE_END_SILENCE_RANGE &&
+            maximumUtteranceMillis in MAXIMUM_UTTERANCE_RANGE &&
+            speakerMinimumAudioMillis in SPEAKER_AUDIO_DURATION_RANGE &&
+            speakerMinimumVoicedRatio in SCORE_RANGE &&
+            speakerMinimumRms in SCORE_RANGE &&
+            clippingAmplitudeThreshold in CLIPPING_AMPLITUDE_RANGE &&
+            maximumClippingRatio in SCORE_RANGE &&
+            speakerUpdateMinimumAudioMillis in SPEAKER_AUDIO_DURATION_RANGE &&
+            speakerUpdateMinimumVoicedRatio in SCORE_RANGE &&
+            speakerLabelContinuationSimilarity in SPEAKER_LABEL_SIMILARITY_RANGE &&
+            speakerLabelMaximumMissingSegments in SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS_RANGE &&
+            speakerRuntime == speakerModel.requiredRuntime
 
     /**
      * Selects a model together with its JVS-studio operating-point candidate.
@@ -25,15 +74,66 @@ data class PocSettings(
      */
     fun withSpeakerModel(model: SpeakerModelOption): PocSettings = copy(
         speakerModel = model,
+        speakerRuntime = model.requiredRuntime,
         speakerClusterJoinThreshold = model.jvsCandidateThreshold,
     )
+
+    val effectiveFaceMaximumUpdateCount: Int
+        get() = if (multipleSamplesEnabled) faceClusterMaxUpdateCount else 1
+
+    val effectiveSpeakerMaximumUpdateCount: Int
+        get() = if (multipleSamplesEnabled) speakerClusterMaxUpdateCount else 1
 
     companion object {
         const val DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD = 0.60f
         const val DEFAULT_CLUSTER_MAX_UPDATE_COUNT = 20
+        const val DEFAULT_FACE_ANALYSIS_INTERVAL_MILLIS = 1_000L
+        const val DEFAULT_FACE_DETECTION_SCORE_THRESHOLD = 0.80f
+        const val DEFAULT_FACE_NMS_THRESHOLD = 0.30f
+        const val DEFAULT_FACE_MAXIMUM_DETECTION_CANDIDATES = 5_000
+        const val DEFAULT_ML_KIT_MINIMUM_FACE_SIZE = 0.10f
+        const val DEFAULT_FACE_LABEL_CONTINUATION_IOU = 0.30f
+        const val DEFAULT_FACE_LABEL_MAXIMUM_MISSING_FRAMES = 4
+        const val DEFAULT_VAD_THRESHOLD = 0.35f
+        const val DEFAULT_VAD_MINIMUM_SILENCE_MILLIS = 400L
+        const val DEFAULT_VAD_MINIMUM_SPEECH_MILLIS = 300L
+        const val DEFAULT_VAD_MAXIMUM_SPEECH_MILLIS = 30_000L
+        const val DEFAULT_UTTERANCE_END_SILENCE_MILLIS = 600L
+        const val DEFAULT_MAXIMUM_UTTERANCE_MILLIS = 30_000L
+        const val DEFAULT_SPEAKER_MINIMUM_AUDIO_MILLIS = 1_000L
+        const val DEFAULT_SPEAKER_MINIMUM_VOICED_RATIO = 0.50f
+        const val DEFAULT_SPEAKER_MINIMUM_RMS = 0f
+        const val DEFAULT_CLIPPING_AMPLITUDE_THRESHOLD = 0.999f
+        const val DEFAULT_MAXIMUM_CLIPPING_RATIO = 0.05f
+        const val DEFAULT_SPEAKER_UPDATE_MINIMUM_AUDIO_MILLIS = 1_000L
+        const val DEFAULT_SPEAKER_UPDATE_MINIMUM_VOICED_RATIO = 0.50f
+        const val DEFAULT_SPEAKER_LABEL_CONTINUATION_SIMILARITY = 0.50f
+        const val DEFAULT_SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS = 2
         val SCORE_RANGE = 0f..1f
         val CLUSTER_MAX_UPDATE_COUNT_RANGE = 1..100
+        val FACE_ANALYSIS_INTERVAL_RANGE = 100L..5_000L
+        val FACE_MAXIMUM_DETECTION_CANDIDATES_RANGE = 100..5_000
+        val ML_KIT_MINIMUM_FACE_SIZE_RANGE = 0.05f..0.50f
+        val FACE_LABEL_MAXIMUM_MISSING_FRAMES_RANGE = 0..30
+        val VAD_MINIMUM_SILENCE_RANGE = 100L..2_000L
+        val VAD_MINIMUM_SPEECH_RANGE = 100L..2_000L
+        val VAD_MAXIMUM_SPEECH_RANGE = 1_000L..30_000L
+        val UTTERANCE_END_SILENCE_RANGE = 100L..3_000L
+        val MAXIMUM_UTTERANCE_RANGE = 1_000L..30_000L
+        val SPEAKER_AUDIO_DURATION_RANGE = 100L..10_000L
+        val CLIPPING_AMPLITUDE_RANGE = 0.800f..1.000f
+        val SPEAKER_LABEL_SIMILARITY_RANGE = -1f..1f
+        val SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS_RANGE = 0..20
     }
+}
+
+enum class LoadTestVideoOption(
+    val displayName: String,
+    val assetPath: String?,
+) {
+    OFF("非表示", null),
+    SAMPLE_20_MB("20MB", "videos/sample_20MB.mp4"),
+    SAMPLE_200_MB("200MB", "videos/sample_200MB.mp4"),
 }
 
 enum class FaceDetectorModelOption(
@@ -253,6 +353,13 @@ enum class SpeakerRuntime(val runtimeId: String, val displayName: String) {
     ),
 }
 
+enum class VadRuntime(val runtimeId: String, val displayName: String) {
+    SHERPA_ONNX(
+        runtimeId = "sherpa-onnx-1.13.4-android-cpu",
+        displayName = "sherpa-onnx 1.13.4",
+    ),
+}
+
 enum class VadModelOption(val artifactId: String, val displayName: String) {
     SILERO_VAD(
         artifactId = "silero-vad-onnx-fp32",
@@ -331,6 +438,9 @@ enum class SpeakerModelOption(
         jvsCandidateMargin = 0.0f,
     ),
     ;
+
+    val requiredRuntime: SpeakerRuntime
+        get() = SpeakerRuntime.SHERPA_ONNX
 
     companion object {
         /** Historical display-name keys written before stable config model IDs were introduced. */

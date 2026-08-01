@@ -36,6 +36,11 @@ class YuNetFaceDetector(
     private val detectorOption: FaceDetectorModelOption = FaceDetectorModelOption.YUNET_2026MAY_FP32,
     private val embeddingEngine: FaceEmbeddingEngine? = null,
     private val analysisIntervalMillis: Long = DEFAULT_ANALYSIS_INTERVAL_MILLIS,
+    private val scoreThreshold: Float = SCORE_THRESHOLD,
+    private val nmsThreshold: Float = NMS_THRESHOLD,
+    private val maximumDetectionCandidates: Int = TOP_K,
+    labelContinuationIou: Float = 0.30f,
+    labelMaximumMissingFrames: Int = 4,
     private val estimateHeadPose: Boolean = true,
     private val onPoseObservations: (Int, List<FacePoseObservation>) -> Set<String> = { _, _ -> emptySet() },
     private val onFeatureObservations: (List<FaceFeatureObservation>) -> Unit = {},
@@ -46,10 +51,13 @@ class YuNetFaceDetector(
 ) : FaceDetectorPipeline {
     init {
         require(analysisIntervalMillis > 0L)
+        require(scoreThreshold in 0f..1f)
+        require(nmsThreshold in 0f..1f)
+        require(maximumDetectionCandidates > 0)
         requireNotNull(detectorOption.modelFileName) { "YuNet requires an ONNX model asset" }
     }
     private val appContext = context.applicationContext
-    private val tracker = FaceTracker()
+    private val tracker = FaceTracker(labelContinuationIou, labelMaximumMissingFrames)
     private val headPoseEstimator = HeadPoseEstimator()
     private val mutableSnapshot = MutableStateFlow(FaceDetectionSnapshot(modelName = detectorOption.displayName))
     private var detector: YuNetDetectionBackend? = null
@@ -343,9 +351,9 @@ class YuNetFaceDetector(
                 modelFile.absolutePath,
                 "",
                 Size(width.toDouble(), height.toDouble()),
-                SCORE_THRESHOLD,
-                NMS_THRESHOLD,
-                TOP_K,
+                scoreThreshold,
+                nmsThreshold,
+                maximumDetectionCandidates,
             ),
         ).also {
             detector = it

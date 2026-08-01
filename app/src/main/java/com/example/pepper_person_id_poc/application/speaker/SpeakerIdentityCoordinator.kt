@@ -50,6 +50,7 @@ class SpeakerIdentityCoordinator(
     private val embeddingArtifactId: String? = null,
     private val embeddingRuntimeId: String? = null,
     private val qualityPolicy: SpeakerAudioQualityPolicy = defaultQualityPolicy(),
+    private val clippingAmplitudeThreshold: Float = CLIPPING_THRESHOLD,
     private val trackLinker: LocalSpeakerTrackLinker = LocalSpeakerTrackLinker(
         minimumSimilarity = 0.50f,
         maximumMissingWindows = 2,
@@ -315,6 +316,7 @@ class SpeakerIdentityCoordinator(
             )
         }.onSuccess { outcome ->
             mutableState.value = mutableState.value.copy(
+                observationSequence = mutableState.value.observationSequence + 1,
                 processing = false,
                 result = outcome.results.values.firstOrNull(),
                 results = outcome.results,
@@ -532,7 +534,7 @@ class SpeakerIdentityCoordinator(
         val clippingRatio = if (normalized.isEmpty()) {
             0f
         } else {
-            normalized.count { abs(it) >= CLIPPING_THRESHOLD }.toFloat() / normalized.size
+            normalized.count { abs(it) >= clippingAmplitudeThreshold }.toFloat() / normalized.size
         }
         val durationMillis = sampleDurationMillis(samples.size, utterance.sampleRate)
         return SpeakerAudioQualityInput(
@@ -731,6 +733,7 @@ data class SpeakerStageTimings(
 
 data class SpeakerIdentityUiState(
     val modelName: String,
+    val observationSequence: Long = 0L,
     val modelSpaceId: String = modelName,
     val embeddingArtifactId: String? = null,
     val embeddingRuntimeId: String? = null,

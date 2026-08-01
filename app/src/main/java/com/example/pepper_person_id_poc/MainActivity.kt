@@ -110,24 +110,18 @@ class MainActivity : ComponentActivity() {
                             AppScreen.Settings -> SettingsScreen(
                                 settings = uiState.settings,
                                 settingsSaved = uiState.settingsSaved,
-                                onFaceThresholdChanged = viewModel::updateFaceClusterJoinThreshold,
-                                onFaceMaxUpdatesChanged = viewModel::updateFaceClusterMaxUpdateCount,
-                                onSpeakerThresholdChanged = viewModel::updateSpeakerClusterJoinThreshold,
-                                onSpeakerMaxUpdatesChanged = viewModel::updateSpeakerClusterMaxUpdateCount,
+                                onSettingsChanged = viewModel::updateSettings,
                                 onOpenModelSelection = { viewModel.showScreen(AppScreen.ModelSelection) },
                                 onSave = viewModel::saveSettings,
                                 onOpenScreen = viewModel::showScreen,
+                                onBackToIdentification = { viewModel.showScreen(AppScreen.AnonymousFaceIdentification) },
                                 onExit = ::clearSessionAndExit,
                             )
                             AppScreen.ModelSelection -> ModelSelectionScreen(
                                 settings = uiState.settings,
                                 selectionCoordinator = container.modelSelectionCoordinator,
                                 settingsSaved = uiState.settingsSaved,
-                                onFaceDetectorModelChanged = viewModel::updateFaceDetectorModel,
-                                onFaceDetectorRuntimeChanged = viewModel::updateFaceDetectorRuntime,
-                                onFaceEmbeddingModelChanged = viewModel::updateFaceEmbeddingModel,
-                                onFaceEmbeddingRuntimeChanged = viewModel::updateFaceEmbeddingRuntime,
-                                onSpeakerModelChanged = viewModel::updateSpeakerModel,
+                                onModelRuntimeSetChanged = viewModel::updateModelRuntimeSet,
                                 onSave = viewModel::saveSettings,
                                 onBackToSettings = viewModel::returnToSettings,
                             )
@@ -180,13 +174,19 @@ class MainActivity : ComponentActivity() {
                                 settings = uiState.settings,
                                 repository = container.anonymousFaceClusterRepository,
                                 benchmarkLogger = container.benchmarkLogger,
-                                onBackToSettings = viewModel::returnToSettings,
+                                onOpenSettings = viewModel::returnToSettings,
+                                onOpenModels = { viewModel.showScreen(AppScreen.ModelSelection) },
+                                onOpenSpeaker = { viewModel.showScreen(AppScreen.AnonymousSpeakerIdentification) },
+                                onReset = ::resetAnonymousSession,
                             )
                             AppScreen.AnonymousSpeakerIdentification -> AudioRecordingScreen(
                                 settings = uiState.settings,
                                 repository = container.anonymousSpeakerClusterRepository,
                                 benchmarkLogger = container.benchmarkLogger,
-                                onBackToSettings = viewModel::returnToSettings,
+                                onOpenSettings = viewModel::returnToSettings,
+                                onOpenModels = { viewModel.showScreen(AppScreen.ModelSelection) },
+                                onOpenFace = { viewModel.showScreen(AppScreen.AnonymousFaceIdentification) },
+                                onReset = ::resetAnonymousSession,
                             )
                         }
                     }
@@ -204,6 +204,19 @@ class MainActivity : ComponentActivity() {
                 container.deleteLegacyAnonymousClusterFiles()
             }
             finishAndRemoveTask()
+        }
+    }
+
+    private fun resetAnonymousSession() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                container.anonymousFaceClusterRepository.deleteAll()
+                container.anonymousSpeakerClusterRepository.deleteAll()
+                container.deleteLegacyAnonymousClusterFiles()
+            }
+            val current = viewModel.uiState.value.activeScreen
+            viewModel.showScreen(AppScreen.Settings)
+            viewModel.showScreen(current)
         }
     }
 
@@ -286,7 +299,7 @@ private fun PocSettings.benchmarkModelSelections(): List<BenchmarkModelSelection
         BenchmarkModelSelection(
             role = "VAD",
             artifactId = vadModel.artifactId,
-            runtimeId = speakerRuntime.runtimeId,
+            runtimeId = vadRuntime.runtimeId,
         ),
     )
 }
