@@ -34,5 +34,16 @@
   denial, multi-speaker relation suppression and bounded history.
 - [x] T011 Run `:app:compileBenchmarkDebugKotlin` and relevant tests; fix regressions without
   overwriting unrelated dirty changes.
-- [ ] T012 Install/smoke-test the APK on an available Android target and record Pepper
+- [x] T012 Install/smoke-test the APK on an available Android target and record Pepper
   acceptance separately if the physical device is online.
+
+## Phase 5: Convergence
+
+- [x] T013 Implement an ephemeral face-speaker relation calculator that intersects the
+  speaker utterance interval with face-track intervals, selects the longest overlap and
+  breaks ties by face similarity per FR-014/US5-AC1/US5-AC2 (missing).
+- [x] T014 Wire the relation into the live dashboard and event log, suppressing face↔speaker
+  mapping for multi-speaker, unavailable, and below-threshold cases per FR-015/FR-016/FR-019
+  (partial).
+- [x] T015 Add unit tests for longest-overlap selection, similarity tie-breaking, threshold
+  suppression, and multi-speaker/unavailable states per SC-005 (missing).

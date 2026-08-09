@@ -106,6 +106,10 @@ import com.example.pepper_person_id_poc.infrastructure.speaker.SherpaPyannoteSeg
 import com.example.pepper_person_id_poc.infrastructure.device.AndroidDeviceLoadMonitor
 import com.example.pepper_person_id_poc.domain.anonymous.PersistenceOperation
 import com.example.pepper_person_id_poc.domain.model.ModelSpaceId
+import com.example.pepper_person_id_poc.domain.relation.FaceSpeakerRelation
+import com.example.pepper_person_id_poc.domain.relation.FaceSpeakerRelationCalculator
+import com.example.pepper_person_id_poc.domain.relation.FaceSpeakerRelationStatus
+import com.example.pepper_person_id_poc.domain.relation.FaceTrackInterval
 import com.example.pepper_person_id_poc.domain.speaker.LocalSpeakerTrackLinker
 import com.example.pepper_person_id_poc.domain.speaker.LocalSpeakerTrackState
 import com.example.pepper_person_id_poc.domain.speaker.SpeakerAudioQualityPolicy
@@ -167,6 +171,18 @@ private fun displayFaceLabel(value: String?): String = value
     ?.toIntOrNull()
     ?.let { "FL${it.toString().padStart(3, '0')}" }
     ?: "—"
+
+private fun displayIdentityIdOrNull(value: String?, prefix: String): String? = value
+    ?.takeUnless { it.isBlank() || it == "unknown" }
+    ?.let { displayIdentityId(it, prefix).takeUnless { displayed -> displayed == "—" } }
+
+private fun FaceSpeakerRelation.eventDescription(): String = when (status) {
+    FaceSpeakerRelationStatus.MATCHED ->
+        "顔ID ${faceId ?: "—"} ／ 対応率 ${overlapRatio?.let { String.format(Locale.US, "%.2f", it) } ?: "—"}"
+    FaceSpeakerRelationStatus.MULTIPLE_SPEAKERS -> "顔ID — ／ 複数話者（対応なし）"
+    FaceSpeakerRelationStatus.NO_MATCH -> "顔ID — ／ 対応なし"
+    FaceSpeakerRelationStatus.UNAVAILABLE -> "顔ID — ／ 対応未確定"
+}
 
 @Composable
 private fun HtmlToolbar(elapsed: String, onOpenSettings: () -> Unit) {
@@ -466,6 +482,8 @@ fun CameraPreviewScreen(
     val previewFrame by controller.previewFrame.collectAsState()
     val detection by detector.snapshot.collectAsState()
     val identity by coordinator.state.collectAsState()
+    val faceTrackIntervals = remember { mutableStateMapOf<String, FaceTrackInterval>() }
+    var faceSpeakerRelation by remember { mutableStateOf<FaceSpeakerRelation?>(null) }
     var permissionGranted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
@@ -479,6 +497,31 @@ fun CameraPreviewScreen(
     val audioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         audioPermissionGranted = it
         if (it && speakerRunning) speakerRecorder.start()
+    }
+
+    LaunchedEffect(detection.faces, identity.observationSequence, permissionGranted, faceRunning) {
+        if (!permissionGranted || !faceRunning) return@LaunchedEffect
+        val now = System.currentTimeMillis()
+        detection.faces.forEach { face ->
+            val existing = faceTrackIntervals[face.trackId]
+            val firstSeen = now - face.trackDurationMillis.coerceAtLeast(0L)
+            val result = identity.results[face.trackId]
+            faceTrackIntervals[face.trackId] = FaceTrackInterval(
+                trackId = face.trackId,
+                faceId = displayIdentityIdOrNull(result?.anonymousId, "FP") ?: existing?.faceId,
+                firstSeenAtMillis = minOf(existing?.firstSeenAtMillis ?: firstSeen, firstSeen),
+                lastSeenAtMillis = now,
+                similarity = result?.bestExistingScore ?: existing?.similarity,
+            )
+        }
+        val visibleTrackIds = detection.faces.mapTo(mutableSetOf()) { it.trackId }
+        while (faceTrackIntervals.size > DASHBOARD_HISTORY_LIMIT) {
+            val removable = faceTrackIntervals.values
+                .filterNot { it.trackId in visibleTrackIds }
+                .minByOrNull { it.lastSeenAtMillis }
+                ?: break
+            faceTrackIntervals.remove(removable.trackId)
+        }
     }
 
     LaunchedEffect(identity.observationSequence, permissionGranted, faceRunning) {
@@ -502,18 +545,34 @@ fun CameraPreviewScreen(
         while (dashboardEvents.size > DASHBOARD_HISTORY_LIMIT) dashboardEvents.removeAt(0)
     }
 
-    LaunchedEffect(speakerIdentity.observationSequence, audioPermissionGranted, speakerRunning) {
-        if (!audioPermissionGranted || !speakerRunning) return@LaunchedEffect
+    LaunchedEffect(
+        speakerIdentity.observationSequence,
+        speakerIdentity.lastUtteranceEndedAtMillis,
+        audioPermissionGranted,
+        speakerRunning,
+    ) {
+        if (!audioPermissionGranted || !speakerRunning) {
+            faceSpeakerRelation = null
+            return@LaunchedEffect
+        }
         val elapsed = SystemClock.elapsedRealtime() - identificationStartedAt
         val timing = speakerIdentity.stageTimings
         val resultEntries = speakerIdentity.results.values
+        val relationSpeakerId = if (resultEntries.size == 1) {
+            resultEntries.single().anonymousId
+        } else {
+            null
+        }
+        val relation = FaceSpeakerRelationCalculator.calculate(
+            speakerId = relationSpeakerId,
+            speakerStartAtMillis = speakerIdentity.lastUtteranceStartedAtMillis,
+            speakerEndAtMillis = speakerIdentity.lastUtteranceEndedAtMillis,
+            activityState = speakerIdentity.activityState,
+            faceTracks = faceTrackIntervals.values,
+            threshold = settings.speakerOverlapDisplayThreshold,
+        )
+        faceSpeakerRelation = relation
         resultEntries.forEach { result ->
-            val overlap = speakerIdentity.overlapRatio
-            val relation = when {
-                overlap != null && overlap >= settings.speakerOverlapDisplayThreshold -> "窓内重複あり（率 ${String.format(Locale.US, "%.2f", overlap)}）"
-                overlap != null -> "窓内重複なし（率 ${String.format(Locale.US, "%.2f", overlap)}）"
-                else -> "状態未検出"
-            }
             if (result.anonymousId != "unknown") {
                 speakerHistory += SpeakerDashboardRow(
                     elapsedMillis = elapsed,
@@ -526,7 +585,7 @@ fun CameraPreviewScreen(
             }
             dashboardEvents += DashboardEvent(
                 elapsed,
-                "[${elapsedLabel(elapsed)}] VOICE sim=${result.bestExistingScore?.let { String.format(Locale.US, "%.3f", it) } ?: "—"} → 話者ID ${displayIdentityId(result.anonymousId, "SP")}（$relation）",
+                "[${elapsedLabel(elapsed)}] VOICE sim=${result.bestExistingScore?.let { String.format(Locale.US, "%.3f", it) } ?: "—"} → 話者ID ${displayIdentityId(result.anonymousId, "SP")}（${relation.eventDescription()}）",
             )
         }
         if (resultEntries.isEmpty() &&
@@ -594,13 +653,11 @@ fun CameraPreviewScreen(
                                 speakerHistory = speakerHistory,
                                 faceTotalMillis = identity.pipelineMetrics?.totalMillis,
                                 speakerTotalMillis = speakerIdentity.stageTimings?.totalMillis?.toDouble(),
-                                faceThreshold = settings.faceClusterJoinThreshold,
-                                speakerThreshold = settings.speakerClusterJoinThreshold,
-                                overlapRatio = speakerIdentity.overlapRatio,
-                                overlapThreshold = settings.speakerOverlapDisplayThreshold,
-                                multiSpeaker = speakerIdentity.activityState.name.contains("MULTIPLE") ||
-                                    speakerIdentity.activityState.name.contains("OVERLAPPED"),
-                                modifier = Modifier.fillMaxWidth().height(104.dp),
+                        faceThreshold = settings.faceClusterJoinThreshold,
+                        speakerThreshold = settings.speakerClusterJoinThreshold,
+                        relation = faceSpeakerRelation,
+                        overlapThreshold = settings.speakerOverlapDisplayThreshold,
+                        modifier = Modifier.fillMaxWidth().height(104.dp),
                             )
                             DashboardResultPanels(
                                 faceHistory = faceHistory,
@@ -674,6 +731,8 @@ fun CameraPreviewScreen(
                         faceHistory.clear()
                         speakerHistory.clear()
                         dashboardEvents.clear()
+                        faceTrackIntervals.clear()
+                        faceSpeakerRelation = null
                         onReset()
                     },
                 ) { Text("初期化") }
@@ -691,25 +750,27 @@ private fun DashboardSummary(
     speakerTotalMillis: Double?,
     faceThreshold: Float,
     speakerThreshold: Float,
-    overlapRatio: Float?,
+    relation: FaceSpeakerRelation?,
     overlapThreshold: Float,
-    multiSpeaker: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val faceAverage = faceHistory.mapNotNull { it.similarity?.toDouble() }.averageOrNull()
     val speakerAverage = speakerHistory.mapNotNull { it.similarity?.toDouble() }.averageOrNull()
     val newFaceCount = faceHistory.filter { it.isNew }.map { it.id }.distinct().size
     val newSpeakerCount = speakerHistory.filter { it.isNew }.map { it.id }.distinct().size
-    val overlapText = when {
-        multiSpeaker -> "重複あり"
-        overlapRatio == null -> "未検出"
-        overlapRatio >= overlapThreshold -> "重複あり"
-        else -> "重複なし"
+    val relationText = when (relation?.status) {
+        FaceSpeakerRelationStatus.MATCHED -> "対応あり"
+        FaceSpeakerRelationStatus.NO_MATCH -> "対応なし"
+        FaceSpeakerRelationStatus.MULTIPLE_SPEAKERS -> "複数話者"
+        FaceSpeakerRelationStatus.UNAVAILABLE, null -> "未確定"
     }
+    val displayedRatio = relation
+        ?.takeIf { it.status == FaceSpeakerRelationStatus.MATCHED }
+        ?.overlapRatio
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = modifier) {
         SummaryCard("顔 平均類似度", faceAverage?.let { String.format(Locale.US, "%.2f", it) } ?: "—", "閾値 ${String.format(Locale.US, "%.2f", faceThreshold)}", HtmlBlue, Modifier.weight(1f))
         SummaryCard("声 平均類似度", speakerAverage?.let { String.format(Locale.US, "%.2f", it) } ?: "—", "閾値 ${String.format(Locale.US, "%.2f", speakerThreshold)}", HtmlPurple, Modifier.weight(1f))
-        SummaryCard("話者窓内重複率", overlapRatio?.let { String.format(Locale.US, "%.2f", it) } ?: "—", "$overlapText ／ 閾値 ${String.format(Locale.US, "%.2f", overlapThreshold)}", HtmlPurple, Modifier.weight(1f))
+        SummaryCard("顔ID↔話者IDの対応率", displayedRatio?.let { String.format(Locale.US, "%.2f", it) } ?: "—", "$relationText ／ 閾値 ${String.format(Locale.US, "%.2f", overlapThreshold)}", HtmlPurple, Modifier.weight(1f))
         SummaryCard("新規ID件数", (newFaceCount + newSpeakerCount).takeIf { it > 0 }?.toString() ?: "—", "顔 ${newFaceCount.takeIf { it > 0 } ?: "—"} ／ 話者 ${newSpeakerCount.takeIf { it > 0 } ?: "—"}", HtmlGreen, Modifier.weight(1f))
         SummaryCard("顔 平均処理時間", faceTotalMillis?.let { String.format(Locale.US, "%.1f ms", it) } ?: "—", "顔識別", HtmlBlue, Modifier.weight(1f), valueFontSize = 19.sp)
         SummaryCard("声 平均処理時間", speakerTotalMillis?.let { String.format(Locale.US, "%.1f ms", it) } ?: "—", "話者識別", HtmlPurple, Modifier.weight(1f), valueFontSize = 19.sp)
