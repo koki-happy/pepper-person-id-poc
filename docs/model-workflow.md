@@ -11,14 +11,13 @@
 3. `scripts/`: ダウンロード、変換、manifest生成、数値比較、parity検証
 4. `app/build.gradle.kts` と `buildSrc/`: ハッシュ、カタログ、ライセンス、candidate allowlistのビルドゲート
 
-`models[]`は現在のベンチマーク・明示選択の候補を保持し、`releaseModelIds[]`がreleaseへ同梱する話者モデルを定義する。現在はAPK同梱対象だけを候補として残している。
+`models[]`は現在の明示選択候補を保持し、`releaseModelIds[]`がreleaseへ同梱する話者モデルを定義する。現在はAPK同梱対象だけを候補として残している。
 
 現在のモデル本体は、主に次のGit管理外ディレクトリへ配置される。
 
 - `app/src/benchmark/assets/models/`
 - `models/`
 - `app/libs/`
-- `data/audio/`
 
 ## モデル別の正本とフロー
 
@@ -48,7 +47,7 @@ git lfs pull
 # 顔モデル、VAD、主要speaker assetを取得し、必要な派生物を生成
 ./scripts/setup-local-inference-assets.ps1
 
-# 話者モデルだけをWindows benchmark用に取得・準備
+# APKで使用する話者モデルだけを取得・準備
 ./scripts/windows/download-speaker-models.ps1 -ModelId @("campplus-zh-en", "wespeaker-resnet34-lm")
 
 # Android側のカタログ、ハッシュ、ライセンスを検証
@@ -57,9 +56,8 @@ git lfs pull
 
 `setup-local-inference-assets.ps1`は指定URLから不足ファイルをダウンロードし、SHA-256を検証した後、必要な派生物と変換ONNXを生成する。Python、変換依存関係、ffmpegが必要であり、既存ファイルを再生成する場合は`-Force`を付ける。URL、revision、SHA-256は`config/models.json`、各準備スクリプト、`docs/model-provenance.md`を正本とする。
 
-話者モデルのWindows取得・評価は、`config/models.json`を参照する
-`scripts/windows/download-speaker-models.ps1`、`scripts/windows/verify-speaker-parity.ps1`、
-`scripts/windows/verify-speaker-reference.ps1`を使用する。
+話者モデルの取得・準備は、`config/models.json`を参照する
+`scripts/windows/download-speaker-models.ps1`を使用する。Windows/JVS比較結果や生の評価データは、現行リポジトリの管理対象にしない。
 
 ## 受入の段階
 

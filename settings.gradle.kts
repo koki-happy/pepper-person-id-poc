@@ -25,4 +25,3 @@ dependencyResolutionManagement {
 rootProject.name = "pepper-person-id-poc"
 include(":app")
 include(":speaker-core")
-include(":speaker-benchmark")

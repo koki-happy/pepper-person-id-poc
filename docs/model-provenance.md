@@ -201,9 +201,9 @@ face-0095の固定入力に対する正規化embedding cosineは`0.99999994`、
 - Input: 16 kHz mono normalized PCM
 - Output: 192 dimensions
 
-## Windows speaker benchmark model catalog
+## Speaker model catalog
 
-Windows用の正本は`config/models.json`である。CAM++ Chinese-EnglishはModelScope公式モデルページ、WeSpeakerはmodel cardのrevision `f0c48c298fd835726c27956a5d617bad7115627e`を根拠とする。いずれもダウンロード後にサイズとSHA-256を検証する。
+正本は`config/models.json`である。CAM++ Chinese-EnglishはModelScope公式モデルページ、WeSpeakerはmodel cardのrevision `f0c48c298fd835726c27956a5d617bad7115627e`を根拠とする。いずれもダウンロード後にサイズとSHA-256を検証する。
 
 | ID | ファイル | 追加元commit | サイズ | SHA-256 | 次元 |
 |---|---|---|---:|---|---:|
@@ -212,24 +212,11 @@ Windows用の正本は`config/models.json`である。CAM++ Chinese-EnglishはMo
 
 現行カタログではCAM++ Chinese-EnglishとWeSpeaker ResNet34-LMを`releaseModelIds`として許諾確認済みである。VoxCeleb等のデータ条件、NOTICE/SBOM、Pepper実機受入は別ゲートである。
 
-RyuseiNetは今回の過去比較と現行設定2モデルの対象外である。追加学習を行わず、重みの取得・変換・統合・比較も行っていない。
+RyuseiNetは現行設定2モデルの対象外である。追加学習を行わず、重みの取得・変換・統合・比較も行っていない。
 
-## ONNX Runtime Java for Windows
+Windows用の独立した話者比較CLIは廃止した。モデル本体とAndroid runtimeはGitへコミットせず、`config/models.json`、準備スクリプト、SHA-256を正本として管理する。
 
-- Artifact: `com.microsoft.onnxruntime:onnxruntime:1.20.0`
-- Distribution: Maven Central
-- Runtime: Windows x64 CPU
-- License: MIT
-
-1.13.1、1.16.3、1.18.0、1.20.0のDLLロードを同じJava 17プロセスで確認し、1.20.0まで成功した。1.21.0、1.22.0、1.26.0はこのWindows 11端末で`DLL initialization routine failed`となったため採用しない。モデル推論、5モデルのmetadata検査、スコアparityまで成功した1.20.0をVersion Catalogへ固定する。
-
-バイナリはGitへコミットしない。話者ベンチマークとAndroid話者runtimeはKotlin／Gradle経路だけで準備できる。
-
-```powershell
-.\scripts\windows\bootstrap.ps1
-```
-
-既存の顔モデル`face-reidentification-retail-0095`をOpenVINO IRから再変換するときだけ、従来の顔資産スクリプトを使用する。この既存Python変換は新しい話者ベンチマーク経路には含めない。動画から生成する顔ベンチPNGは、ハッシュ検証済み動画の1.0秒位置から再生成する。
+既存の顔モデル`face-reidentification-retail-0095`をOpenVINO IRから再変換するときだけ、従来の顔資産スクリプトを使用する。動画から生成する顔検証PNGは、ハッシュ検証済み動画の1.0秒位置から再生成する。
 
 ```powershell
 .\scripts\setup-local-inference-assets.ps1

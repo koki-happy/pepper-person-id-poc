@@ -16,11 +16,11 @@
 
 **Storage**: SharedPreferencesの非生体設定のみ。匿名クラスタと特徴量はアプリケーションスコープのメモリだけに保持し、性能・診断イベントは端末内ファイルへ保存せずLogcatからADBで取得する。
 
-**Testing**: JUnit 4、Truth、AndroidX Test/Espresso/Compose UI test、固定モデル入力instrumentation、Windows/JVM benchmark、ADB実機シナリオ
+**Testing**: JUnit 4、Truth、AndroidX Test/Espresso/Compose UI test、固定モデル入力instrumentation、JVM単体テスト、ADB実機シナリオ
 
 **Target Platform**: 最終受入はPepper Android 6.0 / API 23 / armeabi-v7a / 約1 GB RAM / 端末内CPU / オフライン。ARM64 Android端末は先行検証用。
 
-**Project Type**: 単一Androidアプリ＋Kotlin/JVM共通話者モジュール＋ローカル変換・評価ツール
+**Project Type**: 単一Androidアプリ＋Kotlin/JVM共通話者モジュール＋ローカルモデル変換ツール
 
 **Performance Goals**: すべての段階時間とRTFを計測可能にし、Pepper実測から候補を収束する。未測定値はnullとし、目標値を推測で固定しない。
 
@@ -140,13 +140,11 @@ app/
     ├── test/
     └── androidTest/
 speaker-core/
-speaker-benchmark/
-config/models.json
+ config/models.json
 scripts/
 ├── litert/
 ├── reporting/
 └── windows/
-results/                 # local/ignored generated evaluation results only
 ```
 
 **Structure Decision**: 既存の単一AndroidアプリとKotlin/JVMモジュールを維持し、共通ドメインを`app/domain`、端末実装を`app/infrastructure`、変換・レポートを`scripts`へ分離する。新しい永続Repositoryは追加しない。

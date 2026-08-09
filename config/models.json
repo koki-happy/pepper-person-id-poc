@@ -21,7 +21,6 @@
     { "runtimeId": "ncnn-20260526-android-cpu", "name": "ncnn", "version": "20260526", "provider": "ANDROID_CPU_NO_VULKAN_NO_OPENMP", "license": "BSD-3-Clause", "licenseEvidence": "https://github.com/Tencent/ncnn/blob/20260526/LICENSE.txt" },
     { "runtimeId": "mnn-3.5.0-android-cpu", "name": "MNN", "version": "3.5.0", "provider": "ANDROID_CPU", "license": "Apache-2.0", "licenseEvidence": "https://github.com/alibaba/MNN/blob/3.5.0/LICENSE.txt" },
     { "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "name": "sherpa-onnx static ONNX Runtime", "version": "1.13.4", "provider": "ANDROID_CPU", "license": "Apache-2.0 AND MIT", "licenseEvidence": "https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.4/LICENSE" },
-    { "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "name": "ONNX Runtime Java", "version": "1.20.0", "provider": "WINDOWS_CPU", "license": "MIT", "licenseEvidence": "https://github.com/microsoft/onnxruntime/blob/v1.20.0/LICENSE" },
     { "runtimeId": "openvino-2025.4.1-windows-cpu", "name": "OpenVINO Runtime", "version": "2025.4.1", "provider": "WINDOWS_CPU", "license": "Apache-2.0", "licenseEvidence": "https://github.com/openvinotoolkit/openvino/blob/2025.4.1/LICENSE" }
   ],
   "artifacts": [
@@ -233,8 +232,7 @@
       "outputShape": [1, 192], "outputSemantics": "speaker embedding", "opset": null, "conversion": null,
       "runtimeCompatibility": [
         { "artifactId": "campplus-zh-en-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "campplus-zh-en-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null },
-        { "artifactId": "campplus-zh-en-onnx-fp32", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": null, "evidence": null }
+        { "artifactId": "campplus-zh-en-onnx-fp32", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": null, "evidence": null }
       ],
       "weightLicense": "Apache-2.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://modelscope.cn/models/iic/speech_campplus_sv_zh_en_16k-common_advanced"
     },
@@ -262,8 +260,7 @@
       "conversion": { "sourceArtifactId": "wespeaker-resnet34-lm-onnx-fp32-source", "tool": "scripts/speaker/prepare-wespeaker-resnet34-lm.py", "toolRevision": "1; sherpa-onnx-v1.13.4 metadata contract", "environmentDigest": "bec7151f88e1e0e0f89dcb619e062b1460c93576e091ed4a80b53593bdae468c", "command": "python scripts/speaker/prepare-wespeaker-resnet34-lm.py --source INPUT --output OUTPUT", "convertedAt": null, "outputSha256": "df0cec64c3bba5dbc3637e50c4259de348a24124f4bb399f413fa1d4b44ba605", "tensorMetadata": { "input": "feats FLOAT32 [B,T,80]", "output": "embs FLOAT32 [B,256]", "metadata": "framework=wespeaker; sample_rate=16000; output_dim=256; normalize_samples=0; feature_normalize_type=global-mean" }, "warnings": ["Only ONNX metadata is added; graph nodes and weights are unchanged.", "sherpa-onnx v1.13.4 uses its 80-bin kaldi-native-fbank path (Povey window, snip_edges=false, 20-7600 Hz), which differs from the upstream WeSpeaker reference Hamming/snip-edges path; thresholds require device/JVS calibration."] },
       "runtimeCompatibility": [
         { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "armeabi-v7a", "minApi": 23, "status": "BUILDABLE", "reason": "Metadata contract and artifact hash are verified; live Pepper inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 dispatches framework=wespeaker to the general embedding extractor." },
-        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Metadata contract and artifact hash are verified; ARM64 Android inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 dispatches framework=wespeaker to the general embedding extractor." },
-        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "onnxruntime-java-1.20.0-windows-cpu", "abi": "x86_64-windows", "minApi": 1, "status": "BUILDABLE", "reason": "Fixed-input host inference test is required before benchmark acceptance.", "evidence": "ONNX input/output and metadata contracts are validated by the preparation script." }
+        { "artifactId": "wespeaker-resnet34-lm-onnx-fp32-sherpa", "runtimeId": "sherpa-onnx-1.13.4-android-cpu", "abi": "arm64-v8a", "minApi": 23, "status": "BUILDABLE", "reason": "Metadata contract and artifact hash are verified; ARM64 Android inference acceptance remains required.", "evidence": "sherpa-onnx v1.13.4 dispatches framework=wespeaker to the general embedding extractor." }
       ],
       "weightLicense": "CC-BY-4.0", "commercialUse": "ALLOWED", "licenseEvidence": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md"
     },
@@ -320,8 +317,8 @@
       "weightLicense": "Apache-2.0",
       "commercialUse": "ALLOWED",
       "licenseEvidence": "https://modelscope.cn/models/iic/speech_campplus_sv_zh_en_16k-common_advanced",
-      "runtime": "ONNX Runtime Java CPU",
-      "notes": "Required language-coverage comparison. Official ModelScope model page identifies the weights as Apache-2.0; training-data-derived terms remain separately tracked."
+      "runtime": "sherpa-onnx 1.13.4 Android CPU",
+      "notes": "Current APK speaker model. Official ModelScope model page identifies the weights as Apache-2.0; training-data-derived terms remain separately tracked."
     },
     {
       "id": "wespeaker-resnet34-lm",
@@ -342,7 +339,7 @@
       "commercialUse": "ALLOWED",
       "licenseEvidence": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/blob/f0c48c298fd835726c27956a5d617bad7115627e/README.md",
       "runtime": "sherpa-onnx 1.13.4 Android CPU",
-      "notes": "Optional explicit-selection candidate. The setup script adds only required sherpa-onnx metadata; no format conversion or CAM++ fallback is allowed. JVS threshold 0.5 is uncalibrated."
+      "notes": "Current APK explicit-selection candidate. The setup script adds only required sherpa-onnx metadata; no format conversion or CAM++ fallback is allowed. Device calibration remains required."
     }
   ]
 }

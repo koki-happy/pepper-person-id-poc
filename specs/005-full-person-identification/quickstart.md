@@ -12,7 +12,6 @@
 ```powershell
 java -jar gradle/wrapper/gradle-wrapper.jar --no-daemon `
   :speaker-core:test `
-  :speaker-benchmark:test `
   :app:testBenchmarkDebugUnitTest `
   :app:verifyModelCatalog `
   :app:auditBenchmarkDebugApk
@@ -83,8 +82,8 @@ Exact target: `192.168.10.111:42047`, CPH2013, API 30,
 - Host tests, catalog/hash validation, LiteRT artifact validation, ARM64 APK build,
   and APK audit passed.
 - Installed application and instrumentation APKs with `adb -s ... install -r -g`.
-- `FaceModelBenchmarkTest`, `OnnxRuntimeFaceEmbeddingSmokeTest`,
-  `LiteRtModelSmokeTest`, and `WeSpeakerResNet34LmOnnxSmokeTest` passed:
+- `OnnxRuntimeFaceEmbeddingSmokeTest`, `LiteRtModelSmokeTest`, and
+  `WeSpeakerResNet34LmOnnxSmokeTest` passed:
   `OK (12 tests)` in 10.624 seconds.
 - The executed exact runtimes were OpenCV SFace/0095, ONNX Runtime
   SFace/0095, ncnn SFace, MNN SFace, LiteRT YuNet/SFace, and WeSpeaker
@@ -126,10 +125,10 @@ foreach ($Minutes in 15, 30, 60) {
 Pepper execution is prohibited until all required `A-*` scenarios pass and
 their evidence hashes validate.
 
-## 3. Build candidate after benchmark selection
+## 3. Build candidate after validation review
 
 Create `device-evidence/candidate-selection.json` only after reviewing the
-benchmark results. The gate accepts exactly this schema and re-hashes every
+Android validation evidence. The gate accepts exactly this schema and re-hashes every
 referenced evidence file:
 
 ```json
@@ -140,7 +139,7 @@ referenced evidence file:
   "runtimeIds": ["<selected Android runtimeId>"],
   "evidence": [
     {
-      "kind": "benchmark-report",
+      "kind": "validation-report",
       "path": "device-evidence/<reviewed report>.json",
       "sha256": "<64 lowercase hex SHA-256>"
     }

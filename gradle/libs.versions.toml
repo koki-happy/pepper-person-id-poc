@@ -13,7 +13,6 @@ cameraX = "1.6.1"
 openCv = "5.0.0"
 truth = "1.4.5"
 mlKitFaceDetection = "16.1.7"
-onnxRuntime = "1.20.0"
 kotlinxSerialization = "1.9.0"
 junitPlatform = "1.13.4"
 
@@ -41,7 +40,6 @@ androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", 
 opencv = { group = "org.opencv", name = "opencv", version.ref = "openCv" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 mlkit-face-detection = { group = "com.google.mlkit", name = "face-detection", version.ref = "mlKitFaceDetection" }
-onnxruntime = { group = "com.microsoft.onnxruntime", name = "onnxruntime", version.ref = "onnxRuntime" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit5", version.ref = "kotlin" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junitPlatform" }

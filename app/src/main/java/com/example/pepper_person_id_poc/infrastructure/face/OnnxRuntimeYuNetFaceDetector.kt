@@ -58,10 +58,12 @@ class OnnxRuntimeYuNetFaceDetector(
             contract.input.dimensions.map(Int::toLong).toLongArray(),
         ).use { tensor ->
             checkNotNull(session).run(mapOf(INPUT_NAME to tensor)).use { result ->
+                val valuesByName = result.associate { entry ->
+                    entry.key to entry.value.value
+                }
                 val outputs = contract.outputs.map { output ->
-                    val value = result.get(output.name).orElseThrow {
-                        IllegalStateException("Missing YuNet ONNX output=${output.name}")
-                    }.value
+                    val value = valuesByName[output.name]
+                        ?: throw IllegalStateException("Missing YuNet ONNX output=${output.name}")
                     validateRawOutput(output, value)
                 }
                 val detections = YuNetLiteRtPostprocessor.decode(

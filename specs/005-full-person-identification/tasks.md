@@ -21,8 +21,8 @@
 - [x] T002 [P] Add the `005` supersession note to `specs/001-face-identification/plan.md`
 - [x] T003 [P] Add the `005` supersession note to `specs/003-speaker-identification/plan.md`
 - [x] T004 [P] Add the `005` supersession note to `specs/004-anonymous-biometric-identification/plan.md`
-- [x] T005 [P] Update `data/README.md` with the local-only, per-evaluation input/result policy and the prohibition on dataset bodies in APK/Git
-- [x] T006 [P] Add generated LiteRT artifacts, benchmark JSONL, CSV, SVG, Markdown, and device evidence exclusions to `.gitignore`
+- [x] T005 [P] Keep the local-only input/result policy in the model workflow and prohibit dataset bodies in APK/Git
+- [x] T006 [P] Add generated LiteRT artifacts, reports, and device evidence exclusions to `.gitignore`
 - [x] T007 Add a `verify005SpecArtifacts` Gradle task in `build.gradle.kts` that checks required `005` files and contracts exist
 
 **Checkpoint**: `005` is the sole active source of truth and generated biometric/evaluation data remains local-only.
@@ -244,7 +244,7 @@
 - [x] T171 [US3] Expose SpeakerNet-M and TitaNet-S as explicit settings choices and route them through `SherpaOnnxSpeakerEmbeddingEngine` using their exact model IDs and dimensions without fallback
 - [x] T172 [US3] Record sherpa-onnx 1.13.4 `framework=nemo` ARM64/ARMv7 compatibility for SpeakerNet-M and TitaNet-S in `config/models.json`
 - [x] T173 [P] [US3] Add fixed-PCM Android ONNX load/infer/release coverage for both NeMo models in `app/src/androidTest/java/com/example/pepper_person_id_poc/NemoSpeakerModelsOnnxSmokeTest.kt`
-- [x] T174 [US5] Keep SpeakerNet-M and TitaNet-S in the JVS benchmark and require both in Windows/Android parity synchronization through `config/speaker-benchmark-jvs.json` and `scripts/windows/verify-speaker-parity.ps1`
+- [x] T174 [US5] Retain only the current APK speaker candidates in `config/models.json`; remove the standalone Windows/JVS comparison path
 - [ ] T175 [US7] Run SpeakerNet-M and TitaNet-S fixed-PCM instrumentation on the ARM64 Android device, collect parity JSON, and only then record Android acceptance in `specs/005-full-person-identification/quickstart.md`
 
 **Checkpoint**: LiteRT可否が変換成功ではなく、数値同等性と実機runtime証跡で決まる。
@@ -318,12 +318,12 @@
 
 **Purpose**: 全ストーリーを統合し、Android端末→Pepperの順で受入証跡を完成させる。
 
-- [ ] T141 [P] Run all JVM and Android unit tests with `:speaker-core:test :speaker-benchmark:test :app:testBenchmarkDebugUnitTest :app:testCandidateDebugUnitTest`
+- [ ] T141 [P] Run all JVM and Android unit tests with `:speaker-core:test :app:testBenchmarkDebugUnitTest :app:testCandidateDebugUnitTest`
 - [ ] T142 [P] Run model catalog, license, APK inventory, native coexistence, conversion manifest, and report generator verification tasks
 - [ ] T143 Run all fixed-image and fixed-audio instrumentation on the ARM64 Android device
 - [ ] T144 Run `A-DIAG-001`, `A-FACE-001..004`, `A-SPK-001..004`, and `A-PRIV-001` with face/speech present on the ARM64 Android device
 - [ ] T145 Run `A-SOAK-015`, `A-SOAK-030`, and `A-SOAK-060` and generate the Android pass manifest
-- [ ] T146 Select the final face detector, face embedding runtime, speaker model, thresholds, and candidate contents from measured Android evidence in `docs/poc/final-recommendation.md`
+- [ ] T146 Select the final face detector, face embedding runtime, speaker model, thresholds, and candidate contents from measured Android evidence in `config/models.json` and the acceptance manifest
 - [ ] T147 Build and audit the ARMv7 candidate APK only after T144-T146 pass
 - [ ] T148 Install and launch the candidate APK on Pepper and separately record package, activity, permissions, runtime initialization, and crash evidence
 - [ ] T149 Run `P-DIAG-001`, `P-FACE-001..004`, `P-SPK-001..004`, and `P-PRIV-001` with face/speech present on Pepper

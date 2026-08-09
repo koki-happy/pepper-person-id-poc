@@ -32,7 +32,6 @@ WeSpeakerは公式model cardのrevision `f0c48c298fd835726c27956a5d617bad7115627
 
 | 利用箇所 | 成果物 | コードライセンス | 現在の確認範囲 |
 |---|---|---|---|
-| Windows | `com.microsoft.onnxruntime:onnxruntime:1.20.0` | MIT | [`libs.versions.toml`](../../gradle/libs.versions.toml)で版を固定。公式 [v1.20.0 LICENSE](https://github.com/microsoft/onnxruntime/blob/v1.20.0/LICENSE) を確認 |
 | Android | `sherpa-onnx-static-link-onnxruntime-1.13.4.aar` | sherpa-onnx: Apache-2.0、静的リンクされた ONNX Runtime: MIT | [`app/build.gradle.kts`](../../app/build.gradle.kts)でAARを参照。公式 [sherpa-onnx v1.13.4 LICENSE](https://github.com/k2-fsa/sherpa-onnx/blob/v1.13.4/LICENSE) と上記 ONNX Runtime ライセンスを確認 |
 
 ARMv7 AAR は ONNX Runtime を静的リンクしているため、別の `libonnxruntime.so` は不要です。ただし、静的リンクでファイルが見えなくなっても、該当コードのライセンス表示や third-party notices の検討が不要になるわけではありません。
