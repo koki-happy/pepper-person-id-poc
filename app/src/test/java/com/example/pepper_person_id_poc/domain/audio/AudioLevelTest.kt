@@ -19,11 +19,4 @@ class AudioLevelTest {
         assertThat(AudioLevel.dbFs(samples)).isWithin(0.01f).of(0f)
     }
 
-    @Test
-    fun energyVad_distinguishesSilenceAndLoudSignal() {
-        val detector = EnergyVoiceActivityDetector(speechThresholdDbFs = -40f)
-
-        assertThat(detector.isSpeech(ShortArray(160))).isFalse()
-        assertThat(detector.isSpeech(ShortArray(160) { 10_000 })).isTrue()
-    }
 }

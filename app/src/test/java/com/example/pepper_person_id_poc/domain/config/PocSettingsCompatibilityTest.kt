@@ -44,10 +44,6 @@ class PocSettingsCompatibilityTest {
         assertThat(SpeakerModelOption.WESPEAKER_RESNET34_LM.modelFileName)
             .isEqualTo("wespeaker_en_voxceleb_resnet34_LM.onnx")
         assertThat(SpeakerModelOption.WESPEAKER_RESNET34_LM.embeddingSize).isEqualTo(256)
-        assertThat(SpeakerModelOption.SPEAKERNET_M.configModelId).isEqualTo("speakernet-m")
-        assertThat(SpeakerModelOption.SPEAKERNET_M.embeddingSize).isEqualTo(256)
-        assertThat(SpeakerModelOption.TITANET_S.configModelId).isEqualTo("titanet-s")
-        assertThat(SpeakerModelOption.TITANET_S.embeddingSize).isEqualTo(192)
         assertThat(FaceDetectorRuntime.entries.map { it.runtimeId }).containsNoDuplicates()
         assertThat(FaceEmbeddingRuntime.entries.map { it.runtimeId }).containsNoDuplicates()
     }

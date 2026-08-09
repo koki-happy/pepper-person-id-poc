@@ -4,7 +4,6 @@ import com.example.pepper_person_id_poc.domain.config.FaceDetectorModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceDetectorRuntime
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingModelOption
 import com.example.pepper_person_id_poc.domain.config.FaceEmbeddingRuntime
-import com.example.pepper_person_id_poc.domain.config.LoadTestVideoOption
 import com.example.pepper_person_id_poc.domain.config.SpeakerModelOption
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertThrows
@@ -31,7 +30,7 @@ class SharedPreferencesSettingsRepositoryTest {
     }
 
     @Test
-    fun legacyChoicesMigrateWithoutChangingTheirMeaning() {
+    fun removedSpeakerChoiceFallsBackToCurrentDefault() {
         val migrated = SettingsSchemaMigration.migrate(
             mapOf(
                 "face_detector" to "ML_KIT_BUNDLED",
@@ -45,7 +44,7 @@ class SharedPreferencesSettingsRepositoryTest {
         assertThat(migrated.faceDetectorRuntime).isEqualTo(FaceDetectorRuntime.ML_KIT)
         assertThat(migrated.faceEmbeddingModel).isEqualTo(FaceEmbeddingModelOption.SFACE_2021DEC_INT8)
         assertThat(migrated.faceEmbeddingRuntime).isEqualTo(FaceEmbeddingRuntime.OPEN_CV)
-        assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.ERES2NET)
+        assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN)
     }
 
     @Test
@@ -57,7 +56,7 @@ class SharedPreferencesSettingsRepositoryTest {
                 "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
                 "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32.name,
                 "face_embedding_runtime" to FaceEmbeddingRuntime.NCNN.name,
-                "speaker_model" to SpeakerModelOption.CAM_PLUS_PLUS.name,
+                "speaker_model" to "CAM_PLUS_PLUS",
                 "speaker_runtime" to "SHERPA_ONNX",
                 "vad_model" to "SILERO_VAD",
             ),
@@ -66,7 +65,7 @@ class SharedPreferencesSettingsRepositoryTest {
         assertThat(migrated.faceDetectorModel).isEqualTo(FaceDetectorModelOption.YUNET_2026MAY_FP32)
         assertThat(migrated.faceEmbeddingModel).isEqualTo(FaceEmbeddingModelOption.SFACE_2021DEC_NCNN_FP32)
         assertThat(migrated.faceEmbeddingRuntime).isEqualTo(FaceEmbeddingRuntime.NCNN)
-        assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS)
+        assertThat(migrated.speakerModel).isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN)
     }
 
     @Test
@@ -108,6 +107,25 @@ class SharedPreferencesSettingsRepositoryTest {
     }
 
     @Test
+    fun legacyThirtySecondUtteranceLimitIsClampedToSegmentationWindow() {
+        val migrated = SettingsSchemaMigration.migrate(
+            mapOf(
+                "settings_schema_version" to 2,
+                "face_detector_model" to FaceDetectorModelOption.YUNET_2026MAY_FP32.name,
+                "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
+                "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_FP32.name,
+                "face_embedding_runtime" to FaceEmbeddingRuntime.OPEN_CV.name,
+                "speaker_model" to SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.name,
+                "speaker_runtime" to "SHERPA_ONNX",
+                "vad_model" to "SILERO_VAD",
+                "maximum_utterance_millis" to 30_000L,
+            ),
+        )
+
+        assertThat(migrated.maximumUtteranceMillis).isEqualTo(10_000L)
+    }
+
+    @Test
     fun schemaTwoSettingsReceiveDetailedParameterDefaults() {
         val migrated = SettingsSchemaMigration.migrate(
             mapOf(
@@ -126,7 +144,25 @@ class SharedPreferencesSettingsRepositoryTest {
         assertThat(migrated.faceAnalysisIntervalMillis).isEqualTo(1_000L)
         assertThat(migrated.vadThreshold).isEqualTo(0.35f)
         assertThat(migrated.clippingAmplitudeThreshold).isEqualTo(0.999f)
-        assertThat(migrated.speakerLabelMaximumMissingSegments).isEqualTo(2)
-        assertThat(migrated.loadTestVideo).isEqualTo(LoadTestVideoOption.OFF)
+        assertThat(migrated.speakerOverlapDisplayThreshold).isEqualTo(0.50f)
+    }
+
+    @Test
+    fun removedFaceSpeakerOverlapSettingDoesNotBecomeTheSpeakerDisplayThreshold() {
+        val migrated = SettingsSchemaMigration.migrate(
+            mapOf(
+                "settings_schema_version" to 5,
+                "face_detector_model" to FaceDetectorModelOption.YUNET_2026MAY_FP32.name,
+                "face_detector_runtime" to FaceDetectorRuntime.OPEN_CV.name,
+                "face_embedding_model" to FaceEmbeddingModelOption.SFACE_2021DEC_FP32.name,
+                "face_embedding_runtime" to FaceEmbeddingRuntime.OPEN_CV.name,
+                "speaker_model" to SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.name,
+                "speaker_runtime" to "SHERPA_ONNX",
+                "vad_model" to "SILERO_VAD",
+                "face_speaker_overlap_threshold" to 0.90f,
+            ),
+        )
+
+        assertThat(migrated.speakerOverlapDisplayThreshold).isEqualTo(0.50f)
     }
 }

@@ -50,11 +50,9 @@ class SpeakerIdentityCoordinator(
     private val embeddingArtifactId: String? = null,
     private val embeddingRuntimeId: String? = null,
     private val qualityPolicy: SpeakerAudioQualityPolicy = defaultQualityPolicy(),
+    private val overlapDisplayThreshold: Float = DEFAULT_OVERLAP_DISPLAY_THRESHOLD,
     private val clippingAmplitudeThreshold: Float = CLIPPING_THRESHOLD,
-    private val trackLinker: LocalSpeakerTrackLinker = LocalSpeakerTrackLinker(
-        minimumSimilarity = 0.50f,
-        maximumMissingWindows = 2,
-    ),
+    private val trackLinker: LocalSpeakerTrackLinker = LocalSpeakerTrackLinker(),
     private val segmentSelector: SoloSpeakerSegmentSelector = SoloSpeakerSegmentSelector(),
     private val embeddingAggregator: LocalSpeakerEmbeddingAggregator = LocalSpeakerEmbeddingAggregator(),
 ) : Closeable {
@@ -79,6 +77,7 @@ class SpeakerIdentityCoordinator(
     private var nextWindowNumber = 1L
 
     init {
+        require(overlapDisplayThreshold in 0f..1f)
         scope.launch {
             val embeddingPreparation = runCatching { embeddingEngine.prepare() }
             val activityPreparation = segmentationEngine?.let { engine ->
@@ -118,7 +117,11 @@ class SpeakerIdentityCoordinator(
             holdWithoutMutation(utterance, listOf(ACTIVITY_WINDOW_TOO_LONG))
             return
         }
-        mutableState.value = mutableState.value.copy(processing = true, error = null)
+        mutableState.value = mutableState.value.copy(
+            processing = true,
+            localTracks = emptyList(),
+            error = null,
+        )
         scope.launch {
             mutex.withLock {
                 processUtterance(utterance, activityEngine)
@@ -158,15 +161,15 @@ class SpeakerIdentityCoordinator(
                     reasons = selection.holdReasons,
                     activityTimeMillis = activityTimeMillis,
                     totalTimeMillis = elapsedMillis(pipelineStarted),
-                    utteranceDurationMillis = utterance.durationMillis,
+                        utteranceDurationMillis = utterance.voicedDurationMillis,
                 )
             }
 
             val embeddingStarted = System.nanoTime()
-            val rawSegmentEmbeddings = selection.soloSegments.map { segment ->
+            val rawSegmentEmbeddings = selection.soloSegments.mapIndexed { segmentIndex, segment ->
                 val pcm = utterance.pcm16.slice(segment.startSample, segment.endSample)
                 SpeakerSegmentEmbedding(
-                    localSpeakerId = segment.localSpeakerId,
+                    localSpeakerId = "window-segment-$segmentIndex",
                     embedding = embeddingEngine.extract(pcm, utterance.sampleRate),
                     durationMillis = sampleDurationMillis(pcm.size, utterance.sampleRate),
                 )
@@ -176,15 +179,17 @@ class SpeakerIdentityCoordinator(
             val firstAggregationStarted = System.nanoTime()
             val windowSpeakerAggregates = embeddingAggregator.aggregate(rawSegmentEmbeddings)
             aggregationTimeMillis += elapsedMillis(firstAggregationStarted)
-            val segmentsByWindowSpeaker = selection.soloSegments.groupBy { it.localSpeakerId }
+            val segmentsByWindowSegment = selection.soloSegments.mapIndexed { segmentIndex, segment ->
+                "window-segment-$segmentIndex" to segment
+            }.toMap()
             val observations = windowSpeakerAggregates.map { aggregate ->
-                val speakerSegments = segmentsByWindowSpeaker.getValue(aggregate.localSpeakerId)
+                val speakerSegment = segmentsByWindowSegment.getValue(aggregate.localSpeakerId)
                 WindowSpeakerObservation(
                     windowSpeakerIndex = aggregate.localSpeakerId.substringAfterLast('-').toInt(),
-                    startSample = speakerSegments.minOf { it.startSample },
-                    endSample = speakerSegments.maxOf { it.endSample },
+                    startSample = speakerSegment.startSample,
+                    endSample = speakerSegment.endSample,
                     activityState = SpeakerActivityState.SINGLE_SPEAKER,
-                    embedding = aggregate.embedding,
+                    segments = listOf(speakerSegment.copy(localSpeakerId = aggregate.localSpeakerId)),
                 )
             }
             val trackingStarted = System.nanoTime()
@@ -200,18 +205,18 @@ class SpeakerIdentityCoordinator(
                     embeddingTimeMillis = embeddingTimeMillis,
                     aggregationTimeMillis = aggregationTimeMillis,
                     totalTimeMillis = elapsedMillis(pipelineStarted),
-                    utteranceDurationMillis = utterance.durationMillis,
+                    utteranceDurationMillis = utterance.voicedDurationMillis,
                 )
             }
 
-            val localIdByWindowSpeaker = linkResult.assignments.associate {
-                "window-speaker-${it.windowSpeakerIndex}" to it.localSpeakerId
+            val localIdByWindowSegment = linkResult.assignments.associate {
+                "window-segment-${it.windowSpeakerIndex}" to it.localSpeakerId
             }
             val localSegmentEmbeddings = rawSegmentEmbeddings.map { segment ->
-                segment.copy(localSpeakerId = localIdByWindowSpeaker.getValue(segment.localSpeakerId))
+                segment.copy(localSpeakerId = localIdByWindowSegment.getValue(segment.localSpeakerId))
             }
-            val localSegments = selection.soloSegments.map { segment ->
-                segment.copy(localSpeakerId = localIdByWindowSpeaker.getValue(segment.localSpeakerId))
+            val localSegments = selection.soloSegments.mapIndexed { segmentIndex, segment ->
+                segment.copy(localSpeakerId = localIdByWindowSegment.getValue("window-segment-$segmentIndex"))
             }
             val secondAggregationStarted = System.nanoTime()
             val aggregates = embeddingAggregator.aggregate(localSegmentEmbeddings)
@@ -269,7 +274,7 @@ class SpeakerIdentityCoordinator(
                     selectedAnonymousIds += cluster.anonymousId
                 }
                 val result = AnonymousIdentificationResult(
-                    anonymousId = cluster?.anonymousId ?: "unknown",
+                    anonymousId = cluster?.anonymousId ?: selectedId ?: "unknown",
                     modelId = modelSpaceId.value,
                     bestExistingScore = evaluation.highestScore,
                     threshold = threshold,
@@ -285,8 +290,7 @@ class SpeakerIdentityCoordinator(
                         AnonymousClusterScore(
                             anonymousId = it.anonymousId,
                             score = it.score,
-                            selected = it.anonymousId == cluster?.anonymousId &&
-                                operation == PersistenceOperation.UPDATE,
+                            selected = it.anonymousId == selectedId,
                         )
                     },
                     evaluation = evaluation,
@@ -304,6 +308,7 @@ class SpeakerIdentityCoordinator(
                 qualities = qualities,
                 holdReasons = holdReasons.toList(),
                 activityTimeMillis = activityTimeMillis,
+                vadTimeMillis = utterance.vadProcessingMillis,
                 trackingTimeMillis = trackingTimeMillis,
                 qualityTimeMillis = qualityTimeMillis,
                 embeddingTimeMillis = embeddingTimeMillis,
@@ -312,7 +317,7 @@ class SpeakerIdentityCoordinator(
                 policyTimeMillis = policyTimeMillis,
                 repositoryTimeMillis = repositoryTimeMillis,
                 totalTimeMillis = elapsedMillis(pipelineStarted),
-                utteranceDurationMillis = utterance.durationMillis,
+                utteranceDurationMillis = utterance.voicedDurationMillis,
             )
         }.onSuccess { outcome ->
             mutableState.value = mutableState.value.copy(
@@ -346,6 +351,7 @@ class SpeakerIdentityCoordinator(
                 processing = false,
                 result = null,
                 results = emptyMap(),
+                localTracks = emptyList(),
                 activityState = SpeakerActivityState.ERROR,
                 activityHoldReasons = listOf(ACTIVITY_INFERENCE_ERROR),
                 error = it.message ?: it::class.java.simpleName,
@@ -407,6 +413,7 @@ class SpeakerIdentityCoordinator(
             processing = false,
             result = null,
             results = emptyMap(),
+            localTracks = emptyList(),
             lastUtteranceStartedAtMillis = utterance.startedAtMillis,
             lastUtteranceEndedAtMillis = utterance.endedAtMillis,
             activityState = when {
@@ -428,7 +435,7 @@ class SpeakerIdentityCoordinator(
             policyMillis = null,
             repositoryMillis = null,
             totalMillis = null,
-            audioDurationMillis = utterance.durationMillis,
+            audioDurationMillis = utterance.voicedDurationMillis,
         )
         runCatching {
             benchmarkLogger.append(
@@ -559,12 +566,12 @@ class SpeakerIdentityCoordinator(
 
     private fun DiarizationWindow.dominantState(): SpeakerActivityState {
         val states = frames.map { it.activityState }.toSet()
+        val overlapFrameRatio = frames.count { it.activeSpeakerCount > 1 }
+            .toFloat() / frames.size.coerceAtLeast(1)
         return when {
             SpeakerActivityState.ERROR in states -> SpeakerActivityState.ERROR
             SpeakerActivityState.UNSUPPORTED in states -> SpeakerActivityState.UNSUPPORTED
-            SpeakerActivityState.MULTIPLE_ACTIVE_SPEAKERS in states ->
-                SpeakerActivityState.MULTIPLE_ACTIVE_SPEAKERS
-            SpeakerActivityState.OVERLAPPED_SPEECH in states -> SpeakerActivityState.OVERLAPPED_SPEECH
+            overlapFrameRatio >= overlapDisplayThreshold -> SpeakerActivityState.OVERLAPPED_SPEECH
             SpeakerActivityState.SINGLE_SPEAKER in states -> SpeakerActivityState.SINGLE_SPEAKER
             else -> SpeakerActivityState.SILENCE
         }
@@ -583,6 +590,7 @@ class SpeakerIdentityCoordinator(
         val qualities: Map<String, SpeakerAudioQualityAssessment>,
         val holdReasons: List<String>,
         val activityTimeMillis: Long,
+        val vadTimeMillis: Long? = null,
         val trackingTimeMillis: Long?,
         val qualityTimeMillis: Long?,
         val embeddingTimeMillis: Long?,
@@ -600,7 +608,7 @@ class SpeakerIdentityCoordinator(
         val stageTimings: SpeakerStageTimings
             get() = SpeakerStageTimings(
                 recorderMillis = null,
-                vadMillis = null,
+                vadMillis = vadTimeMillis,
                 activityMillis = activityTimeMillis,
                 trackingMillis = trackingTimeMillis,
                 qualityMillis = qualityTimeMillis,
@@ -650,6 +658,7 @@ class SpeakerIdentityCoordinator(
 
     private companion object {
         const val REQUIRED_SAMPLE_RATE = 16_000
+        const val DEFAULT_OVERLAP_DISPLAY_THRESHOLD = 0.50f
         const val CLIPPING_THRESHOLD = 0.999f
         const val UNSUPPORTED_SAMPLE_RATE = "UNSUPPORTED_SAMPLE_RATE"
         const val INSUFFICIENT_AUDIO = "INSUFFICIENT_AUDIO"

@@ -9,13 +9,12 @@ data class PocSettings(
     val speakerRuntime: SpeakerRuntime = SpeakerRuntime.SHERPA_ONNX,
     val vadRuntime: VadRuntime = VadRuntime.SHERPA_ONNX,
     val vadModel: VadModelOption = VadModelOption.SILERO_VAD,
+    val speakerOverlapDisplayThreshold: Float = DEFAULT_SPEAKER_OVERLAP_DISPLAY_THRESHOLD,
     val faceClusterJoinThreshold: Float = DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD,
     val faceClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
     val speakerClusterJoinThreshold: Float = speakerModel.jvsCandidateThreshold,
     val speakerClusterMaxUpdateCount: Int = DEFAULT_CLUSTER_MAX_UPDATE_COUNT,
     val multipleSamplesEnabled: Boolean = false,
-    val showFaceLandmarks: Boolean = false,
-    val loadTestVideo: LoadTestVideoOption = LoadTestVideoOption.OFF,
     val faceAnalysisIntervalMillis: Long = DEFAULT_FACE_ANALYSIS_INTERVAL_MILLIS,
     val faceDetectionScoreThreshold: Float = DEFAULT_FACE_DETECTION_SCORE_THRESHOLD,
     val faceNmsThreshold: Float = DEFAULT_FACE_NMS_THRESHOLD,
@@ -36,12 +35,11 @@ data class PocSettings(
     val maximumClippingRatio: Float = DEFAULT_MAXIMUM_CLIPPING_RATIO,
     val speakerUpdateMinimumAudioMillis: Long = DEFAULT_SPEAKER_UPDATE_MINIMUM_AUDIO_MILLIS,
     val speakerUpdateMinimumVoicedRatio: Float = DEFAULT_SPEAKER_UPDATE_MINIMUM_VOICED_RATIO,
-    val speakerLabelContinuationSimilarity: Float = DEFAULT_SPEAKER_LABEL_CONTINUATION_SIMILARITY,
-    val speakerLabelMaximumMissingSegments: Int = DEFAULT_SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS,
 ) {
     fun isValid(): Boolean =
         faceClusterJoinThreshold in SCORE_RANGE &&
             speakerClusterJoinThreshold in SCORE_RANGE &&
+            speakerOverlapDisplayThreshold in SCORE_RANGE &&
             faceClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE &&
             speakerClusterMaxUpdateCount in CLUSTER_MAX_UPDATE_COUNT_RANGE &&
             faceAnalysisIntervalMillis in FACE_ANALYSIS_INTERVAL_RANGE &&
@@ -64,8 +62,6 @@ data class PocSettings(
             maximumClippingRatio in SCORE_RANGE &&
             speakerUpdateMinimumAudioMillis in SPEAKER_AUDIO_DURATION_RANGE &&
             speakerUpdateMinimumVoicedRatio in SCORE_RANGE &&
-            speakerLabelContinuationSimilarity in SPEAKER_LABEL_SIMILARITY_RANGE &&
-            speakerLabelMaximumMissingSegments in SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS_RANGE &&
             speakerRuntime == speakerModel.requiredRuntime
 
     /**
@@ -86,6 +82,7 @@ data class PocSettings(
 
     companion object {
         const val DEFAULT_FACE_CLUSTER_JOIN_THRESHOLD = 0.60f
+        const val DEFAULT_SPEAKER_OVERLAP_DISPLAY_THRESHOLD = 0.50f
         const val DEFAULT_CLUSTER_MAX_UPDATE_COUNT = 20
         const val DEFAULT_FACE_ANALYSIS_INTERVAL_MILLIS = 1_000L
         const val DEFAULT_FACE_DETECTION_SCORE_THRESHOLD = 0.80f
@@ -98,8 +95,8 @@ data class PocSettings(
         const val DEFAULT_VAD_MINIMUM_SILENCE_MILLIS = 400L
         const val DEFAULT_VAD_MINIMUM_SPEECH_MILLIS = 300L
         const val DEFAULT_VAD_MAXIMUM_SPEECH_MILLIS = 30_000L
-        const val DEFAULT_UTTERANCE_END_SILENCE_MILLIS = 600L
-        const val DEFAULT_MAXIMUM_UTTERANCE_MILLIS = 30_000L
+        const val DEFAULT_UTTERANCE_END_SILENCE_MILLIS = 500L
+        const val DEFAULT_MAXIMUM_UTTERANCE_MILLIS = 10_000L
         const val DEFAULT_SPEAKER_MINIMUM_AUDIO_MILLIS = 1_000L
         const val DEFAULT_SPEAKER_MINIMUM_VOICED_RATIO = 0.50f
         const val DEFAULT_SPEAKER_MINIMUM_RMS = 0f
@@ -107,8 +104,6 @@ data class PocSettings(
         const val DEFAULT_MAXIMUM_CLIPPING_RATIO = 0.05f
         const val DEFAULT_SPEAKER_UPDATE_MINIMUM_AUDIO_MILLIS = 1_000L
         const val DEFAULT_SPEAKER_UPDATE_MINIMUM_VOICED_RATIO = 0.50f
-        const val DEFAULT_SPEAKER_LABEL_CONTINUATION_SIMILARITY = 0.50f
-        const val DEFAULT_SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS = 2
         val SCORE_RANGE = 0f..1f
         val CLUSTER_MAX_UPDATE_COUNT_RANGE = 1..100
         val FACE_ANALYSIS_INTERVAL_RANGE = 100L..5_000L
@@ -119,21 +114,10 @@ data class PocSettings(
         val VAD_MINIMUM_SPEECH_RANGE = 100L..2_000L
         val VAD_MAXIMUM_SPEECH_RANGE = 1_000L..30_000L
         val UTTERANCE_END_SILENCE_RANGE = 100L..3_000L
-        val MAXIMUM_UTTERANCE_RANGE = 1_000L..30_000L
+        val MAXIMUM_UTTERANCE_RANGE = 1_000L..10_000L
         val SPEAKER_AUDIO_DURATION_RANGE = 100L..10_000L
         val CLIPPING_AMPLITUDE_RANGE = 0.800f..1.000f
-        val SPEAKER_LABEL_SIMILARITY_RANGE = -1f..1f
-        val SPEAKER_LABEL_MAXIMUM_MISSING_SEGMENTS_RANGE = 0..20
     }
-}
-
-enum class LoadTestVideoOption(
-    val displayName: String,
-    val assetPath: String?,
-) {
-    OFF("非表示", null),
-    SAMPLE_20_MB("20MB", "videos/sample_20MB.mp4"),
-    SAMPLE_200_MB("200MB", "videos/sample_200MB.mp4"),
 }
 
 enum class FaceDetectorModelOption(
@@ -377,16 +361,6 @@ enum class SpeakerModelOption(
     val jvsCandidateThreshold: Float,
     val jvsCandidateMargin: Float,
 ) {
-    CAM_PLUS_PLUS(
-        configModelId = "campplus-en",
-        artifactId = "campplus-en-onnx-fp32",
-        modelSpaceId = "speaker-campplus-en-512-l2-v1",
-        displayName = "3D-Speaker CAM++ English",
-        modelFileName = "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
-        embeddingSize = 512,
-        jvsCandidateThreshold = 0.3625838f,
-        jvsCandidateMargin = 0.1168099f,
-    ),
     CAM_PLUS_PLUS_ZH_EN(
         configModelId = "campplus-zh-en",
         artifactId = "campplus-zh-en-onnx-fp32",
@@ -395,16 +369,6 @@ enum class SpeakerModelOption(
         modelFileName = "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
         embeddingSize = 192,
         jvsCandidateThreshold = 0.7508543f,
-        jvsCandidateMargin = 0.0f,
-    ),
-    ERES2NET(
-        configModelId = "eres2net-en",
-        artifactId = "eres2net-en-onnx-fp32",
-        modelSpaceId = "speaker-eres2net-en-192-l2-v1",
-        displayName = "3D-Speaker ERes2Net",
-        modelFileName = "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
-        embeddingSize = 192,
-        jvsCandidateThreshold = 0.70323396f,
         jvsCandidateMargin = 0.0f,
     ),
     WESPEAKER_RESNET34_LM(
@@ -417,41 +381,9 @@ enum class SpeakerModelOption(
         jvsCandidateThreshold = 0.5f,
         jvsCandidateMargin = 0.0f,
     ),
-    SPEAKERNET_M(
-        configModelId = "speakernet-m",
-        artifactId = "speakernet-m-onnx-fp32",
-        modelSpaceId = "speaker-speakernet-m-256-l2-v1",
-        displayName = "NeMo SpeakerNet-M",
-        modelFileName = "nemo_en_speakerverification_speakernet.onnx",
-        embeddingSize = 256,
-        jvsCandidateThreshold = 0.6f,
-        jvsCandidateMargin = 0.0f,
-    ),
-    TITANET_S(
-        configModelId = "titanet-s",
-        artifactId = "titanet-s-onnx-fp32",
-        modelSpaceId = "speaker-titanet-s-192-l2-v1",
-        displayName = "NeMo TitaNet-S",
-        modelFileName = "nemo_en_titanet_small.onnx",
-        embeddingSize = 192,
-        jvsCandidateThreshold = 0.6f,
-        jvsCandidateMargin = 0.0f,
-    ),
     ;
 
     val requiredRuntime: SpeakerRuntime
         get() = SpeakerRuntime.SHERPA_ONNX
 
-    companion object {
-        /** Historical display-name keys written before stable config model IDs were introduced. */
-        fun legacyPersistenceKeys(configModelId: String): Set<String> = when (configModelId) {
-            "campplus-en" -> setOf("3D-Speaker CAM++", "3D-Speaker CAM++ English")
-            "campplus-zh-en" -> setOf("3D-Speaker CAM++ Chinese-English")
-            "eres2net-en" -> setOf("3D-Speaker ERes2Net")
-            "wespeaker-resnet34-lm" -> setOf("WeSpeaker VoxCeleb ResNet34-LM")
-            "speakernet-m" -> setOf("NeMo SpeakerNet-M")
-            "titanet-s" -> setOf("NeMo TitaNet-S")
-            else -> emptySet()
-        }
-    }
 }

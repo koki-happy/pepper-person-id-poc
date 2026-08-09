@@ -175,12 +175,53 @@ class SpeakerIdentityCoordinatorTest {
         }
     }
 
+    @Test
+    fun duplicateSelectionStillReportsTheIdentifiedAnonymousIdWhenPersistenceIsHeld() = runBlocking {
+        val repository = InMemoryAnonymousSpeakerRepository()
+        val coordinator = SpeakerIdentityCoordinator(
+            repository = repository,
+            embeddingEngine = FakeSpeakerEmbeddingEngine(floatArrayOf(1f, 0f)),
+            threshold = 0.8f,
+            maximumUpdateCount = 20,
+            benchmarkLogger = FakeBenchmarkLogger(),
+            segmentationEngine = TwoSoloSegmentSegmentationEngine(),
+        )
+
+        try {
+            coordinator.onUtterance(longValidUtterance())
+            val state = withTimeout(5_000L) {
+                coordinator.state.first { !it.processing && it.results.size == 2 }
+            }
+            val results = state.results.values.toList()
+
+            assertThat(repository.count()).isEqualTo(1)
+            assertThat(results.map { it.anonymousId })
+                .containsExactly("anonymous-speaker-001", "anonymous-speaker-001")
+                .inOrder()
+            assertThat(results[0].persistenceOperation).isEqualTo(PersistenceOperation.CREATE)
+            assertThat(results[1].persistenceOperation).isEqualTo(PersistenceOperation.HOLD)
+            assertThat(results[1].bestExistingScore).isWithin(0.0001f).of(1f)
+            assertThat(results[1].candidateScores.single().selected).isTrue()
+            assertThat(state.activityHoldReasons).contains("ANONYMOUS_ID_ALREADY_SELECTED")
+        } finally {
+            coordinator.close()
+        }
+    }
+
     private fun validUtterance() = PcmUtterance(
         pcm16 = ShortArray(16_000) { 1_000 },
         sampleRate = 16_000,
         startedAtMillis = 1_000L,
         endedAtMillis = 3_000L,
         voicedDurationMillis = 2_000L,
+    )
+
+    private fun longValidUtterance() = PcmUtterance(
+        pcm16 = ShortArray(32_000) { 1_000 },
+        sampleRate = 16_000,
+        startedAtMillis = 1_000L,
+        endedAtMillis = 5_000L,
+        voicedDurationMillis = 4_000L,
     )
 
     private class SingleSpeakerSegmentationEngine : SpeakerSegmentationEngine {
@@ -199,6 +240,41 @@ class SpeakerIdentityCoordinatorTest {
                     activityState = SpeakerActivityState.SINGLE_SPEAKER,
                     activeSpeakerIndices = listOf(0),
                     winningClassIndex = 1,
+                    winningScore = 1f,
+                    overlapProbability = 0f,
+                ),
+            ),
+            overlapRatio = 0f,
+            runtimeId = runtimeId.value,
+            inferenceTimeMillis = 1L,
+        )
+
+        override fun close() = Unit
+    }
+
+    private class TwoSoloSegmentSegmentationEngine : SpeakerSegmentationEngine {
+        override val artifactId = ArtifactId("test-segmentation-two-segments")
+        override val runtimeId = RuntimeId("test-runtime")
+
+        override fun prepare() = Unit
+
+        override fun segment(input: SpeakerSegmentationInput) = DiarizationWindow(
+            windowId = input.windowId,
+            startSample = input.startSample,
+            endSample = input.endSample,
+            sampleRate = input.sampleRate,
+            frames = listOf(
+                SpeakerActivityFrame(
+                    activityState = SpeakerActivityState.SINGLE_SPEAKER,
+                    activeSpeakerIndices = listOf(0),
+                    winningClassIndex = 1,
+                    winningScore = 1f,
+                    overlapProbability = 0f,
+                ),
+                SpeakerActivityFrame(
+                    activityState = SpeakerActivityState.SINGLE_SPEAKER,
+                    activeSpeakerIndices = listOf(1),
+                    winningClassIndex = 2,
                     winningScore = 1f,
                     overlapProbability = 0f,
                 ),

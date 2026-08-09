@@ -12,6 +12,7 @@ class PocSettingsTest {
         assertThat(defaults.speakerClusterJoinThreshold)
             .isEqualTo(SpeakerModelOption.CAM_PLUS_PLUS_ZH_EN.jvsCandidateThreshold)
         assertThat(defaults.faceAnalysisIntervalMillis).isEqualTo(1_000L)
+        assertThat(defaults.speakerOverlapDisplayThreshold).isEqualTo(0.50f)
         assertThat(defaults.faceDetectionScoreThreshold).isEqualTo(0.80f)
         assertThat(defaults.faceNmsThreshold).isEqualTo(0.30f)
         assertThat(defaults.faceMaximumDetectionCandidates).isEqualTo(5_000)
@@ -22,8 +23,8 @@ class PocSettingsTest {
         assertThat(defaults.vadMinimumSilenceMillis).isEqualTo(400L)
         assertThat(defaults.vadMinimumSpeechMillis).isEqualTo(300L)
         assertThat(defaults.vadMaximumSpeechMillis).isEqualTo(30_000L)
-        assertThat(defaults.utteranceEndSilenceMillis).isEqualTo(600L)
-        assertThat(defaults.maximumUtteranceMillis).isEqualTo(30_000L)
+        assertThat(defaults.utteranceEndSilenceMillis).isEqualTo(500L)
+        assertThat(defaults.maximumUtteranceMillis).isEqualTo(10_000L)
         assertThat(defaults.speakerMinimumAudioMillis).isEqualTo(1_000L)
         assertThat(defaults.speakerMinimumVoicedRatio).isEqualTo(0.50f)
         assertThat(defaults.speakerMinimumRms).isEqualTo(0f)
@@ -31,14 +32,13 @@ class PocSettingsTest {
         assertThat(defaults.maximumClippingRatio).isEqualTo(0.05f)
         assertThat(defaults.speakerUpdateMinimumAudioMillis).isEqualTo(1_000L)
         assertThat(defaults.speakerUpdateMinimumVoicedRatio).isEqualTo(0.50f)
-        assertThat(defaults.speakerLabelContinuationSimilarity).isEqualTo(0.50f)
-        assertThat(defaults.speakerLabelMaximumMissingSegments).isEqualTo(2)
     }
 
     @Test
     fun clusterBoundsAreValidated() {
         assertThat(PocSettings(faceClusterMaxUpdateCount = 0).isValid()).isFalse()
         assertThat(PocSettings(speakerClusterJoinThreshold = 1.1f).isValid()).isFalse()
+        assertThat(PocSettings(speakerOverlapDisplayThreshold = -0.01f).isValid()).isFalse()
     }
 
     @Test
@@ -52,8 +52,6 @@ class PocSettingsTest {
         assertThat(PocSettings(utteranceEndSilenceMillis = 99L).isValid()).isFalse()
         assertThat(PocSettings(speakerMinimumAudioMillis = 10_001L).isValid()).isFalse()
         assertThat(PocSettings(clippingAmplitudeThreshold = 0.799f).isValid()).isFalse()
-        assertThat(PocSettings(speakerLabelContinuationSimilarity = -1.01f).isValid()).isFalse()
-        assertThat(PocSettings(speakerLabelMaximumMissingSegments = 21).isValid()).isFalse()
     }
 
     @Test
@@ -68,12 +66,10 @@ class PocSettingsTest {
                 vadMinimumSpeechMillis = 100L,
                 vadMaximumSpeechMillis = 30_000L,
                 utteranceEndSilenceMillis = 3_000L,
-                maximumUtteranceMillis = 30_000L,
+            maximumUtteranceMillis = 10_000L,
                 speakerMinimumAudioMillis = 100L,
                 clippingAmplitudeThreshold = 1.0f,
                 speakerUpdateMinimumAudioMillis = 10_000L,
-                speakerLabelContinuationSimilarity = -1f,
-                speakerLabelMaximumMissingSegments = 20,
             ).isValid(),
         ).isTrue()
     }
@@ -91,8 +87,6 @@ class PocSettingsTest {
         val defaults = PocSettings(faceClusterMaxUpdateCount = 20, speakerClusterMaxUpdateCount = 20)
 
         assertThat(defaults.multipleSamplesEnabled).isFalse()
-        assertThat(defaults.showFaceLandmarks).isFalse()
-        assertThat(defaults.loadTestVideo).isEqualTo(LoadTestVideoOption.OFF)
         assertThat(defaults.effectiveFaceMaximumUpdateCount).isEqualTo(1)
         assertThat(defaults.effectiveSpeakerMaximumUpdateCount).isEqualTo(1)
     }

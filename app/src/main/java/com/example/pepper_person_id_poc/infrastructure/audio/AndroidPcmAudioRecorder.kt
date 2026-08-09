@@ -34,8 +34,8 @@ class AndroidPcmAudioRecorder(
     private val vadMinimumSilenceMillis: Long = 400L,
     private val vadMinimumSpeechMillis: Long = 300L,
     private val vadMaximumSpeechMillis: Long = 30_000L,
-    private val utteranceEndSilenceMillis: Long = 600L,
-    private val maximumUtteranceMillis: Long = 30_000L,
+    private val utteranceEndSilenceMillis: Long = 500L,
+    private val maximumUtteranceMillis: Long = 10_000L,
     private val onUtterance: (PcmUtterance) -> Unit = {},
     private val onBenchmarkEvent: (BenchmarkEvent) -> Unit = {},
 ) : PcmAudioRecorder {
@@ -156,9 +156,11 @@ class AndroidPcmAudioRecorder(
                 }
                 val chunk = buffer.copyOf(read)
                 val level = AudioLevel.dbFs(chunk)
+                val vadStartedAtNanos = System.nanoTime()
                 val speech = voiceActivityDetector.isSpeech(chunk)
+                val vadProcessingMillis = ((System.nanoTime() - vadStartedAtNanos) / 1_000_000L).coerceAtLeast(0L)
                 val endedAtMillis = System.currentTimeMillis()
-                val utterance = segmenter.process(chunk, endedAtMillis, speech)
+                val utterance = segmenter.process(chunk, endedAtMillis, speech, vadProcessingMillis)
                 mutableState.value = mutableState.value.copy(
                     levelDbFs = level,
                     speechActive = segmenter.speechActive,

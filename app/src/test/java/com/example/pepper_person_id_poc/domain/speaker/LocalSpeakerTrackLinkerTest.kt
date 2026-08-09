@@ -4,140 +4,101 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class LocalSpeakerTrackLinkerTest {
-    private val linker = LocalSpeakerTrackLinker(
-        minimumSimilarity = 0.50f,
-        maximumMissingWindows = 2,
-    )
+    private val linker = LocalSpeakerTrackLinker()
 
     @Test
-    fun swappedWindowSpeakerIndicesKeepStableLocalSpeakerIds() {
+    fun everyObservationGetsAFreshLocalIdWithoutSimilarityMatching() {
         val first = linker.link(
             windowId = "window-001",
-            observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
-                observation(windowSpeakerIndex = 1, embedding = floatArrayOf(0f, 1f)),
-            ),
+            observations = listOf(observation(windowSpeakerIndex = 0)),
         )
-        val originalIds = first.assignments.associate {
-            it.windowSpeakerIndex to it.localSpeakerId
-        }
-
-        val swapped = linker.link(
+        val second = linker.link(
             windowId = "window-002",
-            observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(0f, 1f)),
-                observation(windowSpeakerIndex = 1, embedding = floatArrayOf(1f, 0f)),
-            ),
+            observations = listOf(observation(windowSpeakerIndex = 0)),
         )
 
-        assertThat(swapped.assignments.associate {
-            it.windowSpeakerIndex to it.localSpeakerId
-        }).containsExactly(
-            0, originalIds.getValue(1),
-            1, originalIds.getValue(0),
-        )
-        assertThat(swapped.holdReasons).isEmpty()
+        assertThat(first.assignments.single().localSpeakerId).isEqualTo("local-speaker-001")
+        assertThat(second.assignments.single().localSpeakerId).isEqualTo("local-speaker-002")
+        assertThat(second.assignments.single().similarity).isNull()
+        assertThat(second.tracks.first().state).isEqualTo(LocalSpeakerTrackState.CLOSED)
+        assertThat(second.tracks.last().state).isEqualTo(LocalSpeakerTrackState.ACTIVE)
     }
 
     @Test
-    fun disappearedTrackIsMissingThenReusedWhenSpeakerReappearsWithinWindowLimit() {
-        val first = linker.link(
+    fun observationsInOneWindowAlsoGetSeparateLocalIds() {
+        val result = linker.link(
             windowId = "window-001",
             observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
-                observation(windowSpeakerIndex = 1, embedding = floatArrayOf(0f, 1f)),
-            ),
-        )
-        val returningId = first.assignments.single {
-            it.windowSpeakerIndex == 1
-        }.localSpeakerId
-
-        val disappearance = linker.link(
-            windowId = "window-002",
-            observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
+                observation(windowSpeakerIndex = 0, startSample = 0L, endSample = 8_000L),
+                observation(windowSpeakerIndex = 1, startSample = 8_000L, endSample = 16_000L),
             ),
         )
 
-        assertThat(disappearance.tracks.single {
-            it.localSpeakerId == returningId
-        }.state).isEqualTo(LocalSpeakerTrackState.MISSING)
-
-        val reappearance = linker.link(
-            windowId = "window-003",
-            observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
-                observation(windowSpeakerIndex = 1, embedding = floatArrayOf(0f, 1f)),
-            ),
-        )
-
-        assertThat(reappearance.assignments.single {
-            it.windowSpeakerIndex == 1
-        }.localSpeakerId).isEqualTo(returningId)
-        assertThat(reappearance.tracks.single {
-            it.localSpeakerId == returningId
-        }.state).isEqualTo(LocalSpeakerTrackState.ACTIVE)
+        assertThat(result.assignments.map { it.localSpeakerId })
+            .containsExactly("local-speaker-001", "local-speaker-002")
+            .inOrder()
+        assertThat(result.assignments.map { it.similarity }).containsExactly(null, null).inOrder()
     }
 
     @Test
-    fun overlappedObservationFailsClosedWithoutAssignmentOrTrackMutation() {
-        val initial = linker.link(
+    fun freshLabelIsCopiedToEachIntervalSegment() {
+        val result = linker.link(
             windowId = "window-001",
             observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
+                observation(
+                    windowSpeakerIndex = 0,
+                    segments = listOf(
+                        DiarizedSpeakerSegment(
+                            localSpeakerId = "window-segment-0",
+                            startSample = 1_000L,
+                            endSample = 2_000L,
+                            activityState = SpeakerActivityState.SINGLE_SPEAKER,
+                            confidence = 0.9f,
+                            isSolo = true,
+                        ),
+                    ),
+                ),
             ),
         )
 
-        val overlap = linker.link(
+        assertThat(result.tracks.single().soloSegments.single().localSpeakerId)
+            .isEqualTo("local-speaker-001")
+    }
+
+    @Test
+    fun overlappedObservationReturnsHoldWithoutNewAssignment() {
+        linker.link(
+            windowId = "window-001",
+            observations = listOf(observation(windowSpeakerIndex = 0)),
+        )
+
+        val result = linker.link(
             windowId = "window-002",
             observations = listOf(
                 observation(
                     windowSpeakerIndex = 0,
-                    embedding = floatArrayOf(1f, 0f),
                     activityState = SpeakerActivityState.OVERLAPPED_SPEECH,
                 ),
             ),
         )
 
-        assertThat(overlap.assignments).isEmpty()
-        assertThat(overlap.holdReasons).contains("OVERLAPPED_SPEECH")
-        assertThat(overlap.tracks).containsExactlyElementsIn(initial.tracks)
-    }
-
-    @Test
-    fun exactBestSimilarityTieFailsClosedInsteadOfUsingInputOrder() {
-        linker.link(
-            windowId = "window-001",
-            observations = listOf(
-                observation(windowSpeakerIndex = 0, embedding = floatArrayOf(1f, 0f)),
-                observation(windowSpeakerIndex = 1, embedding = floatArrayOf(0f, 1f)),
-            ),
-        )
-
-        val tie = linker.link(
-            windowId = "window-002",
-            observations = listOf(
-                observation(
-                    windowSpeakerIndex = 0,
-                    embedding = floatArrayOf(0.70710677f, 0.70710677f),
-                ),
-            ),
-        )
-
-        assertThat(tie.assignments).isEmpty()
-        assertThat(tie.holdReasons).contains("AMBIGUOUS_LOCAL_TRACKING")
-        assertThat(tie.tracks).hasSize(2)
+        assertThat(result.assignments).isEmpty()
+        assertThat(result.holdReasons).containsExactly("OVERLAPPED_SPEECH")
+        assertThat(result.tracks).hasSize(1)
+        assertThat(result.tracks.single().state).isEqualTo(LocalSpeakerTrackState.CLOSED)
     }
 
     private fun observation(
         windowSpeakerIndex: Int,
-        embedding: FloatArray,
+        startSample: Long = 0L,
+        endSample: Long = 16_000L,
         activityState: SpeakerActivityState = SpeakerActivityState.SINGLE_SPEAKER,
+        segments: List<DiarizedSpeakerSegment> = emptyList(),
     ) = WindowSpeakerObservation(
         windowSpeakerIndex = windowSpeakerIndex,
-        startSample = 0L,
-        endSample = 16_000L,
+        startSample = startSample,
+        endSample = endSample,
         activityState = activityState,
-        embedding = embedding,
+        segments = segments,
     )
 }

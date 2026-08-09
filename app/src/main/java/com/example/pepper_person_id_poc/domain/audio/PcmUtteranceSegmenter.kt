@@ -2,7 +2,7 @@ package com.example.pepper_person_id_poc.domain.audio
 
 class PcmUtteranceSegmenter(
     private val sampleRate: Int,
-    private val endSilenceMillis: Long = 600L,
+    private val endSilenceMillis: Long = 500L,
     private val maximumUtteranceMillis: Long = 10_000L,
 ) {
     private val chunks = mutableListOf<ShortArray>()
@@ -10,6 +10,7 @@ class PcmUtteranceSegmenter(
     private var totalSamples = 0
     private var voicedSamples = 0
     private var trailingSilenceSamples = 0
+    private var vadProcessingMillis: Long? = null
 
     val speechActive: Boolean get() = startedAtMillis != null
 
@@ -17,7 +18,11 @@ class PcmUtteranceSegmenter(
         samples: ShortArray,
         chunkEndedAtMillis: Long,
         speech: Boolean,
+        vadProcessingMillis: Long? = null,
     ): PcmUtterance? {
+        vadProcessingMillis?.let { measuredMillis ->
+            this.vadProcessingMillis = (this.vadProcessingMillis ?: 0L) + measuredMillis.coerceAtLeast(0L)
+        }
         if (!speechActive && !speech) return null
         if (!speechActive) {
             startedAtMillis = chunkEndedAtMillis - samples.size.toDurationMillis()
@@ -52,12 +57,14 @@ class PcmUtteranceSegmenter(
             startedAtMillis = checkNotNull(startedAtMillis),
             endedAtMillis = endedAtMillis,
             voicedDurationMillis = voicedSamples.toDurationMillis(),
+            vadProcessingMillis = vadProcessingMillis,
         )
         chunks.clear()
         startedAtMillis = null
         totalSamples = 0
         voicedSamples = 0
         trailingSilenceSamples = 0
+        vadProcessingMillis = null
         return utterance
     }
 

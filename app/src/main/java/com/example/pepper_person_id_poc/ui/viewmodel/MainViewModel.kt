@@ -46,7 +46,6 @@ class MainViewModel(
     fun updateSpeakerClusterJoinThreshold(value: Float) = update { copy(speakerClusterJoinThreshold = value.coerceIn(PocSettings.SCORE_RANGE)) }
     fun updateSpeakerClusterMaxUpdateCount(value: Int) = update { copy(speakerClusterMaxUpdateCount = value.coerceIn(PocSettings.CLUSTER_MAX_UPDATE_COUNT_RANGE)) }
     fun updateMultipleSamplesEnabled(value: Boolean) = update { copy(multipleSamplesEnabled = value) }
-    fun updateShowFaceLandmarks(value: Boolean) = update { copy(showFaceLandmarks = value) }
     fun updateFaceDetectorModel(value: FaceDetectorModelOption) = update { copy(faceDetectorModel = value) }
     fun updateFaceDetectorRuntime(value: FaceDetectorRuntime) = update { copy(faceDetectorRuntime = value) }
     fun updateFaceEmbeddingModel(value: FaceEmbeddingModelOption) = update { copy(faceEmbeddingModel = value) }

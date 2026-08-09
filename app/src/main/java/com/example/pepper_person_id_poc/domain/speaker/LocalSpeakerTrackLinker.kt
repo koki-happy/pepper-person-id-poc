@@ -1,13 +1,11 @@
 package com.example.pepper_person_id_poc.domain.speaker
 
-import kotlin.math.sqrt
-
 data class WindowSpeakerObservation(
     val windowSpeakerIndex: Int,
     val startSample: Long,
     val endSample: Long,
     val activityState: SpeakerActivityState,
-    val embedding: FloatArray,
+    val segments: List<DiarizedSpeakerSegment> = emptyList(),
 )
 
 data class LocalSpeakerAssignment(
@@ -22,17 +20,13 @@ data class LocalSpeakerLinkResult(
     val holdReasons: List<String>,
 )
 
-class LocalSpeakerTrackLinker(
-    private val minimumSimilarity: Float,
-    private val maximumMissingWindows: Int,
-) {
-    private val tracks = mutableListOf<TrackState>()
+/**
+ * Assigns a fresh local label to every speaker observation in every utterance window.
+ * Local labels describe this interval only; anonymous speaker identification remains separate.
+ */
+class LocalSpeakerTrackLinker {
+    private val tracks = mutableListOf<LocalSpeakerTrack>()
     private var nextTrackNumber = 1
-
-    init {
-        require(minimumSimilarity in -1f..1f)
-        require(maximumMissingWindows >= 0)
-    }
 
     fun link(
         windowId: String,
@@ -40,6 +34,9 @@ class LocalSpeakerTrackLinker(
     ): LocalSpeakerLinkResult {
         require(windowId.isNotBlank())
         require(observations.map { it.windowSpeakerIndex }.distinct().size == observations.size)
+
+        closeActiveTracks()
+
         if (observations.any { it.activityState != SpeakerActivityState.SINGLE_SPEAKER }) {
             val reasons = observations.mapNotNull {
                 when (it.activityState) {
@@ -54,79 +51,42 @@ class LocalSpeakerTrackLinker(
             return result(emptyList(), reasons)
         }
 
-        val normalized = observations.map { observation ->
-            require(observation.endSample > observation.startSample)
-            observation to normalize(observation.embedding)
-        }
-        val eligibleTracks = tracks.filter { it.state != LocalSpeakerTrackState.CLOSED }
-        val proposed = normalized.map { (observation, embedding) ->
-            val ranked = eligibleTracks
-                .map { it to dot(embedding, it.centroid) }
-                .sortedWith(
-                    compareByDescending<Pair<TrackState, Float>> { it.second }
-                        .thenBy { it.first.localSpeakerId },
+        val assignments = observations
+            .sortedBy { it.windowSpeakerIndex }
+            .map { observation ->
+                require(observation.endSample > observation.startSample)
+                require(observation.segments.all { segment ->
+                    segment.startSample >= observation.startSample &&
+                        segment.endSample <= observation.endSample &&
+                        segment.endSample > segment.startSample
+                })
+                val localSpeakerId = nextLocalSpeakerId()
+                tracks += LocalSpeakerTrack(
+                    localSpeakerId = localSpeakerId,
+                    firstSeenSample = observation.startSample,
+                    lastSeenSample = observation.endSample,
+                    windowIds = listOf(windowId),
+                    soloSegments = observation.segments.map {
+                        it.copy(localSpeakerId = localSpeakerId)
+                    },
+                    state = LocalSpeakerTrackState.ACTIVE,
                 )
-            val best = ranked.firstOrNull()
-            val tied = best != null &&
-                ranked.drop(1).any { (_, score) -> score == best.second }
-            if (tied) {
-                return result(emptyList(), listOf("AMBIGUOUS_LOCAL_TRACKING"))
+                LocalSpeakerAssignment(
+                    windowSpeakerIndex = observation.windowSpeakerIndex,
+                    localSpeakerId = localSpeakerId,
+                    similarity = null,
+                )
             }
-            ProposedAssignment(
-                observation = observation,
-                embedding = embedding,
-                track = best?.first?.takeIf { best.second >= minimumSimilarity },
-                similarity = best?.second,
-            )
-        }
-        val duplicateTrack = proposed
-            .mapNotNull { it.track?.localSpeakerId }
-            .groupingBy(String::toString)
-            .eachCount()
-            .any { it.value > 1 }
-        if (duplicateTrack) {
-            return result(emptyList(), listOf("AMBIGUOUS_LOCAL_TRACKING"))
-        }
 
-        val assignedIds = mutableSetOf<String>()
-        val assignments = proposed.map { proposal ->
-            val track = proposal.track ?: TrackState(
-                localSpeakerId = nextLocalSpeakerId(),
-                centroid = proposal.embedding.copyOf(),
-                embeddingCount = 0,
-                firstSeenSample = proposal.observation.startSample,
-                lastSeenSample = proposal.observation.endSample,
-                windowIds = mutableListOf(),
-                missingWindows = 0,
-                state = LocalSpeakerTrackState.ACTIVE,
-            ).also(tracks::add)
-            track.centroid = normalize(
-                FloatArray(track.centroid.size) { index ->
-                    track.centroid[index] * track.embeddingCount + proposal.embedding[index]
-                },
-            )
-            track.embeddingCount += 1
-            track.lastSeenSample = proposal.observation.endSample
-            if (windowId !in track.windowIds) track.windowIds += windowId
-            track.missingWindows = 0
-            track.state = LocalSpeakerTrackState.ACTIVE
-            assignedIds += track.localSpeakerId
-            LocalSpeakerAssignment(
-                windowSpeakerIndex = proposal.observation.windowSpeakerIndex,
-                localSpeakerId = track.localSpeakerId,
-                similarity = proposal.similarity,
-            )
-        }.sortedBy { it.windowSpeakerIndex }
-
-        tracks.filterNot { it.localSpeakerId in assignedIds }.forEach { track ->
-            track.missingWindows += 1
-            track.state = if (track.missingWindows > maximumMissingWindows) {
-                LocalSpeakerTrackState.CLOSED
-            } else {
-                LocalSpeakerTrackState.MISSING
-            }
-        }
         return result(assignments, emptyList())
+    }
+
+    private fun closeActiveTracks() {
+        tracks.indices.forEach { index ->
+            if (tracks[index].state == LocalSpeakerTrackState.ACTIVE) {
+                tracks[index] = tracks[index].copy(state = LocalSpeakerTrackState.CLOSED)
+            }
+        }
     }
 
     private fun result(
@@ -134,49 +94,10 @@ class LocalSpeakerTrackLinker(
         reasons: List<String>,
     ) = LocalSpeakerLinkResult(
         assignments = assignments,
-        tracks = tracks.map { track ->
-            LocalSpeakerTrack(
-                localSpeakerId = track.localSpeakerId,
-                firstSeenSample = track.firstSeenSample,
-                lastSeenSample = track.lastSeenSample,
-                windowIds = track.windowIds.toList(),
-                soloSegments = emptyList(),
-                state = track.state,
-            )
-        },
+        tracks = tracks.toList(),
         holdReasons = reasons,
     )
 
     private fun nextLocalSpeakerId(): String =
         "local-speaker-${nextTrackNumber++.toString().padStart(3, '0')}"
-
-    private fun normalize(values: FloatArray): FloatArray {
-        require(values.isNotEmpty() && values.all(Float::isFinite))
-        val norm = sqrt(values.sumOf { it.toDouble() * it.toDouble() }).toFloat()
-        require(norm > 0f)
-        return FloatArray(values.size) { values[it] / norm }
-    }
-
-    private fun dot(left: FloatArray, right: FloatArray): Float {
-        require(left.size == right.size)
-        return left.indices.sumOf { (left[it] * right[it]).toDouble() }.toFloat()
-    }
-
-    private data class TrackState(
-        val localSpeakerId: String,
-        var centroid: FloatArray,
-        var embeddingCount: Int,
-        val firstSeenSample: Long,
-        var lastSeenSample: Long,
-        val windowIds: MutableList<String>,
-        var missingWindows: Int,
-        var state: LocalSpeakerTrackState,
-    )
-
-    private data class ProposedAssignment(
-        val observation: WindowSpeakerObservation,
-        val embedding: FloatArray,
-        val track: TrackState?,
-        val similarity: Float?,
-    )
 }

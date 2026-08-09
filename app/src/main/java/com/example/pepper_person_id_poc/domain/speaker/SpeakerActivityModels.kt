@@ -41,7 +41,6 @@ data class DiarizedSpeakerSegment(
 
 enum class LocalSpeakerTrackState {
     ACTIVE,
-    MISSING,
     CLOSED,
 }
 

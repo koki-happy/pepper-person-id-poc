@@ -39,7 +39,6 @@ import com.example.pepper_person_id_poc.domain.metrics.BenchmarkRunMetadata
 import com.example.pepper_person_id_poc.domain.metrics.BenchmarkStatus
 import com.example.pepper_person_id_poc.domain.metrics.BenchmarkThresholds
 import com.example.pepper_person_id_poc.ui.navigation.AppScreen
-import com.example.pepper_person_id_poc.ui.screen.AudioRecordingScreen
 import com.example.pepper_person_id_poc.ui.screen.BenchmarkConfigurationUiState
 import com.example.pepper_person_id_poc.ui.screen.BenchmarkScreen
 import com.example.pepper_person_id_poc.ui.screen.CameraPreviewScreen
@@ -173,20 +172,12 @@ class MainActivity : ComponentActivity() {
                             AppScreen.AnonymousFaceIdentification -> CameraPreviewScreen(
                                 settings = uiState.settings,
                                 repository = container.anonymousFaceClusterRepository,
+                                speakerRepository = container.anonymousSpeakerClusterRepository,
                                 benchmarkLogger = container.benchmarkLogger,
                                 onOpenSettings = viewModel::returnToSettings,
                                 onOpenModels = { viewModel.showScreen(AppScreen.ModelSelection) },
-                                onOpenSpeaker = { viewModel.showScreen(AppScreen.AnonymousSpeakerIdentification) },
                                 onReset = ::resetAnonymousSession,
-                            )
-                            AppScreen.AnonymousSpeakerIdentification -> AudioRecordingScreen(
-                                settings = uiState.settings,
-                                repository = container.anonymousSpeakerClusterRepository,
-                                benchmarkLogger = container.benchmarkLogger,
-                                onOpenSettings = viewModel::returnToSettings,
-                                onOpenModels = { viewModel.showScreen(AppScreen.ModelSelection) },
-                                onOpenFace = { viewModel.showScreen(AppScreen.AnonymousFaceIdentification) },
-                                onReset = ::resetAnonymousSession,
+                                onExit = ::clearSessionAndExit,
                             )
                         }
                     }
