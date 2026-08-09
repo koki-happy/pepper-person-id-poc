@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ fun ScrollableDataTable(
     columnWidths: List<Dp>? = null,
     maxDataLines: Int = 1,
     headerGroups: List<DataTableHeaderGroup> = emptyList(),
+    rightAlignedColumns: Set<Int> = emptySet(),
 ) {
     require(headers.isNotEmpty())
     require(columnWidths == null || columnWidths.size == headers.size)
@@ -46,6 +48,7 @@ fun ScrollableDataTable(
             columnWidths = columnWidths,
             header = true,
             maxLines = 2,
+            rightAlignedColumns = rightAlignedColumns,
         )
         HorizontalDivider()
         rows.forEach { row ->
@@ -55,6 +58,7 @@ fun ScrollableDataTable(
                 columnWidths = columnWidths,
                 header = false,
                 maxLines = maxDataLines,
+                rightAlignedColumns = rightAlignedColumns,
             )
             HorizontalDivider()
         }
@@ -94,6 +98,7 @@ private fun DataRow(
     columnWidths: List<Dp>?,
     header: Boolean,
     maxLines: Int,
+    rightAlignedColumns: Set<Int>,
 ) {
     Row(
         Modifier.background(
@@ -107,6 +112,7 @@ private fun DataRow(
                 style = MaterialTheme.typography.labelSmall,
                 maxLines = maxLines,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = if (index in rightAlignedColumns) TextAlign.End else TextAlign.Start,
                 modifier = Modifier.width(
                     (columnWidths?.get(index) ?: columnWidth) + if (index == 0) 16.dp else 0.dp,
                 ),
