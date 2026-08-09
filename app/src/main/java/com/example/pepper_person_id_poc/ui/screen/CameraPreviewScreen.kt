@@ -122,7 +122,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 
-private const val DASHBOARD_HISTORY_LIMIT = 50
+private const val DASHBOARD_HISTORY_LIMIT = 30
 
 private val HtmlCanvas = Color(0xFFF6F7F9)
 private val HtmlSurface = Color.White
@@ -765,10 +765,10 @@ private fun DashboardResultPanels(
             marker = HtmlBlue,
             threshold = faceThreshold,
             headers = listOf("時刻", "ID", "類似度", "処理 ms"),
-            rows = faceHistory.takeLast(8).asReversed().map {
+            rows = faceHistory.takeLast(DASHBOARD_HISTORY_LIMIT).asReversed().map {
                 listOf(elapsedLabel(it.elapsedMillis), it.id, it.similarity?.let { value -> String.format(Locale.US, "%.2f", value) } ?: "—", it.processingMillis?.let { value -> String.format(Locale.US, "%.1f", value) } ?: "—")
             },
-            similarities = faceHistory.takeLast(8).asReversed().map { it.similarity },
+            similarities = faceHistory.takeLast(DASHBOARD_HISTORY_LIMIT).asReversed().map { it.similarity },
             summaryAverage = faceAverage,
             summaryMillis = faceMillis,
             modifier = Modifier.weight(1f),
@@ -778,7 +778,7 @@ private fun DashboardResultPanels(
             marker = HtmlPurple,
             threshold = speakerThreshold,
             headers = listOf("時刻", "ID", "既存ID類似度", "処理 ms", "発話 s"),
-            rows = speakerHistory.takeLast(8).asReversed().map {
+            rows = speakerHistory.takeLast(DASHBOARD_HISTORY_LIMIT).asReversed().map {
                 listOf(
                     elapsedLabel(it.elapsedMillis),
                     it.id,
@@ -787,7 +787,7 @@ private fun DashboardResultPanels(
                     it.utteranceSeconds?.let { value -> String.format(Locale.US, "%.1f", value) } ?: "—",
                 )
             },
-            similarities = speakerHistory.takeLast(8).asReversed().map { it.similarity },
+            similarities = speakerHistory.takeLast(DASHBOARD_HISTORY_LIMIT).asReversed().map { it.similarity },
             summaryAverage = speakerAverage,
             summaryMillis = speakerMillis,
             modifier = Modifier.weight(1f),
