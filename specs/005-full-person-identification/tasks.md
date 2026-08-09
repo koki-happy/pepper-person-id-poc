@@ -111,7 +111,7 @@
 - [x] T047 [P] [US2] Add strict 16 kHz initialization and no-fallback tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/audio/AndroidPcmAudioRecorderTest.kt`
 - [x] T048 [P] [US2] Add audio quality boundary tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SpeakerAudioQualityPolicyTest.kt`
 - [x] T049 [P] [US2] Add speaker activity output decoding tests in `app/src/test/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessorTest.kt`
-- [x] T050 [P] [US2] Add local track linking tests for swaps, disappearance, reappearance, overlap, and ties in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinkerTest.kt`
+- [x] T050 [P] [US2] Add local interval-label tests for fresh labels per window/interval and overlap HOLD in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinkerTest.kt`
 - [x] T051 [P] [US2] Add solo-segment extraction and fail-closed overlap tests in `app/src/test/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelectorTest.kt`
 - [x] T052 [P] [US2] Add local-speaker aggregation and all-candidate tests in `app/src/test/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinatorTest.kt`
 - [x] T053 [P] [US2] Add live 16 kHz recorder/VAD instrumentation in `app/src/androidTest/java/com/example/pepper_person_id_poc/StrictSpeakerAudioPipelineTest.kt`
@@ -127,7 +127,7 @@
 - [x] T060 [US2] Add speaker segmentation runtime interface in `app/src/main/java/com/example/pepper_person_id_poc/application/contract/SpeakerSegmentationEngine.kt`
 - [x] T061 [US2] Implement pyannote ONNX CPU inference without fallback in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationOnnxEngine.kt`
 - [x] T062 [US2] Implement powerset/activity/overlap postprocessing in `app/src/main/java/com/example/pepper_person_id_poc/infrastructure/speaker/PyannoteSegmentationPostprocessor.kt`
-- [x] T063 [US2] Implement cross-window local speaker tracking in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinker.kt`
+- [x] T063 [US2] Implement fresh interval-scoped local speaker labeling without cross-window embedding matching in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerTrackLinker.kt`
 - [x] T064 [US2] Implement solo-segment selection and unsupported-state HOLD in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/SoloSpeakerSegmentSelector.kt`
 - [x] T065 [US2] Implement segment-level embedding aggregation in `app/src/main/java/com/example/pepper_person_id_poc/domain/speaker/LocalSpeakerEmbeddingAggregator.kt`
 - [x] T066 [US2] Integrate VAD, activity, tracking, quality, aggregation, evaluation, and policy in `app/src/main/java/com/example/pepper_person_id_poc/application/speaker/SpeakerIdentityCoordinator.kt`

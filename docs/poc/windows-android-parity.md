@@ -4,7 +4,7 @@
 
 同じモデルとWAVをWindowsの直接ONNX Runtime経路とAndroidのsherpa-onnx経路へ入力し、ハッシュ、長さ、次元、score、判定を比較します。ライブマイク、VAD、区間化はこの試験に含めません。
 
-Android benchmarkの選択肢はCAM++ English、CAM++ Chinese-English、ERes2Net、WeSpeaker ResNet34-LM、SpeakerNet-M、TitaNet-Sです。SpeakerNet-MとTitaNet-SはWindowsと同じ固定hashのONNXをsherpa-onnxの`framework=nemo`経路で実行します。既存のAndroid parity実測証跡は下記3モデル分であり、追加3モデルはARM64端末でJSONを再回収するまで受入済みとは扱いません。
+現在のAPK同梱話者モデルはCAM++ Chinese-EnglishとWeSpeaker ResNet34-LMの2つです。下記のparity JSONには、過去に設定されていた未同梱モデルの比較記録も含まれるため、現行2モデルの受入証跡とは分けて扱います。
 
 ## 入力固定
 
@@ -20,11 +20,11 @@ Lombard GRID Englishの1 enrollment + 2 queryも同じ方式で固定します�
 
 2026-07-13にAPI 28 x86エミュレータで[`SpeakerModelBenchmarkTest.kt`](../../app/src/androidTest/java/com/example/pepper_person_id_poc/SpeakerModelBenchmarkTest.kt)を実行し、2 testsが成功しました。回収したJSONは次の12個です。
 
-- CAM++ English / CAM++ Chinese-English / ERes2Net
+- 過去設定のCAM++ English / CAM++ Chinese-English / ERes2Net
 - sherpa Chinese / Lombard GRID English
 - same / unknown query
 
-Chinese same queryのAndroid scoreはCAM++ English `0.5764364600`、ERes2Net `0.7939661145`です。Windows値 `0.5763694644`、`0.7940911055`との絶対差はどちらも`0.002`以内です。入力WAVとmodel SHA-256、sample rate、sample count、embedding dimensionもJSONで追跡できます。
+Chinese same queryの過去設定モデルのAndroid scoreはCAM++ English `0.5764364600`、ERes2Net `0.7939661145`です。Windows値 `0.5763694644`、`0.7940911055`との絶対差はどちらも`0.002`以内です。入力WAVとmodel SHA-256、sample rate、sample count、embedding dimensionもJSONで追跡できます。
 
 ## API 23 x86とPepper ARMv7の区別
 

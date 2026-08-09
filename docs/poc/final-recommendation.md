@@ -1,17 +1,17 @@
-# 最終推奨（JVS本比較後）
+# 最終推奨（JVS本比較の履歴と現行APK）
 
 ## 判断
 
-Windows上の次ステップは、CAM++ Chinese-EnglishとERes2Netの2候補に絞るのが妥当です。JVSの独立test/final UnknownでどちらもFAR 0、Top-1 1.0で、EERはそれぞれ0.017857と0.020833でした。
+過去のWindows/JVS比較ではCAM++ Chinese-EnglishとERes2Netが上位でした。ERes2Netは現在のAPKへ同梱せず、設定・カタログから削除しています。現行APKで残す話者モデルはCAM++ Chinese-EnglishとWeSpeaker ResNet34-LMです。
 
-ただし、これは「Windows x64・JVS studio音声の上位候補」です。Pepper実機マイクでの精度、ARMv7性能、利用許諾が未確定のため、本番採用とAPK同梱はまだ承認しません。
+ただし、過去の比較は「Windows x64・JVS studio音声」の結果です。現在の2モデルは重みライセンスを確認済みですが、Pepper実機マイクでの精度、ARMv7性能、データ条件、NOTICE/SBOMが未確定のため、本番採用はまだ承認しません。
 
-## 5モデルの扱い
+## 過去の5モデル比較記録
 
 | モデル | JVS FAR | EER | 扱い |
 |---|---:|---:|---|
-| CAM++ Chinese-English | 0 | 0.017857 | 第1候補群。Pepperへ統合し、実機比較へ進める |
-| ERes2Net English | 0 | 0.020833 | 第1候補群。既存Android経路でPepper実機比較へ進める |
+| CAM++ Chinese-English | 0 | 0.017857 | 第1候補。ライセンス確認済み。Pepper実機比較へ進める |
+| ERes2Net English | 0 | 0.020833 | 精度上の第1候補群。ただし重みライセンス未確認 |
 | TitaNet-S | 0.0625 | 0.041667 | 保留。精度は良いが暫定FAR 5%を超過 |
 | CAM++ English | 0.0833 | 0.333333 | 今回候補から外す |
 | SpeakerNet-M | 0.3125 | 0.041667 | 今回候補から外す |
@@ -20,7 +20,7 @@ Windows上の次ステップは、CAM++ Chinese-EnglishとERes2Netの2候補に�
 
 ## 次の受入ゲート
 
-1. Androidへ統合済みのCAM++ Chinese-EnglishとERes2Netを、同じ前処理・判定形式のままPepper実機で比較する。
+1. Androidへ同梱済みのCAM++ Chinese-EnglishとWeSpeaker ResNet34-LMを、同じ前処理・判定形式のままPepper実機で比較する。
 2. Pepperマイクで登録4名以上、Unknown 4名以上、別セッション、2/3/5秒、距離・動作音条件を収録する。
 3. developmentだけでthreshold/marginを選び、独立test/UnknownでFAR `<= 5%`を再確認する。
 4. Pepper ARMv7でレイテンシ、native memory、長時間安定性を実測する。

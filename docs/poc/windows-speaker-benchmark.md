@@ -62,7 +62,7 @@
 
 - JVSは公開studio収録で、Pepperマイク、Pepper動作音、距離差、別セッションを含みません。
 - 各長さ32本のfinal decision accuracyであり、本番環境の信頼区間を確定する規模ではありません。
-- 5モデルのONNX重みはライセンスと商用利用条件が未確認です。
+- CAM++ EnglishとERes2NetのONNX重みはライセンスと商用利用条件が未確認です。CAM++ Chinese-EnglishとWeSpeakerはカタログ上確認済みですが、データ条件・NOTICE/SBOMは別途確認が必要です。
 - RyuseiNetは今回の5モデル比較に含めず、未実装・未比較です。
 
 ## 参照ファイル

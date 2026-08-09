@@ -6,7 +6,7 @@ Only remaining work is listed. Existing PCM capture, Silero VAD, utterance segme
 
 ## Phase 1: Constitution alignment
 
-- [ ] T001 Remove `AnonymousSpeakerIdentification` from navigation and `MainActivity`.
+- [x] T001 Remove `AnonymousSpeakerIdentification` from navigation and `MainActivity`.
 - [ ] T002 Remove anonymous screen mode, coordinator branches, UI state, reset actions, and benchmark events.
 - [ ] T003 Delete `AnonymousSpeakerClusterer`, anonymous result models, and tests.
 - [ ] T004 Verify no anonymous speaker ID or cluster remains in source, tests, UI, or logs.

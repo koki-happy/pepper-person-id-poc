@@ -1,6 +1,7 @@
 # Model provenance
 
 モデル本体はライセンス、ABI、APIレベル、実機性能を確認してから取得し、Gitにはコミットしない。
+モデル別の取得・変換・検証手順は`docs/model-workflow.md`を正本とする。
 
 ## YuNet face detection
 
@@ -108,7 +109,7 @@ Get-FileHash -Algorithm SHA256 app/src/benchmark/assets/models/face_recognition_
 - Verified ABI: `armeabi-v7a`
 - ARMv7 native library: single static `libsherpa-onnx-jni.so`（ONNX Runtimeを静的リンク）
 
-ARMv7 ELFはARMv7-A、Thumb-2、VFPv3、NEONを使用し、Pepper `LPT_200AR`の命令セットと一致する。Pepper API 23ではJNIロード、CAM++、ERes2Net、Silero VAD初期化に成功した。
+ARMv7 ELFはARMv7-A、Thumb-2、VFPv3、NEONを使用し、Pepper `LPT_200AR`の命令セットと一致する。Pepper API 23ではJNIロード、CAM++ Chinese-English、Silero VAD初期化に成功した。
 
 このstatic-link AARでは`jni/armeabi-v7a/libonnxruntime.so`を別置きしない。AAR内の`jni/armeabi-v7a/libsherpa-onnx-jni.so`だけでPepper実機推論済みである。2つの`.so`を前提とするshared-link構成へ置き換えず、`scripts/windows/verify-android-speaker-runtime.ps1`でAARのSHA-256、ARMv7 entry、Gradle AAR metadataを検証する。
 
@@ -135,8 +136,8 @@ x86用AARには別の`libonnxruntime.so`が含まれ、API 23に存在しない`
 - Model SHA-256: `220AD67CA923BEF2FA91F2390C786097BF305BCEB5E261D4AF67B38E938E1079`
 - Input: 16 kHz mono float PCM, `[1, 1, 160000]`
 - Output: 589 frames × 7 powerset classes, receptive-field step 270 samples
-- Android runtime: ONNX Runtime 1.20.0 CPU、暗黙フォールバックなし
-- Pepper status: API 23 / ARMv7のnative symbol監査と実機推論が未完了のため`BLOCKED`
+- Android runtime: sherpa-onnx 1.13.4 static-link AAR（CPU、ARMv7対応）。Pepperでは共有ONNX Runtimeを使用しない。
+- Pepper status: API 23 / ARMv7でAPKを再インストール後、`MainActivity`の前面維持とカメラ・話者識別画面の表示を確認。実音声を用いた話者区間の精度評価は別途必要。
 
 モデル本体はGitへコミットせず、archiveとモデルの両SHA-256を照合して
 `app/src/benchmark/assets/models/pyannote-segmentation-3.0.onnx`へ配置する。
@@ -188,49 +189,30 @@ face-0095の固定入力に対する正規化embedding cosineは`0.99999994`、
 最大絶対誤差は`2.17e-7`であり、`LiteRt0095EmbeddingEngine`が出力を
 256要素へflattenしてL2正規化する。
 
-## 3D-Speaker CAM++
+## 3D-Speaker CAM++ Chinese-English
 
-- Model: `3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx`
-- Official distribution: https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models
+- Model: `3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx`
+- Official model page: https://modelscope.cn/models/iic/speech_campplus_sv_zh_en_16k-common_advanced
 - Upstream: https://github.com/modelscope/3D-Speaker
-- Code/runtime license: Apache License 2.0
-- Model weight license: 未確認
-- Commercial use: 未確認
-- Size: 29,596,978 bytes
-- SHA-256: `357A834F702B80161E5B981182C038E18553C1F2CA752ED6CEC2052365D4129B`
-- Input: 16 kHz mono normalized PCM
-- Output: 512 dimensions
-
-## 3D-Speaker ERes2Net
-
-- Model: `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx`
-- Official distribution: https://github.com/k2-fsa/sherpa-onnx/releases/tag/speaker-recongition-models
-- Upstream: https://github.com/modelscope/3D-Speaker
-- Code/runtime license: Apache License 2.0
-- Model weight license: 未確認
-- Commercial use: 未確認
-- Size: 26,485,263 bytes
-- SHA-256: `C59158379255AD66E161679CCA6AF8D52D51E389E3224AB7D7A7BAAE295C2DB5`
+- Model weight license: Apache-2.0（ModelScope公式モデルページ）
+- Commercial use: 許可
+- Size: 28,281,164 bytes
+- SHA-256: `AA3CFC16963A10586A9393F5035D6D6B57E98D358B347F80C2A30BF4F00CEBA2`
 - Input: 16 kHz mono normalized PCM
 - Output: 192 dimensions
 
 ## Windows speaker benchmark model catalog
 
-Windows用の正本は`config/models.json`である。配布リポジトリ全体をrevision `0743f301363dec56491a490f6d6cbc9d67f9a3bf`へ固定し、ダウンロード後にサイズとSHA-256を両方検証する。
+Windows用の正本は`config/models.json`である。CAM++ Chinese-EnglishはModelScope公式モデルページ、WeSpeakerはmodel cardのrevision `f0c48c298fd835726c27956a5d617bad7115627e`を根拠とする。いずれもダウンロード後にサイズとSHA-256を検証する。
 
 | ID | ファイル | 追加元commit | サイズ | SHA-256 | 次元 |
 |---|---|---|---:|---|---:|
-| `campplus-en` | `3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx` | `8be2a75c9ed7a590538b268e46fbb65e1aa9d208` | 29,596,978 | `357A834F702B80161E5B981182C038E18553C1F2CA752ED6CEC2052365D4129B` | 512 |
 | `campplus-zh-en` | `3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx` | `8be2a75c9ed7a590538b268e46fbb65e1aa9d208` | 28,281,164 | `AA3CFC16963A10586A9393F5035D6D6B57E98D358B347F80C2A30BF4F00CEBA2` | 192 |
-| `eres2net-en` | `3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx` | `8be2a75c9ed7a590538b268e46fbb65e1aa9d208` | 26,485,263 | `C59158379255AD66E161679CCA6AF8D52D51E389E3224AB7D7A7BAAE295C2DB5` | 192 |
-| `speakernet-m` | `nemo_en_speakerverification_speakernet.onnx` | `0743f301363dec56491a490f6d6cbc9d67f9a3bf` | 23,411,863 | `D204DC8AAC0014B8543F05FC8E310510C7022BC65B6452C203EC205EF7A66B23` | 256 |
-| `titanet-s` | `nemo_en_titanet_small.onnx` | `0743f301363dec56491a490f6d6cbc9d67f9a3bf`（同一blobのfile revision: `2b697b2295172ca9cfe4881d5d45beb721bc84fc`） | 40,257,283 | `AD4A1802485D8B34C722D2A9D04249662F2ECE5D28A7A039063CA22F515A789E` | 192 |
+| `wespeaker-resnet34-lm` | `voxceleb_resnet34_LM.onnx` | `f0c48c298fd835726c27956a5d617bad7115627e` | 26,530,309 | `7BB2F06E9DF17CDF1EF14EE8A15AB08ED28E8D0EF5054EE135741560DF2EC068` | 256 |
 
-SpeakerNet-Mは16 kHz mono PCMから64-bin log-mel（20 ms窓、10 msシフト、Hann、per-feature正規化）を生成し、`audio_signal[B,64,T]`と`length[B]`を入力して`embs[B,256]`を得る。TitaNet-Sは80-bin log-mel（25 ms窓、10 msシフト、Hann、per-feature正規化）を使い、`audio_signal[B,80,T]`と`length[B]`から`embs[B,192]`を得る。両方ともONNX metadataの`framework=nemo`をsherpa-onnx 1.13.4が解釈し、Android benchmarkへ同一hashのONNXを同梱する。別モデルへのfallbackは行わない。
+現行カタログではCAM++ Chinese-EnglishとWeSpeaker ResNet34-LMを`releaseModelIds`として許諾確認済みである。VoxCeleb等のデータ条件、NOTICE/SBOM、Pepper実機受入は別ゲートである。
 
-3D-SpeakerとNeMoのコード／変換ツールのApache-2.0を、配布ONNX重みの個別ライセンスとして扱わない。5ファイルすべてについて`weightLicense`と`commercialUse`は`UNVERIFIED`を維持し、確認前は本番候補にしない。
-
-RyuseiNetは今回の5モデル本比較の対象外である。追加学習を行わず、重みの取得・変換・統合・比較も行っていない。候補数を5つへ固定し、前処理とWindows/Android接続の検証範囲を広げないための判断である。
+RyuseiNetは今回の過去比較と現行設定2モデルの対象外である。追加学習を行わず、重みの取得・変換・統合・比較も行っていない。
 
 ## ONNX Runtime Java for Windows
 
