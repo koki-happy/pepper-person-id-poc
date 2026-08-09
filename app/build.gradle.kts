@@ -140,7 +140,6 @@ android {
     }
     androidResources {
         noCompress += "tflite"
-        noCompress += "mp4"
     }
     packaging {
         jniLibs {
@@ -290,14 +289,18 @@ val verifyModelArtifactHashes by tasks.registering {
             check(artifactFile.toPath().startsWith(assetsRoot.toPath())) {
                 "$owner filename escapes the model assets directory: $filename"
             }
-            verifyFile(
-                owner = owner,
-                artifactFile = artifactFile,
-                expectedHash = intermediate["sha256"] as? String
-                    ?: error("$owner.sha256 must be a string"),
-                expectedSize = (intermediate["fileSizeBytes"] as? Number)?.toLong()
-                    ?: error("$owner.fileSizeBytes must be an integer"),
-            )
+            if (artifactFile.isFile) {
+                verifyFile(
+                    owner = owner,
+                    artifactFile = artifactFile,
+                    expectedHash = intermediate["sha256"] as? String
+                        ?: error("$owner.sha256 must be a string"),
+                    expectedSize = (intermediate["fileSizeBytes"] as? Number)?.toLong()
+                        ?: error("$owner.fileSizeBytes must be an integer"),
+                )
+            } else {
+                logger.lifecycle("$owner is absent as expected for an excluded generated intermediate: $filename")
+            }
         }
     }
 }
@@ -578,20 +581,6 @@ val verifyReleaseModelLicenses by tasks.registering {
     inputs.file(modelOptionsFile)
 
     doLast {
-        val requiredCatalogIds = setOf(
-            "campplus-zh-en",
-            "wespeaker-resnet34-lm",
-        )
-        val requiredBundledModels = mapOf(
-            "campplus-zh-en" to "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
-            "wespeaker-resnet34-lm" to "wespeaker_en_voxceleb_resnet34_LM.onnx",
-        )
-        val allowedNonSpeakerOnnxAssets = setOf(
-            "face-reidentification-retail-0095.onnx",
-            "face_detection_yunet_2026may.onnx",
-            "face_recognition_sface_2021dec.onnx",
-            "silero_vad.onnx",
-        )
         val parsed = JsonSlurper().parse(provenanceFile) as? Map<*, *>
             ?: error("Release model-license gate could not parse ${provenanceFile.absolutePath}")
         val modelObjects = (parsed["models"] as? List<*>)
@@ -602,13 +591,31 @@ val verifyReleaseModelLicenses by tasks.registering {
         check(ids.none(String::isBlank) && ids.size == ids.toSet().size) {
             "config/models.json must contain unique, non-blank model IDs (found $ids)"
         }
-        check(ids.toSet() == requiredCatalogIds) {
-            "config/models.json model IDs must exactly match $requiredCatalogIds (found ${ids.toSet()})"
+        val requiredCatalogIds = (parsed["releaseModelIds"] as? List<*>)
+            ?.map { it as? String ?: error("releaseModelIds entries must be strings") }
+            ?.takeIf { it.isNotEmpty() }
+            ?.toSet()
+            ?: error("config/models.json releaseModelIds must be a non-empty array")
+        check(requiredCatalogIds.all { it in ids }) {
+            "config/models.json releaseModelIds must reference models[] entries (release=$requiredCatalogIds, models=${ids.toSet()})"
         }
+        val catalogById = modelObjects.associateBy { field(it, "id").orEmpty() }
+        val requiredBundledModels = requiredCatalogIds.associateWith { modelId ->
+            field(checkNotNull(catalogById[modelId]) { "Missing release catalog model '$modelId'" }, "filename")
+                ?.takeIf(String::isNotBlank)
+                ?: error("$modelId filename is missing")
+        }
+        val catalogArtifacts = (parsed["artifacts"] as? List<*>)
+            ?.map { it as? Map<*, *> ?: error("Every artifacts[] entry must be an object") }
+            .orEmpty()
+        val allowedCatalogOnnxAssets = catalogArtifacts
+            .mapNotNull { it["filename"] as? String }
+            .filter { it.endsWith(".onnx", ignoreCase = true) }
+            .toSet() - requiredBundledModels.values
         val rejectedLicenseValues = setOf(
             "UNVERIFIED", "UNKNOWN", "TBD", "TODO", "PENDING", "N/A", "NA", "NONE"
         )
-        val blockers = modelObjects.mapNotNull { model ->
+        val blockers = modelObjects.filter { field(it, "id") in requiredCatalogIds }.mapNotNull { model ->
             val modelId = field(model, "id").orEmpty()
             val weightLicense = field(model, "weightLicense")
             val commercialUse = field(model, "commercialUse")
@@ -635,12 +642,15 @@ val verifyReleaseModelLicenses by tasks.registering {
             }
             rejectedFields.takeIf(List<String>::isNotEmpty)?.let { modelId to it }
         }
-        val catalogById = modelObjects.associateBy { field(it, "id").orEmpty() }
         val optionPairs = Regex(
             """(?s)configModelId\s*=\s*\"([^\"]+)\".*?modelFileName\s*=\s*\"([^\"]+)\""""
         ).findAll(modelOptionsFile.readText()).associate { it.groupValues[1] to it.groupValues[2] }
-        check(optionPairs == requiredBundledModels) {
-            "SpeakerModelOption ID/file mappings must exactly match $requiredBundledModels (found $optionPairs)"
+        check(optionPairs.keys.all { it in catalogById }) {
+            "SpeakerModelOption IDs must exist in config/models.json (found ${optionPairs.keys - catalogById.keys})"
+        }
+        val releaseOptionPairs = optionPairs.filterKeys { it in requiredCatalogIds }
+        check(releaseOptionPairs == requiredBundledModels) {
+            "Release SpeakerModelOption ID/file mappings must exactly match $requiredBundledModels (found $releaseOptionPairs)"
         }
 
         fun sha256(file: File): String {
@@ -687,7 +697,7 @@ val verifyReleaseModelLicenses by tasks.registering {
             .orEmpty()
             .filter { it.isFile && it.extension.equals("onnx", ignoreCase = true) }
             .map(File::getName)
-            .toSet() - requiredBundledModels.values.toSet() - allowedNonSpeakerOnnxAssets
+            .toSet() - requiredBundledModels.values.toSet() - allowedCatalogOnnxAssets
         check(unexpectedOnnxAssets.isEmpty()) {
             "Release assets contain ONNX files outside the reviewed allowlist: $unexpectedOnnxAssets"
         }

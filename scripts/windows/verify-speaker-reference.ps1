@@ -21,16 +21,8 @@ try {
     }
     $predictions = @(Import-Csv -LiteralPath $predictionsPath)
     $references = @(
-        @{ Model = "CAM++ English VoxCeleb"; Utterance = "fangjun-test"; Score = 0.5763694643974304 },
-        @{ Model = "CAM++ English VoxCeleb"; Utterance = "leijun-unknown"; Score = 0.8864114880561829 },
         @{ Model = "CAM++ Chinese-English Common Advanced"; Utterance = "fangjun-test"; Score = 0.8086963295936584 },
-        @{ Model = "CAM++ Chinese-English Common Advanced"; Utterance = "leijun-unknown"; Score = 0.16119252145290375 },
-        @{ Model = "ERes2Net English VoxCeleb"; Utterance = "fangjun-test"; Score = 0.7940911054611206 },
-        @{ Model = "ERes2Net English VoxCeleb"; Utterance = "leijun-unknown"; Score = 0.28438618779182434 },
-        @{ Model = "NeMo SpeakerNet-M"; Utterance = "fangjun-test"; Score = 0.7225968241691589 },
-        @{ Model = "NeMo SpeakerNet-M"; Utterance = "leijun-unknown"; Score = 0.4034479558467865 },
-        @{ Model = "NeMo TitaNet-S"; Utterance = "fangjun-test"; Score = 0.784504234790802 },
-        @{ Model = "NeMo TitaNet-S"; Utterance = "leijun-unknown"; Score = 0.1771232932806015 }
+        @{ Model = "CAM++ Chinese-English Common Advanced"; Utterance = "leijun-unknown"; Score = 0.16119252145290375 }
     )
 
     foreach ($reference in $references) {
@@ -45,7 +37,7 @@ try {
             throw "Windows reference regression for $($reference.Model) / $($reference.Utterance): difference=$difference, tolerance=$ScoreTolerance"
         }
     }
-    Write-Host "All 10 Windows smoke scores match the pinned reference within $ScoreTolerance."
+    Write-Host "All 2 Windows smoke scores match the pinned reference within $ScoreTolerance."
 } finally {
     Pop-Location
 }

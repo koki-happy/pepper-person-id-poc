@@ -128,11 +128,7 @@ try {
     $modelRegistryPath = Join-Path $repoRoot "config/models.json"
     $modelRegistry = @((Get-Content -LiteralPath $modelRegistryPath -Raw | ConvertFrom-Json).models)
     $requiredAndroidModelIds = @(
-        "campplus-en",
-        "campplus-zh-en",
-        "eres2net-en",
-        "speakernet-m",
-        "titanet-s"
+        "campplus-zh-en"
     )
     $cases = New-Object 'System.Collections.Generic.List[object]'
     foreach ($modelId in $requiredAndroidModelIds) {

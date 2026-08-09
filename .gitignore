@@ -63,3 +63,11 @@ __pycache__/
 /app/src/main/jniLibs/
 /app/src/androidTest/assets/speaker-test/
 /app/src/androidTest/assets/face-test/
+
+# APK-bundled model assets are versioned with Git LFS; source models remain ignored.
+!/app/
+!/app/src/
+!/app/src/benchmark/
+!/app/src/benchmark/assets/
+!/app/src/benchmark/assets/models/
+!/app/src/benchmark/assets/models/**

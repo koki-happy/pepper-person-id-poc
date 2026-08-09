@@ -5,7 +5,6 @@ import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class LogMelFbankTest {
@@ -27,31 +26,4 @@ class LogMelFbankTest {
         }
     }
 
-    @Test
-    fun nemoSpeakerNetPath_usesSnippedFramesAndPerFeatureNormalization() {
-        val result = LogMelFbank(
-            LogMelFbankConfig(
-                numBins = 64,
-                frameLengthMillis = 20,
-                lowFrequency = 0f,
-                snipEdges = true,
-                removeDcOffset = false,
-                windowType = "hann",
-                melScale = MelScale.SLANEY,
-                slaneyNormalization = true,
-                normalizeInputSamples = true,
-                featureNormalization = FeatureNormalization.PER_FEATURE,
-            ),
-        ).compute(sine)
-
-        assertEquals(99, result.numFrames)
-        assertEquals(64, result.numBins)
-        assertTrue(result.values.all(Float::isFinite))
-    }
-
-    @Test
-    fun snippedPath_rejectsAudioShorterThanOneFrame() {
-        val extractor = LogMelFbank(LogMelFbankConfig(snipEdges = true))
-        assertFailsWith<IllegalArgumentException> { extractor.compute(FloatArray(399)) }
-    }
 }

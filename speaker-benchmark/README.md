@@ -18,9 +18,9 @@ Paths in the JSON config are resolved relative to the config file itself.
   "outputDirectory": "../results/windows-speaker-benchmark",
   "models": [
     {
-      "name": "campplus-en",
-      "adapter": "camp-plus",
-      "modelPath": "../models/campplus.onnx",
+       "name": "campplus-zh-en",
+       "adapter": "campplus-zh-en",
+       "modelPath": "../models/3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
       "expectedSha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "sampleRate": 16000,
       "embeddingDimension": 192,

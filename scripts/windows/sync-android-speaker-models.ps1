@@ -1,5 +1,5 @@
 param(
-    [string[]]$ModelId = @("campplus-zh-en", "eres2net-en", "campplus-en")
+    [string[]]$ModelId = @("campplus-zh-en")
 )
 
 $ErrorActionPreference = "Stop"

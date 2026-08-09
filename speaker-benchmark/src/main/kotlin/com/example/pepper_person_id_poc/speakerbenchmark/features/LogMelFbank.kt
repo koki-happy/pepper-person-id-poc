@@ -7,7 +7,6 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /** Row-major log Mel-filterbank features. */
 data class FeatureMatrix(
@@ -23,15 +22,9 @@ data class FeatureMatrix(
     }
 }
 
-enum class MelScale {
-    KALDI,
-    SLANEY,
-}
-
 enum class FeatureNormalization {
     NONE,
     GLOBAL_MEAN,
-    PER_FEATURE,
 }
 
 data class LogMelFbankConfig(
@@ -41,12 +34,8 @@ data class LogMelFbankConfig(
     val frameShiftMillis: Int = 10,
     val lowFrequency: Float = 20f,
     val highFrequency: Float = 7_600f,
-    val snipEdges: Boolean = false,
     val removeDcOffset: Boolean = true,
     val preemphasisCoefficient: Float = 0.97f,
-    val windowType: String = "povey",
-    val melScale: MelScale = MelScale.KALDI,
-    val slaneyNormalization: Boolean = false,
     val normalizeInputSamples: Boolean = false,
     val featureNormalization: FeatureNormalization = FeatureNormalization.GLOBAL_MEAN,
 ) {
@@ -58,8 +47,6 @@ data class LogMelFbankConfig(
         require(lowFrequency >= 0f)
         require(highFrequency > lowFrequency && highFrequency <= sampleRate / 2f)
         require(preemphasisCoefficient in 0f..1f)
-        require(windowType == "povey" || windowType == "hann")
-        require(!slaneyNormalization || melScale == MelScale.SLANEY)
     }
 }
 
@@ -68,7 +55,7 @@ data class LogMelFbankConfig(
  *
  * The implementation follows kaldi-native-fbank v1.22.3: reflected edges for
  * `snip_edges=false`, power spectrum, natural-log Mel energies, and the runtime-specific
- * utterance normalization used by 3D-Speaker and NeMo models.
+ * utterance normalization used by the current 3D-Speaker and WeSpeaker models.
  */
 class LogMelFbank(
     private val config: LogMelFbankConfig,
@@ -76,7 +63,7 @@ class LogMelFbank(
     private val frameLength = config.sampleRate * config.frameLengthMillis / 1_000
     private val frameShift = config.sampleRate * config.frameShiftMillis / 1_000
     private val fftSize = nextPowerOfTwo(frameLength)
-    private val window = createWindow(frameLength, config.windowType)
+    private val window = createWindow(frameLength)
     private val melFilters = createMelFilters()
 
     fun compute(normalizedSamples: FloatArray): FeatureMatrix {
@@ -112,19 +99,10 @@ class LogMelFbank(
         return FeatureMatrix(numFrames, config.numBins, features)
     }
 
-    private fun numberOfFrames(numSamples: Int): Int =
-        if (config.snipEdges) {
-            if (numSamples < frameLength) 0 else 1 + (numSamples - frameLength) / frameShift
-        } else {
-            (numSamples + frameShift / 2) / frameShift
-        }
+    private fun numberOfFrames(numSamples: Int): Int = (numSamples + frameShift / 2) / frameShift
 
     private fun extractFrame(samples: FloatArray, frameIndex: Int): FloatArray {
-        val start = if (config.snipEdges) {
-            frameIndex * frameShift
-        } else {
-            frameIndex * frameShift + frameShift / 2 - frameLength / 2
-        }
+        val start = frameIndex * frameShift + frameShift / 2 - frameLength / 2
         val frame = FloatArray(fftSize)
         repeat(frameLength) { offset ->
             var sampleIndex = start + offset
@@ -176,24 +154,6 @@ class LogMelFbank(
                     repeat(numFrames) { frame -> features[frame * config.numBins + bin] -= mean }
                 }
             }
-            FeatureNormalization.PER_FEATURE -> {
-                repeat(config.numBins) { bin ->
-                    var sum = 0.0
-                    var squaredSum = 0.0
-                    repeat(numFrames) { frame ->
-                        val value = features[frame * config.numBins + bin].toDouble()
-                        sum += value
-                        squaredSum += value * value
-                    }
-                    val mean = sum / numFrames
-                    val variance = max(squaredSum / numFrames - mean * mean, 1e-5)
-                    val denominator = sqrt(variance) + 1e-5
-                    repeat(numFrames) { frame ->
-                        val index = frame * config.numBins + bin
-                        features[index] = ((features[index] - mean) / denominator).toFloat()
-                    }
-                }
-            }
         }
     }
 
@@ -206,13 +166,12 @@ class LogMelFbank(
             melToFrequency(lowestMel + index * melStep)
         }
         val fftBinWidth = config.sampleRate.toDouble() / fftSize
-        val lastExclusive = if (config.melScale == MelScale.KALDI) frequencyBins - 1 else frequencyBins
+        val lastExclusive = frequencyBins - 1
 
         return Array(config.numBins) { bin ->
             val left = boundaries[bin]
             val center = boundaries[bin + 1]
             val right = boundaries[bin + 2]
-            val normalization = if (config.slaneyNormalization) 2.0 / (right - left) else 1.0
             FloatArray(frequencyBins) { index ->
                 if (index >= lastExclusive) {
                     0f
@@ -223,29 +182,17 @@ class LogMelFbank(
                         frequency <= center -> (frequency - left) / (center - left)
                         else -> (right - frequency) / (right - center)
                     }
-                    (weight * normalization).toFloat()
+                    weight.toFloat()
                 }
             }
         }
     }
 
-    private fun frequencyToMel(frequency: Double): Double = when (config.melScale) {
-        MelScale.KALDI -> 1127.0 * ln(1.0 + frequency / 700.0)
-        MelScale.SLANEY -> if (frequency <= 1_000.0) {
-            frequency * 3.0 / 200.0
-        } else {
-            15.0 + 14.545078505785561 * ln(frequency / 1_000.0)
-        }
-    }
+    private fun frequencyToMel(frequency: Double): Double =
+        1127.0 * ln(1.0 + frequency / 700.0)
 
-    private fun melToFrequency(mel: Double): Double = when (config.melScale) {
-        MelScale.KALDI -> 700.0 * (exp(mel / 1127.0) - 1.0)
-        MelScale.SLANEY -> if (mel <= 15.0) {
-            200.0 / 3.0 * mel
-        } else {
-            1_000.0 * exp((mel - 15.0) * 0.06875177742094911)
-        }
-    }
+    private fun melToFrequency(mel: Double): Double =
+        700.0 * (exp(mel / 1127.0) - 1.0)
 
     private fun fft(real: DoubleArray, imaginary: DoubleArray) {
         var j = 0
@@ -294,12 +241,8 @@ class LogMelFbank(
         }
     }
 
-    private fun createWindow(length: Int, type: String): FloatArray = FloatArray(length) { index ->
-        when (type) {
-            "hann" -> (0.5 - 0.5 * cos(2.0 * PI * index / length)).toFloat()
-            "povey" -> (0.5 - 0.5 * cos(2.0 * PI * index / (length - 1))).pow(0.85).toFloat()
-            else -> error("Unsupported window type: $type")
-        }
+    private fun createWindow(length: Int): FloatArray = FloatArray(length) { index ->
+        (0.5 - 0.5 * cos(2.0 * PI * index / (length - 1))).pow(0.85).toFloat()
     }
 
     private fun nextPowerOfTwo(value: Int): Int {
