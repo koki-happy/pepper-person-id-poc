@@ -83,7 +83,7 @@ class SharedPreferencesSettingsRepository(context: Context) : SettingsRepository
 class SettingsMigrationException(message: String) : IllegalStateException(message)
 
 internal object SettingsSchemaMigration {
-    const val CURRENT_SCHEMA_VERSION = 7
+    const val CURRENT_SCHEMA_VERSION = 8
 
     fun migrate(raw: Map<String, *>): PocSettings {
         if (raw.isEmpty()) return PocSettings()
@@ -143,7 +143,9 @@ internal object SettingsSchemaMigration {
             faceAnalysisIntervalMillis = raw[KEY_FACE_ANALYSIS_INTERVAL].asLong(KEY_FACE_ANALYSIS_INTERVAL) ?: defaults.faceAnalysisIntervalMillis,
             faceDetectionScoreThreshold = raw[KEY_FACE_DETECTION_SCORE].asFloat(KEY_FACE_DETECTION_SCORE) ?: defaults.faceDetectionScoreThreshold,
             faceNmsThreshold = raw[KEY_FACE_NMS].asFloat(KEY_FACE_NMS) ?: defaults.faceNmsThreshold,
-            faceMaximumDetectionCandidates = raw[KEY_FACE_MAX_CANDIDATES].asInt(KEY_FACE_MAX_CANDIDATES) ?: defaults.faceMaximumDetectionCandidates,
+            faceMaximumDetectionCandidates = (raw[KEY_FACE_MAX_CANDIDATES].asInt(KEY_FACE_MAX_CANDIDATES)
+                ?: defaults.faceMaximumDetectionCandidates)
+                .coerceIn(PocSettings.FACE_MAXIMUM_DETECTION_CANDIDATES_RANGE),
             mlKitMinimumFaceSize = raw[KEY_ML_KIT_MIN_FACE_SIZE].asFloat(KEY_ML_KIT_MIN_FACE_SIZE) ?: defaults.mlKitMinimumFaceSize,
             faceLabelContinuationIou = raw[KEY_FACE_LABEL_IOU].asFloat(KEY_FACE_LABEL_IOU) ?: defaults.faceLabelContinuationIou,
             faceLabelMaximumMissingFrames = raw[KEY_FACE_LABEL_MISSING_FRAMES].asInt(KEY_FACE_LABEL_MISSING_FRAMES) ?: defaults.faceLabelMaximumMissingFrames,

@@ -15,7 +15,7 @@ class PocSettingsTest {
         assertThat(defaults.speakerOverlapDisplayThreshold).isEqualTo(0.50f)
         assertThat(defaults.faceDetectionScoreThreshold).isEqualTo(0.80f)
         assertThat(defaults.faceNmsThreshold).isEqualTo(0.30f)
-        assertThat(defaults.faceMaximumDetectionCandidates).isEqualTo(5_000)
+        assertThat(defaults.faceMaximumDetectionCandidates).isEqualTo(10)
         assertThat(defaults.mlKitMinimumFaceSize).isEqualTo(0.10f)
         assertThat(defaults.faceLabelContinuationIou).isEqualTo(0.30f)
         assertThat(defaults.faceLabelMaximumMissingFrames).isEqualTo(4)
@@ -44,7 +44,7 @@ class PocSettingsTest {
     @Test
     fun detailedParameterBoundsAreValidated() {
         assertThat(PocSettings(faceAnalysisIntervalMillis = 99L).isValid()).isFalse()
-        assertThat(PocSettings(faceMaximumDetectionCandidates = 5_001).isValid()).isFalse()
+        assertThat(PocSettings(faceMaximumDetectionCandidates = 11).isValid()).isFalse()
         assertThat(PocSettings(mlKitMinimumFaceSize = 0.51f).isValid()).isFalse()
         assertThat(PocSettings(faceLabelMaximumMissingFrames = 31).isValid()).isFalse()
         assertThat(PocSettings(vadMinimumSilenceMillis = 2_001L).isValid()).isFalse()
@@ -59,7 +59,7 @@ class PocSettingsTest {
         assertThat(
             PocSettings(
                 faceAnalysisIntervalMillis = 100L,
-                faceMaximumDetectionCandidates = 100,
+                faceMaximumDetectionCandidates = 1,
                 mlKitMinimumFaceSize = 0.05f,
                 faceLabelMaximumMissingFrames = 0,
                 vadMinimumSilenceMillis = 100L,

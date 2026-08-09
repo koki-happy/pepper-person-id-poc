@@ -87,7 +87,7 @@ data class PocSettings(
         const val DEFAULT_FACE_ANALYSIS_INTERVAL_MILLIS = 1_000L
         const val DEFAULT_FACE_DETECTION_SCORE_THRESHOLD = 0.80f
         const val DEFAULT_FACE_NMS_THRESHOLD = 0.30f
-        const val DEFAULT_FACE_MAXIMUM_DETECTION_CANDIDATES = 5_000
+        const val DEFAULT_FACE_MAXIMUM_DETECTION_CANDIDATES = 10
         const val DEFAULT_ML_KIT_MINIMUM_FACE_SIZE = 0.10f
         const val DEFAULT_FACE_LABEL_CONTINUATION_IOU = 0.30f
         const val DEFAULT_FACE_LABEL_MAXIMUM_MISSING_FRAMES = 4
@@ -107,7 +107,7 @@ data class PocSettings(
         val SCORE_RANGE = 0f..1f
         val CLUSTER_MAX_UPDATE_COUNT_RANGE = 1..100
         val FACE_ANALYSIS_INTERVAL_RANGE = 100L..5_000L
-        val FACE_MAXIMUM_DETECTION_CANDIDATES_RANGE = 100..5_000
+        val FACE_MAXIMUM_DETECTION_CANDIDATES_RANGE = 1..10
         val ML_KIT_MINIMUM_FACE_SIZE_RANGE = 0.05f..0.50f
         val FACE_LABEL_MAXIMUM_MISSING_FRAMES_RANGE = 0..30
         val VAD_MINIMUM_SILENCE_RANGE = 100L..2_000L
@@ -368,7 +368,7 @@ enum class SpeakerModelOption(
         displayName = "3D-Speaker CAM++ Chinese-English",
         modelFileName = "3dspeaker_speech_campplus_sv_zh_en_16k-common_advanced.onnx",
         embeddingSize = 192,
-        jvsCandidateThreshold = 0.7508543f,
+        jvsCandidateThreshold = 0.75f,
         jvsCandidateMargin = 0.0f,
     ),
     WESPEAKER_RESNET34_LM(

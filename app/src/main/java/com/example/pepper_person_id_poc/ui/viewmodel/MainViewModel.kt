@@ -78,6 +78,12 @@ class MainViewModel(
         mutableUiState.update { it.copy(settingsSaved = true) }
     }
 
+    fun resetSettings() {
+        val defaults = PocSettings()
+        settingsRepository.save(defaults)
+        mutableUiState.update { it.copy(settings = defaults, settingsSaved = false) }
+    }
+
     fun refreshDiagnostics() {
         if (mutableUiState.value.diagnosticsLoading) return
         mutableUiState.update { it.copy(diagnosticsLoading = true, diagnosticsError = null) }

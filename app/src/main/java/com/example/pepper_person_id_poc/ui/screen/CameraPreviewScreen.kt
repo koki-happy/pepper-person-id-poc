@@ -11,7 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -176,8 +175,8 @@ private fun HtmlToolbar(elapsed: String, onOpenSettings: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(HtmlSurface)
-            .border(1.dp, HtmlLine, RectangleShape)
+            .background(HtmlSurface, RoundedCornerShape(12.dp))
+            .border(1.dp, HtmlLine, RoundedCornerShape(12.dp))
             .padding(horizontal = 18.dp),
     ) {
         Text("顔・話者識別", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = HtmlInk)
@@ -226,7 +225,7 @@ private fun HtmlControlBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(58.dp)
-            .background(HtmlSurface)
+            .background(HtmlSurface, RoundedCornerShape(12.dp))
             .border(1.dp, HtmlLine, RoundedCornerShape(12.dp))
             .padding(horizontal = 12.dp),
     ) {
@@ -242,7 +241,6 @@ private fun HtmlControlBar(
 private fun HtmlPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier
-            .fillMaxHeight()
             .border(1.dp, HtmlLine, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HtmlSurface, contentColor = HtmlInk),
@@ -355,7 +353,6 @@ fun CameraPreviewScreen(
     benchmarkLogger: BenchmarkLogger,
     onOpenSettings: () -> Unit,
     onOpenModels: () -> Unit,
-    onExit: () -> Unit,
     onReset: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -660,14 +657,6 @@ fun CameraPreviewScreen(
                 }
                 Spacer(Modifier.width(((viewportWidth - appWidth) / 2f).coerceAtLeast(0.dp)))
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .width(48.dp)
-                    .height(48.dp)
-                    .clickable(onClick = onExit)
-                    .testTag("hidden-exit-button"),
-            )
         }
     }
     }
@@ -675,8 +664,20 @@ fun CameraPreviewScreen(
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("識別結果を初期化しますか？") },
-            text = { Text("顔・音声の匿名IDと識別結果を削除します。保存済み設定は残ります。") },
-            confirmButton = { TextButton(onClick = { confirmReset = false; onReset() }) { Text("初期化") } },
+            text = { Text("顔・話者ID、識別履歴、設定パラメータをすべて初期化します。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmReset = false
+                        faceRunning = false
+                        speakerRunning = false
+                        faceHistory.clear()
+                        speakerHistory.clear()
+                        dashboardEvents.clear()
+                        onReset()
+                    },
+                ) { Text("初期化") }
+            },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("キャンセル") } },
         )
     }
@@ -725,7 +726,9 @@ private fun SummaryCard(
     valueFontSize: TextUnit = 25.sp,
 ) {
     Card(
-        modifier = modifier.border(1.dp, HtmlLine, RoundedCornerShape(12.dp)),
+        modifier = modifier
+            .fillMaxHeight()
+            .border(1.dp, HtmlLine, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HtmlSurface, contentColor = HtmlInk),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -785,12 +788,12 @@ private fun DashboardResultPanels(
             title = "話者識別",
             marker = HtmlPurple,
             threshold = speakerThreshold,
-            headers = listOf("時刻", "ID", "既存ID類似度", "処理 ms", "発話 s"),
+            headers = listOf("時刻", "ID", "類似度", "処理 ms", "発話 s"),
             rows = speakerHistory.takeLast(DASHBOARD_HISTORY_LIMIT).asReversed().map {
                 listOf(
                     elapsedLabel(it.elapsedMillis),
                     it.id,
-                    it.similarity?.let { value -> String.format(Locale.US, "%.2f", value) } ?: "—",
+                    if (it.isNew) "-" else it.similarity?.let { value -> String.format(Locale.US, "%.2f", value) } ?: "-",
                     it.processingMillis?.let { value -> String.format(Locale.US, "%.1f", value) } ?: "—",
                     it.utteranceSeconds?.let { value -> String.format(Locale.US, "%.1f", value) } ?: "—",
                 )

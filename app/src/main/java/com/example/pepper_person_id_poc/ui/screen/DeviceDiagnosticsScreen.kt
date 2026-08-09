@@ -1,5 +1,7 @@
 package com.example.pepper_person_id_poc.ui.screen
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,20 +12,34 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.example.pepper_person_id_poc.domain.device.DeviceDiagnostics
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+
+private val DiagnosticsCanvas = Color(0xFFF4F6F8)
+private val DiagnosticsSurface = Color.White
+private val DiagnosticsLine = Color(0xFFCBD3DA)
+private val DiagnosticsInk = Color(0xFF1D2329)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,26 +51,32 @@ fun DeviceDiagnosticsScreen(
     onRequestPermissions: () -> Unit,
     onRefresh: () -> Unit,
 ) {
-    Scaffold(
+    CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+        Scaffold(
+        containerColor = DiagnosticsCanvas,
         topBar = {
             TopAppBar(
-                title = { Text("端末診断") },
-                navigationIcon = {
-                    Button(onClick = onBackToSettings, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        Text("← 設定")
+                title = { Text("端末診断", color = DiagnosticsInk) },
+                actions = {
+                    TextButton(onClick = onBackToSettings, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        Text("← 設定", color = DiagnosticsInk)
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DiagnosticsSurface),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, DiagnosticsLine, RoundedCornerShape(12.dp)),
             )
         },
-    ) { innerPadding ->
-        Column(
+        ) { innerPadding ->
+            Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-        ) {
+            ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = onRequestPermissions) { Text("権限を確認") }
                 Button(onClick = onRefresh, enabled = !isLoading) { Text("再診断") }
@@ -65,6 +87,7 @@ fun DeviceDiagnosticsScreen(
             }
             error?.let { Text("診断エラー: $it", color = MaterialTheme.colorScheme.error) }
             diagnostics?.let { DiagnosticContent(it) }
+            }
         }
     }
 }
@@ -93,7 +116,6 @@ private fun DiagnosticContent(diagnostics: DeviceDiagnostics) {
         DiagnosticRow("CAMERA", diagnostics.cameraPermissionGranted.asStatus())
         DiagnosticRow("RECORD_AUDIO", diagnostics.recordAudioPermissionGranted.asStatus())
         DiagnosticRow("ネットワーク", diagnostics.networkConnected.asStatus())
-        DiagnosticRow("SpeechRecognizer", diagnostics.speechRecognitionAvailable.asStatus())
     }
     DiagnosticCard("前面カメラ") {
         if (diagnostics.frontCameras.isEmpty()) Text("前面カメラ件数: 0")
@@ -125,7 +147,13 @@ private fun DiagnosticContent(diagnostics: DeviceDiagnostics) {
 
 @Composable
 private fun DiagnosticCard(title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, DiagnosticsLine),
+        colors = CardDefaults.cardColors(containerColor = DiagnosticsSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(16.dp),

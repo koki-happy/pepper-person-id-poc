@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,8 +38,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -87,14 +90,23 @@ fun SettingsScreen(
             topBar = {
                 TopAppBar(
                     title = { Text("パラメータ設定", color = SettingsInk) },
-                    navigationIcon = { TextButton(onClick = onBackToIdentification) { Text("← 識別", color = SettingsInk) } },
                     actions = {
+                        OutlinedButton(
+                            onClick = onBackToIdentification,
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SettingsLine),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = SettingsInk),
+                        ) {
+                            Text("← 識別", color = SettingsInk)
+                        }
                         TextButton(onClick = onOpenModelSelection) { Text("モデル", color = SettingsInk) }
                         TextButton(onClick = { onOpenScreen(AppScreen.DeviceDiagnostics) }) { Text("端末診断", color = SettingsInk) }
-                        TextButton(onClick = { onOpenScreen(AppScreen.Benchmark) }) { Text("計測", color = SettingsInk) }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = SettingsSurface),
-                    modifier = Modifier.border(1.dp, SettingsLine),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, SettingsLine, RoundedCornerShape(12.dp)),
                 )
             },
         ) { padding ->
@@ -131,9 +143,9 @@ fun SettingsScreen(
                             add(ParameterItem("NMS閾値", settings.faceNmsThreshold, 0f..1f, "", 2) {
                                 onSettingsChanged(settings.copy(faceNmsThreshold = it))
                             } to { showHelp("NMS閾値", "重複する顔枠をまとめるIoU境界です。", "0.00～1.00", "0.30") })
-                            add(ParameterItem("最大検出候補数", settings.faceMaximumDetectionCandidates.toFloat(), 100f..5_000f, "件", 0) {
+                            add(ParameterItem("最大検出候補数", settings.faceMaximumDetectionCandidates.toFloat(), 1f..10f, "件", 0) {
                                 onSettingsChanged(settings.copy(faceMaximumDetectionCandidates = it.toInt()))
-                            } to { showHelp("最大検出候補数", "NMS処理前に保持する顔候補数の上限です。", "100～5,000", "5,000") })
+                            } to { showHelp("最大検出候補数", "NMS処理前に保持する顔候補数の上限です。", "1～10", "10") })
                         }
                     },
                     accent = SettingsBlue,
@@ -392,9 +404,10 @@ private fun SettingsCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RectangleShape,
+        shape = RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, SettingsLine),
         colors = CardDefaults.cardColors(containerColor = SettingsSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         content = content,
     )
 }

@@ -11,7 +11,6 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.net.ConnectivityManager
 import android.os.Build
-import android.speech.SpeechRecognizer
 import androidx.core.content.ContextCompat
 import com.example.pepper_person_id_poc.application.contract.DeviceDiagnosticsProvider
 import com.example.pepper_person_id_poc.domain.device.AudioConfigurationDiagnostic
@@ -46,7 +45,6 @@ class AndroidDeviceDiagnosticsProvider(
             densityDpi = displayMetrics.densityDpi,
             frontCameras = collectFrontCameras(),
             audioConfigurations = AUDIO_SAMPLE_RATES.map(::audioConfiguration),
-            speechRecognitionAvailable = SpeechRecognizer.isRecognitionAvailable(appContext),
             networkConnected = isNetworkConnected(),
             cameraPermissionGranted = hasPermission(Manifest.permission.CAMERA),
             recordAudioPermissionGranted = hasPermission(Manifest.permission.RECORD_AUDIO),

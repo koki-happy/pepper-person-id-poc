@@ -107,6 +107,16 @@ class SharedPreferencesSettingsRepositoryTest {
     }
 
     @Test
+    fun oldMaximumDetectionCandidatesAreClampedToNewRange() {
+        val migrated = SettingsSchemaMigration.migrate(
+            mapOf("face_maximum_detection_candidates" to 5_000),
+        )
+
+        assertThat(migrated.faceMaximumDetectionCandidates).isEqualTo(10)
+        assertThat(migrated.isValid()).isTrue()
+    }
+
+    @Test
     fun legacyThirtySecondUtteranceLimitIsClampedToSegmentationWindow() {
         val migrated = SettingsSchemaMigration.migrate(
             mapOf(

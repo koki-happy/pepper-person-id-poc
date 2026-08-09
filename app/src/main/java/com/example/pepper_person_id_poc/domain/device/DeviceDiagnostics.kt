@@ -18,7 +18,6 @@ data class DeviceDiagnostics(
     val densityDpi: Int,
     val frontCameras: List<CameraDiagnostic>,
     val audioConfigurations: List<AudioConfigurationDiagnostic>,
-    val speechRecognitionAvailable: Boolean,
     val networkConnected: Boolean,
     val cameraPermissionGranted: Boolean,
     val recordAudioPermissionGranted: Boolean,
