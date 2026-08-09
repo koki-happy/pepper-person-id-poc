@@ -241,7 +241,9 @@ private fun HtmlControlBar(
 @Composable
 private fun HtmlPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
-        modifier = modifier.border(1.dp, HtmlLine, RoundedCornerShape(12.dp)),
+        modifier = modifier
+            .fillMaxHeight()
+            .border(1.dp, HtmlLine, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HtmlSurface, contentColor = HtmlInk),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -730,7 +732,13 @@ private fun SummaryCard(
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(2.dp).background(accent))
-            Column(Modifier.padding(horizontal = 13.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 13.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
                 Text(title, fontSize = 10.sp, color = HtmlMutedInk)
                 Text(
                     value,
